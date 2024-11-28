@@ -1,0 +1,60 @@
+from typing import Optional, Any
+from prefect import task
+
+from redis_client import client
+from decorators import run_on_component
+from default_config import DEFAULT_CONFIG
+
+@task
+def switch_port_valve(
+        valve: str,
+        port: str,
+        retries: Optional[int] = None,
+        retries_delay: Optional[float] = None,
+        **kwargs: Any,
+) -> None:
+    """
+    Attempts to switch the specified valve to a different port, 
+    retrying the operation if it fails according to the provided retry configuration.
+    
+    This function wraps the pump operation with a lock mechanism, ensuring that the pump 
+    resource is accessed in a thread-safe manner. If the operation fails after the retries, 
+    a `RuntimeError` is raised and the flag 'safety_operation' is set to 0 in redis, which
+    will trigger the emergency_stop function.
+
+    Args:
+        valve (str): The valve to operate.
+        port (str): Identifier of the valve port to switch to.
+        retries (Optional[int], default=None): The number of times to retry the operation if it fails.
+            Defaults to config['valve_retries'].
+        retries_delay (Optional[float], default=None): The delay (in seconds) between retry attempts.
+            Defaults to config['valve_retries_delay'].
+        **kwargs (Any): Additional configuration options.
+
+    Raises:
+        RuntimeError: If the valve operation fails after the specified number of retries.
+    """
+    config = {**DEFAULT_CONFIG, **kwargs}
+    retries = retries if retries is not None else config['valve_retries']
+    retries_delay = retries_delay if retries_delay is not None else config['valve_retries_delay']
+
+    @task
+    @run_on_component()
+    def switch_port_func(
+            valve: str,
+            port: str,
+    ) -> None:
+        """
+        Switches the specified valve to a different port.
+
+        Args:
+            valve (str): The valve to operate.
+            port (str): Identifier of the valve port to switch to.
+        """
+        valve.switch_port(port)
+        
+    try:
+        switch_port_func.with_options(retries=retries, retry_delay_seconds=retries_delay)(valve, port)
+    except Exception as e:
+        client.set('safety_operation',0)
+        raise RuntimeError(f"Failed to switch valve '{valve}' to port '{port}' after {retries} retries.") from e

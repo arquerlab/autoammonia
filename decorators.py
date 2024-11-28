@@ -1,0 +1,260 @@
+from typing import Optional, ParamSpec, Callable, Concatenate
+from functools import wraps
+import time
+import minimalmodbus
+from redis.exceptions import LockError
+
+from redis_client import client
+from default_config import DEFAULT_CONFIG, CONFIG_COMPONENTS
+from potentiostat_minimalmodbus_v00 import PotentiometerCommand
+from matterlab_pumps import TecanXCPump
+from matterlab_valves import ValcoSelectionValve
+from peristaltic_pump import Longer_BT100_3J_Pump
+
+_component_instances = {}
+
+P = ParamSpec("P")
+
+
+def with_lock(
+        function_timeout: Optional[int] = None,
+        acquisition_timeout: Optional[int] = None
+) -> Callable[[Callable[Concatenate[str, P], None]], Callable[Concatenate[str, P], None]]:
+    """
+    Decorator that ensures exclusive execution of a function by using Redis-based locking.
+    This decorator attempts to acquire a lock for a specified component and, if successful, maintains the lock for the
+    duration of the function execution, up to a maximum of `function_timeout`. It waits to acquire the lock up to
+    `acquisition_timeout` if it is currently held by another process.
+
+    Args:
+        function_timeout (Optional[int]): The maximum time in seconds to hold the lock after acquiring it for function
+            execution. Defaults to config["function_timeout"].
+        acquisition_timeout (Optional[int]): The maximum time in seconds to wait to acquire the lock if it is already
+            held by another process. Defaults to config["acquisition_timeout"].
+
+    Returns:
+        Callable[[Callable[[str, ...], None]], Callable[[str, ...], None]]: A decorator function that, when applied to a
+        target function, uses Redis to lock the function execution. This ensures exclusive access to the component
+        specified by component_name` (a `str`) during execution. The decorated function still receives `component_name`
+        as a `str`, with exclusive access guaranteed by the lock.
+        
+    Raises:
+        LockError: If the lock cannot be acquired within the `acquisition_timeout` period.
+        Exception: If an exception occurs during the function execution, a safety flag is set 
+                    in Redis and an error is raised, which will trigger the emergency_stop function.
+
+    Behavior:
+        - When invoked, this decorator attempts to acquire a Redis lock specific to the `component_name`. If the lock
+          is acquired, it automatically extends the lock's duration based on the specified `function_timeout`.
+        - If the function completes normally or encounters an error, the lock is released immediately.
+        - The decorator uses `acquisition_timeout` as the maximum wait time for acquiring the lock, helping to prevent
+          indefinite waiting if the lock is already held.
+        - The decorator uses 'function_timeout' to extend the lock timeout taking into account the estimated duration
+          of the function
+
+    Example:
+        @with_lock(function_timeout=600, acquisition_timeout=300)
+        def process_component(component_name, data):
+            # Function code here, using `component_name` under exclusive lock
+            pass
+
+    Notes:
+        - `function_timeout` should be chosen carefully to match the expected maximum duration of the function, as the
+           lock will expire otherwise.
+        - `acquisition_timeout` defines the maximum time to wait for lock acquisition, so consider the likelihood of
+           concurrent processes accessing the same resource.
+        - This decorator helps ensure exclusive access to resources in a distributed environment using Redis locks,
+          ideal for managing concurrent processes.
+
+    """
+    config = {**DEFAULT_CONFIG}
+    function_timeout = function_timeout if function_timeout is not None else config["function_timeout"]
+    acquisition_timeout = acquisition_timeout if acquisition_timeout is not None else config["acquisition_timeout"]
+
+    def decorator(func: Callable[Concatenate[str, P], None]) -> Callable[Concatenate[str, P], None]:
+        @wraps(func)
+        def wrapper(component_name: str, *args: P.args, **kwargs: P.kwargs) -> None:
+            # Generate the object and a unique lock name for the pump
+            ini_time = time.time()
+            lock_name = f'{component_name}_lock'  # Unique identifier for the instance
+            lock = client.lock(lock_name, timeout=acquisition_timeout)  # Create the lock with a timeout
+            if lock.acquire(blocking=True):  # Attempt to acquire the lock
+                try:
+                    acquisition_time = time.time() - ini_time
+                    lock.extend(timeout=function_timeout - acquisition_time)
+                    return func(component_name, *args, **kwargs)  # Execute the original function
+                except Exception as e:
+                    raise RuntimeError(f"An error occurred while executing {func.__name__}.") from e
+                finally:
+                    # Release the lock after the function completes
+                    if lock.owned():
+                        lock.release()
+                    print(f"Lock released for {component_name}")
+            else:
+                #client.set('safety_operation', 0)
+                raise LockError(f"Could not acquire lock for {component_name}. Another process is blocking it.")
+
+        return wrapper
+
+    return decorator
+
+
+def run_on_component() -> Callable[[Callable[Concatenate[str, P], None]], Callable[Concatenate[object, P], None]]:
+    """
+    Decorator to transform the first argument of a function (expected to be a component name) into the corresponding
+    class instance. If the instance does not already exist, it is created based on the configuration in
+    `CONFIG_COMPONENTS`. Once instantiated, the component instance is stored in `_component_instances` for reuse.
+
+    Returns:
+        Callable[[Callable[[str, ...], None]], Callable[[object, ...], None]]: A decorator function that, when applied
+        to a target function, converts the first argument (`component_name`, a `str`) into the corresponding component
+        instance. The decorated function receives this instance as its first argument, allowing direct interaction
+        with the component.
+
+    Raises:
+        Exception: If an exception occurs during the function execution, a safety flag is set 
+                    in Redis and an error is raised, which will trigger the emergency_stop function.
+
+    Behavior:
+        - If the specified `component_name` does not have an instance in `_component_instances`, this decorator will
+          create a new instance using the configuration in `CONFIG_COMPONENTS`. Potentiostats are handled separately,
+          while other components are instantiated using the class specified in the configuration.
+        - After creating the instance, the decorator calls the decorated function with the component instance as the
+          first argument.
+
+    Example:
+        @run_on_component()
+        def calibrate(component, parameters):
+            # Function code here, where 'component' is the instantiated object.
+            pass
+
+    Notes:
+        - This decorator abstracts the component instantiation process, allowing functions to receive fully configured
+          component instances instead of managing instantiation manually.
+        - Instances are created once and reused to avoid object initialization procedure when not intended
+        - If the function fails or raises an exception, a 'safety_operation' flag is set to 0 in Redis, triggering the
+          emergency_stop function
+    """
+
+    def decorator(func: Callable[Concatenate[str, P], None]) -> Callable[Concatenate[object, P], None]:
+        @wraps(func)
+        def wrapper(component_name: str, *args: P.args, **kwargs: P.kwargs) -> None:
+            # Generate the object and a unique lock name for the pump
+            if component_name not in _component_instances:
+                # Generates an instance only if it does not exist
+                component_info = CONFIG_COMPONENTS[component_name].copy()
+                if 'potentiostat' in component_name:
+                    potentiostat = minimalmodbus.Instrument(**component_info)
+                    _component_instances[component_name] = PotentiometerCommand(potentiostat)
+                else:
+                    componentclass = component_info.pop('class')  # Extracts the class, rest are arguments
+                    _component_instances[component_name] = componentclass(**component_info)
+
+            # Use the already created instance
+            component = _component_instances[component_name]
+            try:
+                return func(component, *args, **kwargs)  # Execute the original function
+            except Exception as e:
+                raise RuntimeError(f"An error occurred while executing {func.__name__}.") from e
+
+        return wrapper
+
+    return decorator
+
+
+def run_on_component_with_lock(
+        function_timeout: Optional[int] = None,
+        acquisition_timeout: Optional[int] = None
+) -> Callable[[Callable[Concatenate[str, P], None]], Callable[Concatenate[object, P], None]]:
+    """
+    Decorator that combines Redis-based locking with automatic component instantiation. This decorator attempts to
+    acquire a lock for the specified component. If acquired, it transforms the `component_name` argument into the
+    corresponding class instance and then executes the decorated function with this instance, ensuring exclusive
+    access to the component during execution.
+
+    Args:
+        function_timeout (Optional[int]): The maximum time in seconds to hold the lock after acquiring it for function
+            execution. Defaults to config["function_timeout"].
+        acquisition_timeout (Optional[int]): The maximum time in seconds to wait to acquire the lock if it is already
+            held by another process. Defaults to config["acquisition_timeout"].
+
+    Returns:
+        Callable[[Callable[[str, ...], None]], Callable[[object, ...], None]]: A decorator function that initializes a
+        component instance if needed and acquires a Redis lock for exclusive access to the component during function
+        execution. The first argument (`component_name`, a `str`) is converted to the component instance (`object`),
+        which is passed to the function.
+
+    Raises:
+        LockError: If the lock cannot be acquired within the `acquisition_timeout` period.
+        Exception: If an exception occurs during the function execution, a safety flag is set 
+                    in Redis and an error is raised, which will trigger the emergency_stop function.
+
+    Behavior:
+        - If the specified `component_name` does not have an instance in `_component_instances`, the decorator creates
+          a new instance using `CONFIG_COMPONENTS`. Potentiostats are instantiated differently from other components.
+        - Once instantiated, the component instance is stored in `_component_instances` and used as the first argument
+          for the decorated function.
+        - The decorator uses a Redis lock to ensure exclusive access to the component. If it successfully acquires
+          the lock, it automatically extends the lock duration to match `function_timeout`.
+        - After the function completes or if an error occurs, the lock is released and a Redis flag (`safety_operation`)
+          is set to 0 in case of errors.
+
+    Example:
+        @run_on_component_with_lock(function_timeout=900, acquisition_timeout=300)
+        def apply_cp(component, parameters):
+            # Function code here, where 'component' is the instantiated object
+            pass
+
+    Notes:
+        - This decorator provides both exclusive access (locking) and instance management, simplifying component-based
+          operations with Redis locks.
+        - `function_timeout` should be chosen carefully to match the expected maximum duration of the function, as the
+          lock will expire otherwise.
+        - `acquisition_timeout` defines the maximum time to wait for lock acquisition, so consider the likelihood of
+          concurrent processes accessing the same resource.
+
+    """
+
+    config = {**DEFAULT_CONFIG}
+
+    function_timeout = function_timeout if function_timeout is not None else config["function_timeout"]
+    acquisition_timeout = acquisition_timeout if acquisition_timeout is not None else config["acquisition_timeout"]
+
+    def decorator(func: Callable[Concatenate[str, P], None]) -> Callable[Concatenate[object, P], None]:
+        @wraps(func)
+        def wrapper(component_name: str, *args: P.args, **kwargs: P.kwargs) -> None:
+            if component_name not in _component_instances:
+                # Generates an instance only if it does not exist
+                component_info = CONFIG_COMPONENTS[component_name].copy()
+                if 'potentiostat' in component_name:
+                    potentiostat = minimalmodbus.Instrument(**component_info)
+                    _component_instances[component_name] = PotentiometerCommand(potentiostat)
+                else:
+                    componentclass = component_info.pop('class')  # Extrae la clase, los demás son argumentos
+                    _component_instances[component_name] = componentclass(**component_info)
+
+            # Use the already created instance
+            component = _component_instances[component_name]
+            # Generate the object and a unique lock name for the pump
+            ini_time = time.time()
+            lock_name = f'{component_name}_lock'  # Unique identifier for the instance
+            lock = client.lock(lock_name, timeout=acquisition_timeout)  # Create the lock with a timeout
+            if lock.acquire(blocking=True):  # Attempt to acquire the lock
+                try:
+                    acquisition_time = time.time() - ini_time
+                    lock.extend(timeout=function_timeout - acquisition_time)
+                    return func(component, *args, **kwargs)  # Execute the original function
+                except Exception as e:
+                    raise RuntimeError(f"An error occurred while executing {func.__name__}.") from e
+                finally:
+                    # Release the lock after the function completes
+                    if lock.owned():
+                        lock.release()
+                    print(f"Lock released for {component_name}")
+            else:
+                #client.set('safety_operation', 0)
+                raise LockError(f"Could not acquire lock for {component_name}. Another process is blocking it.")
+
+        return wrapper
+
+    return decorator
