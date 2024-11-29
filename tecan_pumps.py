@@ -490,5 +490,5 @@ def fill_compartment(
         syringe_pump='tecanRX01', volume=volume, draw_valve_port=source,
         dispense_valve_port=destination, speed=speed, **kwargs
     )
-    client.set(f"{destination}_volume", client.get(f"{source}_volume"))
+    client.set(f"{destination}_volume", volume)
     # client.set(f"{source}_volume", float(client.get(f"{source}_volume"))-volume)
