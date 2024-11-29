@@ -265,7 +265,8 @@ def draw_and_dispense_tecan_unlocked(
             input_air_volume = CONNECTIONS_INFO[syringe_pump][draw_valve_port]['volume']
             input_air_volume = input_air_volume + air_compensation_volume
             draw_and_dispense_tecan(syringe_pump=syringe_pump, volume=input_air_volume,
-                                    draw_valve_port=draw_valve_port, dispense_valve_port='waste', **kwargs)
+                                    draw_valve_port=draw_valve_port, dispense_valve_port='waste',speed=air_flush_speed,
+                                    **kwargs)
     else:
         input_air_volume = CONNECTIONS_INFO[syringe_pump]["valve"][
             'volume']  # Tube pump-valve will always be empty and air need to be drawn
@@ -276,7 +277,7 @@ def draw_and_dispense_tecan_unlocked(
 
         switch_port_valve(valve=syringe_valve, port=draw_valve_port, **kwargs)
         draw_and_dispense_tecan(syringe_pump=syringe_pump, volume=input_air_volume,
-                                draw_valve_port='valve', dispense_valve_port='waste', **kwargs)
+                                draw_valve_port='valve', dispense_valve_port='waste',speed=air_flush_speed, **kwargs)
 
     # Draw/Dispense liquid + air if needed 
     air_flush_volume = air_flush_factor * CONFIG_COMPONENTS[syringe_pump]['syringe_volume'] * 1000
