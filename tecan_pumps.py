@@ -260,8 +260,8 @@ def draw_and_dispense_tecan_unlocked(
     # Draw and dispense the required air from the input tube if needed
     input_air_volume = 0
     if draw_valve_port in CONNECTIONS_INFO[syringe_pump]:
-        if CONNECTIONS_INFO[syringe_pump][draw_valve_port][
-            'usage'].lower() != 'stock':  # If is not a stock solution, tube is empty and air must be drawn before
+        if str(CONNECTIONS_INFO[syringe_pump][draw_valve_port][
+            'usage']).lower() != 'stock':  # If is not a stock solution, tube is empty and air must be drawn before
             input_air_volume = CONNECTIONS_INFO[syringe_pump][draw_valve_port]['volume']
             input_air_volume = input_air_volume + air_compensation_volume
             draw_and_dispense_tecan(syringe_pump=syringe_pump, volume=input_air_volume,
@@ -269,8 +269,8 @@ def draw_and_dispense_tecan_unlocked(
     else:
         input_air_volume = CONNECTIONS_INFO[syringe_pump]["valve"][
             'volume']  # Tube pump-valve will always be empty and air need to be drawn
-        if CONNECTIONS_INFO[syringe_pump][draw_valve_port][
-            'usage'].lower() != 'stock':  # If it's not a stock solution, also need to drawn volume valve-compartment
+        if str(CONNECTIONS_INFO[syringe_pump][draw_valve_port][
+            'usage'].lower()) != 'stock':  # If it's not a stock solution, also need to drawn volume valve-compartment
             input_air_volume += CONNECTIONS_INFO[syringe_valve][draw_valve_port]['volume']
         input_air_volume = input_air_volume + air_compensation_volume
 
