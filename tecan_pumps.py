@@ -410,10 +410,10 @@ def draw_and_dispense_and_wash_tecan(
     )
     if (draw_valve_port not in CONNECTIONS_INFO[syringe_pump]) or (
             dispense_valve_port not in CONNECTIONS_INFO[syringe_pump]):
-        wash_syringe_unlocked(syringe_pump=syringe_pump, repeats=wash_repeats, wash_vol=wash_vol, pump_speed=wash_speed,
+        wash_syringe_unlocked(syringe_pump=syringe_pump, repeats=wash_repeats, wash_vol=wash_vol, speed=wash_speed,
                               wash_valve=True, **kwargs)
     else:
-        wash_syringe_unlocked(syringe_pump=syringe_pump, repeats=wash_repeats, wash_vol=wash_vol, pump_speed=wash_speed,
+        wash_syringe_unlocked(syringe_pump=syringe_pump, repeats=wash_repeats, wash_vol=wash_vol, speed=wash_speed,
                               wash_valve=False, **kwargs)
 
 
@@ -472,7 +472,7 @@ def fill_compartment(
         source: str,
         destination: str,
         volume: float,
-        pump_speed: float,
+        speed: float,
         **kwargs: Any,
 ) -> None:
     """
@@ -487,7 +487,7 @@ def fill_compartment(
     """
     draw_and_dispense_and_wash_tecan(
         syringe_pump='tecanRX01', volume=volume, draw_valve_port=source,
-        dispense_valve_port=destination, speed=pump_speed, **kwargs
+        dispense_valve_port=destination, speed=speed, **kwargs
     )
     client.set(f"{destination}_volume", client.get(f"{source}_volume"))
     # client.set(f"{source}_volume", float(client.get(f"{source}_volume"))-volume)
