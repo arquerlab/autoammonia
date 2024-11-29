@@ -24,13 +24,12 @@ DEFAULT_CONFIG = {
     "longer_acq_timeout":20,
     "longer_func_timeout":15,
     "longer_retries":3,
-    "longer_retries_delay":0.2,
+    "longer_retries_emergency_stop":10,
+    "longer_retries_delay_emergency_stop":5,
     
     "valve_retries":3,
-    "valve_retries_delay":0.2,
     
     "draw_and_dispense_retries": 3,
-    "draw_and_dispense_retries_delay": 0.1,
     "function_timeout": 600,
     "acquisition_timeout": 300,
     
