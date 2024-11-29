@@ -7,10 +7,10 @@ client = redis.StrictRedis(
         decode_responses=True
         )
 # Variables to track volume on each compartment
-client.set('WE_vial01_volume', 0)
-client.set('CE_vial01_volume', 0)
-client.set('WE_vial02_volume', 0)
-client.set('CE_vial02_volume', 0)
+client.set('WEvial01_volume', 0)
+client.set('CEvial01_volume', 0)
+client.set('WEvial02_volume', 0)
+client.set('CEvial02_volume', 0)
 # Variables to track filled and empty vials
 client.rpush('empty_vials', *['vial1', 'vial2', 'vial3', 'vial4', 'vial5', 'vial6', 'vial7', 'vial8'])
 client.delete('filled_vials')
