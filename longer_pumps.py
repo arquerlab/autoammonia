@@ -12,7 +12,6 @@ def run_pump(
         speed: float,
         direction: Optional[bool] = None,
         retries: Optional[int] = None,
-        retries_delay: Optional[float] = None,
         acquisition_timeout: Optional[int] = None,
         function_timeout: Optional[int] = None,
         **kwargs: Any,
@@ -33,8 +32,6 @@ def run_pump(
             False for clockwise, True for counterclockwise. If None, the default direction is used.
         retries (Optional[int]): The number of times to retry the operation if it fails.
             Defaults to `config['longer_retries']`.
-        retries_delay (Optional[float]): The delay (in seconds) between retry attempts.
-            Defaults to `config['longer_retries_delay']`.
         acquisition_timeout (Optional[int]): Maximum time (in seconds) to wait for acquiring the lock.
             Defaults to `config['longer_acq_timeout']`.
         function_timeout (Optional[int]): Maximum time (in seconds) allowed for the pump operation to complete.
@@ -47,7 +44,6 @@ def run_pump(
     # Load default configurations and apply overrides
     config = {**DEFAULT_CONFIG, **kwargs}
     retries = retries if retries is not None else config['longer_retries']
-    retries_delay = retries_delay if retries_delay is not None else config['longer_retries_delay']
     acquisition_timeout = acquisition_timeout if acquisition_timeout is not None else config['longer_acq_timeout']
     function_timeout = function_timeout if function_timeout is not None else config['longer_func_timeout']
 
@@ -74,7 +70,7 @@ def run_pump(
 
     # Execute the wrapped function with retries
     try:
-        run_pump_func.with_options(retries=retries, retry_delay_seconds=retries_delay
+        run_pump_func.with_options(retries=retries
                                    )(pump=pump, speed=speed, direction=direction)
     except Exception as e:
         client.set('safety_operation', 0)
@@ -85,7 +81,6 @@ def run_pump(
 def stop_pump(
         pump: str,
         retries: Optional[int] = None,
-        retries_delay: Optional[float] = None,
         acquisition_timeout: Optional[int] = None,
         function_timeout: Optional[int] = None,
         **kwargs: Any,
@@ -103,8 +98,6 @@ def stop_pump(
         pump (str): The name or identifier of the pump.
         retries (Optional[int]): The number of times to retry the operation if it fails.
             Defaults to `config['longer_retries']`.
-        retries_delay (Optional[float]): The delay (in seconds) between retry attempts.
-            Defaults to `config['longer_retries_delay']`.
         acquisition_timeout (Optional[int]): Maximum time (in seconds) to wait for acquiring the lock.
             Defaults to `config['longer_acq_timeout']`.
         function_timeout (Optional[int]): Maximum time (in seconds) allowed for the pump operation to complete.
@@ -116,7 +109,6 @@ def stop_pump(
     """
     config = {**DEFAULT_CONFIG, **kwargs}
     retries = retries if retries is not None else config['longer_retries']
-    retries_delay = retries_delay if retries_delay is not None else config['longer_retries']
     acquisition_timeout = acquisition_timeout if acquisition_timeout is not None else config['longer_acq_timeout']
     function_timeout = function_timeout if function_timeout is not None else config['longer_func_timeout']
 
@@ -133,7 +125,7 @@ def stop_pump(
         pump.stop()
 
     try:
-        stop_pump_func.with_options(retries=retries, retry_delay_seconds=retries_delay)(pump)
+        stop_pump_func.with_options(retries=retries)(pump)
     except Exception as e:
         client.set('safety_operation', 0)
         raise RuntimeError(f"Failed to stop pump '{pump}' after {retries} retries.") from e
@@ -143,7 +135,6 @@ def stop_pump(
 def check_pump(
         pump: str,
         retries: Optional[int] = None,
-        retries_delay: Optional[float] = None,
         acquisition_timeout: Optional[int] = None,
         function_timeout: Optional[int] = None,
         **kwargs: Any,
@@ -161,8 +152,6 @@ def check_pump(
         pump (str): The name or identifier of the pump.
         retries (Optional[int]): The number of times to retry the operation if it fails.
             Defaults to `config['longer_retries']`.
-        retries_delay (Optional[float]): The delay (in seconds) between retry attempts.
-            Defaults to `config['longer_retries_delay']`.
         acquisition_timeout (Optional[int]): Maximum time (in seconds) to wait for acquiring the lock.
             Defaults to `config['longer_acq_timeout']`.
         function_timeout (Optional[int]): Maximum time (in seconds) allowed for the pump operation to complete.
@@ -178,7 +167,6 @@ def check_pump(
     """
     config = {**DEFAULT_CONFIG, **kwargs}
     retries = retries if retries is not None else config['longer_retries']
-    retries_delay = retries_delay if retries_delay is not None else config['longer_retries']
     acquisition_timeout = acquisition_timeout if acquisition_timeout is not None else config['longer_acq_timeout']
     function_timeout = function_timeout if function_timeout is not None else config['longer_func_timeout']
 
@@ -198,7 +186,7 @@ def check_pump(
         """
         return pump.get_state()
     try:
-        return check_pump_func.with_options(retries=retries, retry_delay_seconds=retries_delay)(pump)
+        return check_pump_func.with_options(retries=retries)(pump)
     except Exception as e:
         client.set('safety_operation', 0)
         raise RuntimeError(f"Failed to check the status of pump '{pump}' after {retries} retries.") from e

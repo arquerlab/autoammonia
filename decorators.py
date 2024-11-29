@@ -81,7 +81,7 @@ def with_lock(
             if lock.acquire(blocking=True):  # Attempt to acquire the lock
                 try:
                     acquisition_time = time.time() - ini_time
-                    lock.extend(timeout=function_timeout - acquisition_time)
+                    lock.extend(additional_time=function_timeout - acquisition_time)
                     return func(component_name, *args, **kwargs)  # Execute the original function
                 except Exception as e:
                     raise RuntimeError(f"An error occurred while executing {func.__name__}.") from e
@@ -242,7 +242,7 @@ def run_on_component_with_lock(
             if lock.acquire(blocking=True):  # Attempt to acquire the lock
                 try:
                     acquisition_time = time.time() - ini_time
-                    lock.extend(timeout=function_timeout - acquisition_time)
+                    lock.extend(additional_time=function_timeout - acquisition_time)
                     return func(component, *args, **kwargs)  # Execute the original function
                 except Exception as e:
                     raise RuntimeError(f"An error occurred while executing {func.__name__}.") from e

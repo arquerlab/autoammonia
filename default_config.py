@@ -29,8 +29,8 @@ DEFAULT_CONFIG = {
     "valve_retries":3,
     "valve_retries_delay":0.2,
     
-    "draw_and_dispense_retrials": 3,
-    "draw_and_dispense_retrials_delay": 0.1,
+    "draw_and_dispense_retries": 3,
+    "draw_and_dispense_retries_delay": 0.1,
     "function_timeout": 600,
     "acquisition_timeout": 300,
     
@@ -86,7 +86,7 @@ DEFAULT_CONFIG = {
 # 'stock' == port leading to a stock solution, None == whatever other purpose intended for that port
 CONNECTIONS_INFO = {
     'tecanAZ01': {
-        "air_waste": {'port': 9, 'volume': 1, 'usage': None},
+        "waste": {'port': 9, 'volume': 1, 'usage': None},
         "valve": {'port': 8, 'volume': 0.09, 'usage': None},
         "WEvial02": {'port': 7, 'volume': 0.18, 'usage': None},
         "WEvial01": {'port': 6, 'volume': 0.18, 'usage': None},
@@ -97,7 +97,7 @@ CONNECTIONS_INFO = {
         "water": {'port': 1, 'volume': 0.47, 'usage': 'stock'}
     },
     'valveAZ01': {
-        "air_waste": {'port': 10, 'volume': 1, 'usage': None},
+        "waste": {'port': 10, 'volume': 1, 'usage': None},
         "vial9": {'port': 9, 'volume': 0.26, 'usage': None},
         "vial8": {'port': 8, 'volume': 0.26, 'usage': None},
         "vial7": {'port': 7, 'volume': 0.27, 'usage': None},
@@ -109,22 +109,22 @@ CONNECTIONS_INFO = {
         "vial1": {'port': 1, 'volume': 0.26, 'usage': None}
     },
     'tecanRX01': {
-        "air_waste": {'port': 12, 'volume': 2.5, 'usage': None},
+        "waste": {'port': 12, 'volume': 2.5, 'usage': None},
         "WEvial02": {'port': 11, 'volume': 0.2, 'usage': None},
         "CEvial02": {'port': 10, 'volume': 0.175, 'usage': None},
         "WEvial01": {'port': 9, 'volume': 0.18, 'usage': None},
         "CEvial01": {'port': 8, 'volume': 0.17, 'usage': None},
         "valve": {'port': 7, 'volume': 0.09, 'usage': None},
         "anolyte": {'port': 6, 'volume': 0.37, 'usage': 'stock'},
-        "acid": {'port': 5, 'volume': 0.55, 'usage': 'stock'},
+        "air": {'port': 5, 'volume': 0.55, 'usage': 'stock'},
         "Cu": {'port': 4, 'volume': 0.4, 'usage': 'stock'},
         "Ni": {'port': 3, 'volume': 0.4, 'usage': 'stock'},
         "Co": {'port': 2, 'volume': 0.32, 'usage': 'stock'},
         "water": {'port': 1, 'volume': 0.64, 'usage': 'stock'}
     },
     'valveRX01': {
-        "air_waste": {'port': 10, 'volume': 2.5, 'usage': None},
-        "elyte9": {'port': 9, 'volume': 0.42, 'usage': 'stock'},
+        "waste": {'port': 10, 'volume': 2.5, 'usage': None},
+        "acid": {'port': 9, 'volume': 0.42, 'usage': 'stock'},
         "elyte8": {'port': 8, 'volume': 0.42, 'usage': 'stock'},
         "elyte7": {'port': 7, 'volume': 0.42, 'usage': 'stock'},
         "elyte6": {'port': 6, 'volume': 0.39, 'usage': 'stock'},

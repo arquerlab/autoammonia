@@ -63,7 +63,7 @@ def initialize_pump(
         if port_info['usage'].lower() == 'stock':
             input_tube_volume = port_info['volume']
             draw_and_dispense_tecan(syringe_pump=syringe_pump, volume=input_tube_volume, draw_valve_port=port_name, 
-                                    dispense_valve_port="air_waste", speed=speed, **kwargs)
+                                    dispense_valve_port="waste", speed=speed, **kwargs)
 
     # Filling of al stock solution tubes leading to the valve assigned to the pump
     wash_valve = False
@@ -72,7 +72,7 @@ def initialize_pump(
             input_tube_volume = port_info['volume']
             switch_port_valve(valve=syringe_valve, port=port_name, **kwargs)
             draw_and_dispense_tecan(syringe_pump=syringe_pump, volume=input_tube_volume, draw_valve_port="valve", 
-                                    dispense_valve_port="air_waste", speed=speed, **kwargs)
+                                    dispense_valve_port="waste", speed=speed, **kwargs)
             wash_valve = True
 
     wash_syringe_unlocked(syringe_pump, wash_valve=wash_valve, **kwargs)
@@ -161,7 +161,6 @@ def wash_flow_cell(
     client.set('CE_vial01_volume', 0)
 
 @flow
-@with_lock(function_timeout=900)
 def mix_metals(
         syringe_pump: str,
         metal_ratios: List[float] = None,
@@ -190,14 +189,13 @@ def mix_metals(
 
     compositions = [ratio / sum(metal_ratios) for ratio in metal_ratios]
     volumes = [comp * deposition_volume for comp in compositions]
-
+    
     for vol, metal in zip(volumes, ['Cu', 'Co', 'Ni']):
         draw_and_dispense_and_wash_tecan(syringe_pump=syringe_pump, volume=vol, draw_valve_port=metal, 
                                          dispense_valve_port='WE_vial01', speed=filling_speed)
 
     draw_and_dispense_and_wash_tecan(syringe_pump=syringe_pump, volume=deposition_volume * 0.5,
                                     draw_valve_port='WE_vial01', dispense_valve_port='WE_vial01', speed=mixing_speed)  # Mix the solution slightly
-    
     client.set('WE_vial01_volume', deposition_volume)
 
 @flow
@@ -619,7 +617,7 @@ def emergency_stop(**kwargs: Any)->None:
 
 if __name__ == ("__main__"):
     
-    pass
+    mix_metals(syringe_pump = 'tecanRX01', metal_ratios = [1,1,1], deposition_volume = 1)
     #run_cp('potentiostat01',-0.004,5)
 
 
