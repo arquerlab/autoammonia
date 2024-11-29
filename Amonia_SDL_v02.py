@@ -142,16 +142,16 @@ def wash_flow_cell(
     empty_and_stop_pumps(wash_time, speed,**kwargs)
 
     for _ in range(repeats):
-        fill_compartment('water', 'WE_vial01', wash_volume, filling_speed)
-        fill_compartment('water', 'CE_vial01', wash_volume, filling_speed)
+        fill_compartment('water', 'WEvial01', wash_volume, filling_speed)
+        fill_compartment('water', 'CEvial01', wash_volume, filling_speed)
         run_pump('longerWE01', speed)
         run_pump('longerCE01', speed)
         client.set('flow_cell_content','water_contaminated')
         time.sleep(wash_time)
 
-        wash_compartment('tecanRX01', 'WE_vial01', repeats=wash_comp_repeats, wash_vol=wash_comp_volume,
+        wash_compartment('tecanRX01', 'WEvial01', repeats=wash_comp_repeats, wash_vol=wash_comp_volume,
                          pump_speed=wash_comp_speed, pump_speed_last_empty=wash_comp_speed_last_empty)
-        wash_compartment('tecanRX01', 'CE_vial01', repeats=wash_comp_repeats, wash_vol=wash_comp_volume,
+        wash_compartment('tecanRX01', 'CEvial01', repeats=wash_comp_repeats, wash_vol=wash_comp_volume,
                          pump_speed=wash_comp_speed, pump_speed_last_empty=wash_comp_speed_last_empty)
 
         empty_and_stop_pumps(wash_time, speed,**kwargs)
@@ -192,11 +192,11 @@ def mix_metals(
     
     for vol, metal in zip(volumes, ['Cu', 'Co', 'Ni']):
         draw_and_dispense_and_wash_tecan(syringe_pump=syringe_pump, volume=vol, draw_valve_port=metal, 
-                                         dispense_valve_port='WE_vial01', speed=filling_speed)
+                                         dispense_valve_port='WEvial01', speed=filling_speed)
 
     draw_and_dispense_and_wash_tecan(syringe_pump=syringe_pump, volume=deposition_volume * 0.5,
-                                    draw_valve_port='WE_vial01', dispense_valve_port='WE_vial01', speed=mixing_speed)  # Mix the solution slightly
-    client.set('WE_vial01_volume', deposition_volume)
+                                    draw_valve_port='WEvial01', dispense_valve_port='WEvial01', speed=mixing_speed)  # Mix the solution slightly
+    client.set('WEvial01_volume', deposition_volume)
 
 @flow
 def electrodeposition(
@@ -232,7 +232,7 @@ def electrodeposition(
     filling_speed = filling_speed if filling_speed is not None else config['electrodeposition_filling_speed']
 
     mix_metals(syringe_pump='tecanRX01', metal_ratios=metal_ratios, deposition_volume=deposition_volume,**kwargs)
-    fill_compartment('anolyte', 'CE_vial01', anolyte_volume, filling_speed, **kwargs)
+    fill_compartment('anolyte', 'CEvial01', anolyte_volume, filling_speed, **kwargs)
 
     run_pump('longerWE01', pump_speed)
     run_pump('longerCE01', pump_speed)
@@ -275,8 +275,8 @@ def reaction(
     filling_speed = filling_speed if filling_speed is not None else config['reaction_filling_speed']
 
     client.set('reaction_status', "0")
-    fill_compartment(catholyte, 'WE_vial01', catholyte_volume, filling_speed, **kwargs)
-    fill_compartment('anolyte', 'WE_vial01', anolyte_volume, filling_speed, **kwargs)
+    fill_compartment(catholyte, 'WEvial01', catholyte_volume, filling_speed, **kwargs)
+    fill_compartment('anolyte', 'WEvial01', anolyte_volume, filling_speed, **kwargs)
 
     run_pump('longerWE01', pump_speed, *kwargs)
     run_pump('longerCE01', pump_speed, *kwargs)
@@ -333,7 +333,7 @@ def take_aliquots(
                 current_time = time.time()
 
                 if period_timing <= current_time:
-                    for cell in ['WE_vial01',]:
+                    for cell in ['WEvial01',]:
                         empty_vials = [json.loads(item) for item in client.lrange('empty_vials', 0, -1)]
 
                         if empty_vials:
@@ -524,8 +524,8 @@ def electrodisolution(
     pump_speed = pump_speed if pump_speed is not None else config['electrodisolution_pump_speed']
     filling_speed = filling_speed if filling_speed is not None else config['electrodisolution_filling_speed']
 
-    fill_compartment('acid', 'WE_vial01', catholyte_volume, filling_speed, **kwargs)
-    fill_compartment('anolyte', 'CE_vial01', anolyte_volume, filling_speed, **kwargs)
+    fill_compartment('acid', 'WEvial01', catholyte_volume, filling_speed, **kwargs)
+    fill_compartment('anolyte', 'CEvial01', anolyte_volume, filling_speed, **kwargs)
 
     run_pump('longerCE01', pump_speed)
     run_pump('longerWE01', pump_speed)
