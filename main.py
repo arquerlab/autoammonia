@@ -5,7 +5,7 @@ from typing import Dict, List, Optional
 
 from default_config import DEFAULT_CONFIG, CONNECTIONS_INFO
 from redis_client import client
-from Amonia_SDL_v02 import initialize_pump
+from Amonia_SDL_v02 import initialize_pump, restore_pump
 
 
 @task
