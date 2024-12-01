@@ -4,6 +4,7 @@ import pickle
 from pathlib import Path
 import time
 from typing import Optional, Any
+from datetime import datetime, timedelta
 
 from prefect import task, flow, get_run_logger
 
@@ -46,7 +47,7 @@ def take_aliquots(
     num_aliquots = num_aliquots if num_aliquots is not None else config['aliquote_number']
     volume = volume if volume is not None else config['aliquote_volume']
     parallel_cells = config['parallel_cells']
-    
+
     logger = get_run_logger()
 
     while True:
@@ -85,14 +86,15 @@ def take_aliquots(
                             fill_vial_detection_mix(vial, aliquot_filling_speed=config['aliquot_filling_speed']
                                                     , **kwargs)
                             aliquot_time = (aliquot_time + time.time()) / 2
-                            vial_info = {
-                                "vial": vial,  
-                                "time_lim": current_time + 30 * 60,
-                                "time_rxn": aliquot_time - initial_time,
-                                "catholyte": client.get(f'flowcell{cell_str}_reaction_catholyte'),
-                                "metal_ratios": client.get(f'flowcell{cell_str}_reaction_metal_ratios')
-                            }
-                            client.rpush('filled_vials', json.dumps(vial_info))
+                            catholyte = client.get(f'flowcell{cell_str}_reaction_catholyte')
+                            metal_ratios = client.get(f'flowcell{cell_str}_reaction_metal_ratios')
+                            measure_time = datetime.utcnow() + timedelta(minutes=30)
+                            time_rxn = aliquot_time - initial_time
+                            measure_vial.submit(task_name=f'Measurment of {vial} from {WEvial}',
+                                                run_at=measure_time
+                                                )(vial=vial,time_rxn=time_rxn,catholyte=catholyte,
+                                                  metal_ratios=metal_ratios, **kwargs)
+                            #client.rpush('filled_vials', json.dumps(vial_info))
 
                             aliquotes_sent += 1
                             period_timing += aliquote_interval
@@ -133,71 +135,40 @@ def generate_pickle_file(
 
 
 @flow
-def measure_vials(
-        wash_vial_repeats: Optional[int] = None,
-        wash_vial_volume: Optional[float] = None,
-        wash_vial_speed: Optional[float] = None,
-        wash_vial_last_empty: Optional[float] = None,
-        filling_speed: Optional[float] = None,
-        **kwargs: Any
-) -> None:
-    """
-    Monitors the list of filled vials and initiates measurement by sending each to the UV-VIS spectrometer
-    when the specified time arrives. Performs vial washing after measurement.
+def measure_vial(
+        vial: str,
+        time_rxn: float,
+        catholyte: str,
+        metal_ratios: str,
+        **kwargs
+)->None:
 
-    Args:
-        wash_vial_repeats (Optional[int]): Number of washing repetitions for each vial after measurement.
-        wash_vial_volume (Optional[float]): Volume used per wash step (in mL).
-        wash_vial_speed (Optional[float]): Pump speed during washing (in mL/s).
-        wash_vial_last_empty (Optional[float]): Speed for the final emptying step (in mL/s).
-        filling_speed (Optional[float]): Speed for filling aliquots (in mL/s).
-        **kwargs (Any): Additional keyword arguments to override the default configuration.
-    """
-    config = {**DEFAULT_CONFIG, **kwargs}
-
-    # Using conditional assignments with provided parameters or defaults
-    wash_vial_repeats = wash_vial_repeats if wash_vial_repeats is not None else config['wash_vial_repeats']
-    wash_vial_volume = wash_vial_volume if wash_vial_volume is not None else config['wash_vial_volume']
-    wash_vial_speed = wash_vial_speed if wash_vial_speed is not None else config['wash_vial_speed']
-    wash_vial_last_empty = wash_vial_last_empty if wash_vial_last_empty is not None else config['wash_vial_last_empty']
-    filling_speed = filling_speed if filling_speed is not None else config['aliquot_filling_speed']
+    config = {**DEFAULT_CONFIG,**kwargs}
+    wash_vial_repeats = config['wash_vial_repeats']
+    wash_vial_volume = config['wash_vial_volume']
+    wash_vial_speed = config['wash_vial_speed']
+    wash_vial_last_empty = config['wash_vial_last_empty']
+    filling_speed = config['aliquot_filling_speed']
 
     logger = get_run_logger()
 
-    while True:
-        # Retrieve the oldest vial (first item in the list)
-        filled_vial = client.lpop('filled_vials')
-        if filled_vial:
-            vial_data = json.loads(filled_vial)
-            vial = vial_data["vial"]
-            time_lim = float(vial_data["time_lim"])
-            time_rxn = vial_data["time_rxn"]
+    draw_and_dispense_and_wash_tecan(
+        'tecanAZ01', 0.5, draw_valve_port=vial, dispense_valve_port='uv-vis',
+        speed=filling_speed, **kwargs
+    )
+    generate_pickle_file(
+        elyte=catholyte,
+        compositions_str=metal_ratios,
+        time_rxn=round(float(time_rxn))
+    )
+    logger.info(f'Sample {vial} sent to UV-VIS')
 
-            if time.time() > time_lim:
-                # Process vial: send to UV-VIS and wash
-                draw_and_dispense_and_wash_tecan(
-                    'tecanAZ01', 0.5, draw_valve_port=vial, dispense_valve_port='uv-vis',
-                    speed=filling_speed, **kwargs
-                )
-                generate_pickle_file(
-                    elyte=client.get('reaction_catholyte'),
-                    compositions_str=client.get('reaction_metal_ratios'),
-                    time_rxn=round(float(time_rxn))
-                )
-                logger.info(f'Sample {vial} sent to UV-VIS')
+    wash_compartment(syringe_pump='tecanAZ01', compartment=vial, repeats=wash_vial_repeats,
+                     wash_vol=wash_vial_volume,speed=wash_vial_speed, speed_last_empty=wash_vial_last_empty,
+                     **kwargs)
 
-                wash_compartment('tecanAZ01', vial, wash_vial_repeats, wash_vial_volume,
-                                 wash_vial_speed, wash_vial_last_empty)
-
-                # Add vial back to empty vials list
-                client.rpush('empty_vials', json.dumps(vial))
-
-                time.sleep(360)  # Wait 6 minutes to ensure UV-VIS measurement completes
-            else:
-                # If not ready, put it back in the list
-                client.lpush('filled_vials', filled_vial)
-
-        time.sleep(15)
+    # Add vial back to empty vials list
+    client.rpush('empty_vials', json.dumps(vial))
 
 
 @flow
