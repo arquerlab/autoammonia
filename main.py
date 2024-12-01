@@ -4,7 +4,7 @@ import time
 from typing import Dict, List, Optional, Any
 
 from default_config import DEFAULT_CONFIG, CONNECTIONS_INFO
-from redis_client import client
+from redis_client import client, client_initialization
 from Amonia_SDL_v02 import initialize_pump, restore_pump
 
 
@@ -79,7 +79,8 @@ def process_experiment_queue(delete_previous_queue: Optional[bool] = None,
 
     if delete_previous_queue:
         client.delete("experiment_queue")
-
+    client_initialization(**kwargs)
+    
     syringe_pumps = []
     for pump in CONNECTIONS_INFO:
         if 'tecan' in pump:
@@ -89,6 +90,7 @@ def process_experiment_queue(delete_previous_queue: Optional[bool] = None,
 
     logger = get_run_logger()
     client.set("stop_signal",0)
+    
     try:
         while True:
             if should_stop():

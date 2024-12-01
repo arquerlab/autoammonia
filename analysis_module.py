@@ -4,7 +4,8 @@ import pickle
 from pathlib import Path
 import time
 from typing import Optional, Any
-from prefect import task, flow
+
+from prefect import task, flow, get_run_logger
 
 from default_config import DEFAULT_CONFIG
 from decorators import with_lock
@@ -44,6 +45,9 @@ def take_aliquots(
     # Use provided arguments or fall back to default config
     num_aliquots = num_aliquots if num_aliquots is not None else config['aliquote_number']
     volume = volume if volume is not None else config['aliquote_volume']
+    parallel_cells = config['parallel_cells']
+    
+    logger = get_run_logger()
 
     while True:
         reaction_status = client.get('reaction_status')
@@ -61,7 +65,9 @@ def take_aliquots(
                 current_time = time.time()
 
                 if period_timing <= current_time:
-                    for cell in ['WEvial01', ]:
+                    for cell in range(parallel_cells):
+                        cell_str = str(cell).zfill(2)
+                        WEvial = f'WEvial{cell_str}'
                         empty_vials = [json.loads(item) for item in client.lrange('empty_vials', 0, -1)]
 
                         if empty_vials:
@@ -72,20 +78,26 @@ def take_aliquots(
                                 client.rpush('empty_vials', json.dumps(item))
 
                             draw_and_dispense_and_wash_tecan(
-                                'tecanAz01', volume=volume, draw_valve_port=cell,
+                                'tecanAz01', volume=volume, draw_valve_port=WEvial,
                                 dispense_valve_port=vial, speed=config['aliquot_filling_speed'], **kwargs
                             )
                             aliquot_time = time.time()
                             fill_vial_detection_mix(vial, aliquot_filling_speed=config['aliquot_filling_speed']
                                                     , **kwargs)
                             aliquot_time = (aliquot_time + time.time()) / 2
-                            vial_info = [vial, current_time + 30 * 60, aliquot_time - initial_time]
+                            vial_info = {
+                                "vial": vial,  
+                                "time_lim": current_time + 30 * 60,
+                                "time_rxn": aliquot_time - initial_time,
+                                "catholyte": client.get(f'flowcell{cell_str}_reaction_catholyte'),
+                                "metal_ratios": client.get(f'flowcell{cell_str}_reaction_metal_ratios')
+                            }
                             client.rpush('filled_vials', json.dumps(vial_info))
 
                             aliquotes_sent += 1
                             period_timing += aliquote_interval
                         else:
-                            print('Warning! There are no empty vials, waiting for one to get free')
+                            logger.warning('Warning! There are no empty vials, waiting for one to get free')
                             time.sleep(5)
                 time.sleep(2.5)
 
@@ -150,35 +162,40 @@ def measure_vials(
     wash_vial_last_empty = wash_vial_last_empty if wash_vial_last_empty is not None else config['wash_vial_last_empty']
     filling_speed = filling_speed if filling_speed is not None else config['aliquot_filling_speed']
 
+    logger = get_run_logger()
+
     while True:
-        # Retrieve list of filled vials
-        filled_vials = [json.loads(item) for item in client.lrange('filled_vials', 0, -1)]
-        updated_list = []
+        # Retrieve the oldest vial (first item in the list)
+        filled_vial = client.lpop('filled_vials')
+        if filled_vial:
+            vial_data = json.loads(filled_vial)
+            vial = vial_data["vial"]
+            time_lim = float(vial_data["time_lim"])
+            time_rxn = vial_data["time_rxn"]
 
-        if filled_vials:
-            for item in filled_vials:
-                vial, time_lim, time_rxn = item
-                time_lim = float(time_lim)
-                if time.time() > time_lim:
-                    draw_and_dispense_and_wash_tecan(
-                        'tecanAZ01', 0.5, draw_valve_port=vial, dispense_valve_port='uv-vis',
-                        speed=filling_speed, **kwargs
-                    )
-                    generate_pickle_file(elyte=client.get('reaction_catholyte'),
-                                         compositions_str=client.get('reaction_metal_ratios'),
-                                         time_rxn=round(float(time_rxn)))
-                    wash_compartment('tecanAZ01', vial, wash_vial_repeats, wash_vial_volume,
-                                     wash_vial_speed, wash_vial_last_empty)
-                    client.rpush('empty_vials', json.dumps(vial))
+            if time.time() > time_lim:
+                # Process vial: send to UV-VIS and wash
+                draw_and_dispense_and_wash_tecan(
+                    'tecanAZ01', 0.5, draw_valve_port=vial, dispense_valve_port='uv-vis',
+                    speed=filling_speed, **kwargs
+                )
+                generate_pickle_file(
+                    elyte=client.get('reaction_catholyte'),
+                    compositions_str=client.get('reaction_metal_ratios'),
+                    time_rxn=round(float(time_rxn))
+                )
+                logger.info(f'Sample {vial} sent to UV-VIS')
 
-                    time.sleep(360)  # Wait 6 minutes to ensure UV-VIS measurement completes
-                else:
-                    updated_list.append(item)
+                wash_compartment('tecanAZ01', vial, wash_vial_repeats, wash_vial_volume,
+                                 wash_vial_speed, wash_vial_last_empty)
 
-            # Update the filled vials list
-            client.delete('filled_vials')
-            for item in updated_list:
-                client.rpush('filled_vials', json.dumps(item))
+                # Add vial back to empty vials list
+                client.rpush('empty_vials', json.dumps(vial))
+
+                time.sleep(360)  # Wait 6 minutes to ensure UV-VIS measurement completes
+            else:
+                # If not ready, put it back in the list
+                client.lpush('filled_vials', filled_vial)
 
         time.sleep(15)
 
