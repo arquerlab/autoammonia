@@ -1,10 +1,10 @@
 from matterlab_pumps import TecanXCPump
 from matterlab_valves import ValcoSelectionValve
-from potentiostat_minimalmodbus_v00 import PotentiometerCommand
+from potentiostat_minimalmodbus import PotentiometerCommand
 from peristaltic_pump import Longer_BT100_3J_Pump
 
-CONFIG_COMPONENTS = {'longerWE01': {'class': Longer_BT100_3J_Pump, 'com_port': 'COM3', 'address': '1'},
-                     'longerCE01': {'class': Longer_BT100_3J_Pump, 'com_port': 'COM3', 'address': '1'},
+CONFIG_COMPONENTS = {'longerWE01': {'class': Longer_BT100_3J_Pump, 'com_port': '/dev/longer_pumps', 'address': '1'},
+                     'longerCE01': {'class': Longer_BT100_3J_Pump, 'com_port': '/dev/longer_pumps', 'address': '2'},
                      'tecanRX01': {'class': TecanXCPump, 'com_port': '/dev/tecan_pumps', 'address': 2, 'syringe_volume': 2.5e-3,
                          'num_valve_port': 13,
                                    'ports': None},
@@ -19,6 +19,10 @@ CONFIG_COMPONENTS = {'longerWE01': {'class': Longer_BT100_3J_Pump, 'com_port': '
                      }
 
 DEFAULT_CONFIG = {
+    "parallel_cells":1,
+    "delete_previous_queue": True,
+    "emergency_stop_retries": 10,
+    "emergency_stop_retries_delay":5,
     "potentiostat_acq_timeout": 30,
     
     "longer_acq_timeout":20,
@@ -42,6 +46,7 @@ DEFAULT_CONFIG = {
     "electrodeposition_pump_speed": 10,
     "electrodeposition_filling_speed": 0.2,
     "electrodeposition_mixing_speed": 0.4,
+    "electrodeposition_data_path":'Data/Electrodeposition',
 
     "reaction_current": 28.2743339,
     "reaction_time": 15 * 60,
@@ -49,12 +54,14 @@ DEFAULT_CONFIG = {
     "reaction_anolyte_volume": 20,
     "reaction_pump_speed": 10,
     "reaction_filling_speed": 0.2,
+    "reation_data_path":'Data/Reaction',
 
     "electrodisolution_time": 600,
     "electrodisolution_catholyte_volume": 20,
     "electrodisolution_anolyte_volume": 20,
     "electrodisolution_pump_speed": 10,
     "electrodisolution_filling_speed": 0.2,
+    "electrodisolution_data_path":'Data/Electrodisolution',
 
     "aliquot_volume": 0.02,
     "detection_reagent_1_volume": 0.2,
@@ -73,8 +80,8 @@ DEFAULT_CONFIG = {
     "wash_vial_last_empty": 0.1,
 
     "syringe_wash_repeats": 5,
-    "syringe_wash_speed": 0.4,
-    "syringe_wash_volume_RX": 0.8,
+    "syringe_wash_speed": 0.6,
+    "syringe_wash_volume_RX": 1.5,
     "syringe_wash_volume_AZ": 0.8,
     "air_compensation_volume": 0.025,
     "air_flush_factor":2,
@@ -124,14 +131,14 @@ CONNECTIONS_INFO = {
     'valveRX01': {
         "waste": {'port': 10, 'volume': 2.5, 'usage': None},
         "acid": {'port': 9, 'volume': 0.42, 'usage': 'stock'},
-        "elyte8": {'port': 8, 'volume': 0.42, 'usage': 'stock'},
-        "elyte7": {'port': 7, 'volume': 0.42, 'usage': 'stock'},
-        "elyte6": {'port': 6, 'volume': 0.39, 'usage': 'stock'},
-        "elyte5": {'port': 5, 'volume': 0.39, 'usage': 'stock'},
-        "elyte4": {'port': 4, 'volume': 0.39, 'usage': 'stock'},
-        "elyte3": {'port': 3, 'volume': 0.37, 'usage': 'stock'},
-        "elyte2": {'port': 2, 'volume': 0.37, 'usage': 'stock'},
-        "elyte1": {'port': 1, 'volume': 0.37, 'usage': 'stock'}
+        "elyte8": {'port': 8, 'volume': 0.42, 'usage': 'stock', 'composition': 'NaNO3', 'concentration': 0.1},
+        "elyte7": {'port': 7, 'volume': 0.42, 'usage': 'stock', 'composition': 'KNO3', 'concentration': 0.1},
+        "elyte6": {'port': 6, 'volume': 0.39, 'usage': 'stock', 'composition': 'LiNO3', 'concentration': 0.1},
+        "elyte5": {'port': 5, 'volume': 0.39, 'usage': 'stock', 'composition': 'Ca(NO3)2', 'concentration': 0.1},
+        "elyte4": {'port': 4, 'volume': 0.39, 'usage': 'stock', 'composition': 'Mg(NO3)2', 'concentration': 0.1},
+        "elyte3": {'port': 3, 'volume': 0.37, 'usage': 'stock', 'composition': 'NaCl', 'concentration': 0.1},
+        "elyte2": {'port': 2, 'volume': 0.37, 'usage': 'stock', 'composition': 'NaBr', 'concentration': 0.1},
+        "elyte1": {'port': 1, 'volume': 0.37, 'usage': 'stock', 'composition': 'NaI', 'concentration': 0.1}
     }
 }
 for instrument in CONNECTIONS_INFO:

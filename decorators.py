@@ -6,7 +6,7 @@ from redis.exceptions import LockError
 
 from redis_client import client
 from default_config import DEFAULT_CONFIG, CONFIG_COMPONENTS
-from potentiostat_minimalmodbus_v00 import PotentiometerCommand
+from potentiostat_minimalmodbus import PotentiometerCommand
 from matterlab_pumps import TecanXCPump
 from matterlab_valves import ValcoSelectionValve
 from peristaltic_pump import Longer_BT100_3J_Pump

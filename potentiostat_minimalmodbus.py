@@ -1,3 +1,5 @@
+import os
+import os.path
 import queue
 import threading
 import csv
@@ -370,8 +372,10 @@ class PotentiometerCommand:
             - Signals the end of the saving thread by adding `None` to the data queue.
             - If `plot` is True, calls the `plot` method with the generated or provided file path.
         """
-        
-        filepath = filepath if filepath is not None else f'{datetime.datetime.now().strftime("%Y%m%d_%Hh%Mm%Ss%z")}_CA_{potential}_{time}_tia{tia_gain}.csv'
+        if filepath is None:
+            filepath = f'Data/{datetime.datetime.now().strftime("%Y%m%d_%Hh%Mm%Ss%z")}_CA_{potential}_{time}_tia{tia_gain}.csv'
+            if os.path.exists('Data'):
+                os.makedir('Data')
         
         writing_reading_thread = threading.Thread(target=self.read_write_data_pid_inactive,
                                                   args=(potential, time, tia_gain))
