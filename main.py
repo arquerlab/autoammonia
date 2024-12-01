@@ -1,7 +1,7 @@
 from prefect import flow, task, get_run_logger
 import json
 import time
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 from default_config import DEFAULT_CONFIG, CONNECTIONS_INFO
 from redis_client import client
@@ -16,24 +16,24 @@ def fetch_task_from_redis() -> Optional[Dict[str, str]]:
     Returns:
         dict: The task as a dictionary if found, or None if the queue is empty.
     """
-    task = client.lpop("experiment_queue")  # Fetch the first task from the queue
-    if task:
-        return json.loads(task)  # Convert the task to a dictionary
+    experiment = client.lpop("experiment_queue")  # Fetch the first task from the queue
+    if experiment:
+        return json.loads(experiment)  # Convert the task to a dictionary
     return None
 
 
 @task
-def execute_experiment(tasks: List[Dict[str, str]]) -> None:
+def execute_experiment(experiments: List[Dict[str, str]]) -> None:
     """
     Simulates the execution of an experiment using multiple tasks.
 
     Args:
-        tasks (list): A list of task dictionaries, each containing 'composition' and 'electrolyte'.
+        experiments (list): A list of task dictionaries, each containing 'composition' and 'electrolyte'.
     """
     logger = get_run_logger()
-    for idx, task in enumerate(tasks, start=1):
-        composition = task["composition"]
-        electrolyte = task["electrolyte"]
+    for idx, experiment in enumerate(experiments, start=1):
+        composition = experiment["composition"]
+        electrolyte = experiment["electrolyte"]
         logger.info(f"Running experiment with Cell {idx}: Composition {composition}, Electrolyte {electrolyte}")
     time.sleep(5)  # Simulates the execution time of the experiment
     logger.info("Experiment complete!")
@@ -52,7 +52,9 @@ def should_stop() -> bool:
 
 @flow
 def process_experiment_queue(delete_previous_queue: Optional[bool] = None,
-                             parallel_cells: Optional[int] = None) -> None:
+                             parallel_cells: Optional[int] = None,
+                             **kwargs: Any
+) -> None:
     """
     Main flow for the set up. It processes the 'experiiment_queue' in Redis. Waits until the 
     required number of tasks are available before executing an experiment. Additionally, initializes 
@@ -66,6 +68,7 @@ def process_experiment_queue(delete_previous_queue: Optional[bool] = None,
             Defaults to the value in `DEFAULT_CONFIG['delete_previous_queue']`.
         parallel_cells (int, optional): Number of tasks to process in parallel. Defaults to the value in 
             `DEFAULT_CONFIG['parallel_cells']`.
+        **kwargs (Any): Additional keyword arguments that can override the default configuration settings.
 
     Stop Logic:
         The flow can be stopped manually (Ctrl + C) or by setting the `stop_signal` key in Redis.
@@ -82,7 +85,7 @@ def process_experiment_queue(delete_previous_queue: Optional[bool] = None,
         if 'tecan' in pump:
             syringe_pumps.append(pump)
     for pump in syringe_pumps:
-        initialize_pump(syringe_pump=pump)
+        initialize_pump(syringe_pump=pump, **kwargs)
 
     logger = get_run_logger()
     client.set("stop_signal",0)
@@ -92,21 +95,21 @@ def process_experiment_queue(delete_previous_queue: Optional[bool] = None,
                 logger.info("Stop signal received. Exiting flow.")
                 break
 
-            tasks = []  # List to hold fetched tasks
-            while len(tasks) < parallel_cells:
-                task = fetch_task_from_redis()
+            experiments = []  # List to hold fetched tasks
+            while len(experiments) < parallel_cells:
+                experiment = fetch_task_from_redis()
                 if task:
-                    tasks.append(task)
-                    logger.info(f"Fetched task {len(tasks)} of {parallel_cells} from the queue.")
+                    experiments.append(experiment)
+                    logger.info(f"Fetched task {len(experiments)} of {parallel_cells} from the queue.")
                 else:
-                    logger.info(f"Waiting for tasks... Currently fetched: {len(tasks)} of {parallel_cells}.")
+                    logger.info(f"Waiting for tasks... Currently fetched: {len(experiments)} of {parallel_cells}.")
                     time.sleep(5)
 
             # Execute the experiment once enough tasks are available
-            execute_experiment(tasks)
+            execute_experiment(experiments, **kwargs)
     finally:
         for pump in syringe_pumps:
-            restore_pump(syringe_pump=pump)
+            restore_pump(syringe_pump=pump, **kwargs)
         logger.info("Flow stopped. All syringe pumps restored to their default state.")
 
 
