@@ -7,11 +7,11 @@ from default_config import DEFAULT_CONFIG
 
 @flow
 async def run_cp(
-        potentiostat: str,
-        current: float,
-        time_rx: float,
-        tia_gain: int,
-        filepath: str,
+        potentiostat_cp: str,
+        current_cp: float,
+        time_rx_cp: float,
+        tia_gain_cp: int,
+        filepath_cp: str,
         acquisition_timeout: Optional[int] = None,
         **kwargs: Any,
 ) -> None:
@@ -24,21 +24,22 @@ async def run_cp(
     will trigger the emergency_stop function.
 
     Args:
-        potentiostat (str): The potentiostat used for the experiment.
-        current (float): The current to apply (in A).
-        time_rx (float): Duration to apply the current (in seconds).
+        potentiostat_cp (str): The potentiostat used for the experiment.
+        current_cp (float): The current to apply (in A).
+        time_rx_cp (float): Duration to apply the current (in seconds).
         acquisition_timeout (Optional[int]): Timeout for acquiring the lock. Defaults to config['potentiostat_lock_timeout']
         **kwargs (Any): Additional configuration options.
     """
     config = {**DEFAULT_CONFIG,**kwargs}
     acquisition_timeout = acquisition_timeout if acquisition_timeout is not None else config['potentiostat_acq_timeout']
     @task
-    @run_on_component_with_lock(acquisition_timeout=acquisition_timeout, function_timeout= int(time_rx * 1.1))
+    @run_on_component_with_lock(acquisition_timeout=acquisition_timeout, function_timeout= int(time_rx_cp * 1.1))
     def run_cp_func(potentiostat: str, current: float, time_rx: float, tia_gain: int, filepath:str) -> None:
         potentiostat.apply_cp(current=current, time=time_rx, tia_gain=tia_gain, filepath=filepath)
 
     # Call the wrapped function
-    run_cp_func(potentiostat=potentiostat, current=current, time_rx=time_rx,tia_gain=tia_gain, filepath=filepath)
+    run_cp_func(potentiostat=potentiostat_cp, current=current_cp, time_rx=time_rx_cp, tia_gain=tia_gain_cp,
+                filepath=filepath_cp)
 
 @flow
 async def run_cp_iter(parallel_cells: int,
@@ -51,9 +52,9 @@ async def run_cp_iter(parallel_cells: int,
     potentiostats = ["potentiostat" + str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]
     filenames = [data_path + '/' + experiment_id + f'_cell{str(cell).zfill(2)}.csv' for cell in
                  range(1, parallel_cells + 1)]
-    tasks = [asyncio.create_task(run_cp(potentiostat=potentiostats[i],current=current,time_rx=time_rx,
-                                        tia_gain=tia_gain, filepath=filenames[i]))
-             for i in range(1,parallel_cells+1)]
+    tasks = [asyncio.create_task(run_cp(potentiostat_cp=potentiostats[i],current_cp=current,time_rx_cp=time_rx,
+                                        tia_gain_cp=tia_gain, filepath_cp=filenames[i]))
+             for i in range(parallel_cells)]
 
     # Wait until the first asyncio task completes
     done, pending = await asyncio.wait(tasks, return_when=asyncio.ALL_COMPLETED)
