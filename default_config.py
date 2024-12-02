@@ -49,7 +49,6 @@ DEFAULT_CONFIG = {
     "electrodeposition_pump_speed": 10,
     "electrodeposition_data_path":'Data/Electrodeposition',
     "electrodeposition_filling_speed": 0.2,
-    "electrodeposition_mixing_speed": 0.4,
 
     "reaction_current": 28.2743339,
     "reaction_time": 15 * 60,
@@ -77,6 +76,11 @@ DEFAULT_CONFIG = {
     "wash_flow_cell_time": 150,
     "wash_flow_cell_speed": 20,
     "wash_flow_cell_repeats":3,
+    "wash_flow_cell_filling_speed":0.4,
+    "wash_flow_cell_wash_comp_repeats":2,
+    "wash_flow_cell_wash_comp_volume":12,
+    "wash_flow_cell_wash_comp_speed":0.4,
+    "wash_flow_cell_wash_comp_speed_last_empty":0.1,
 
     "wash_vial_repeats": 8,
     "wash_vial_volume": 0.8,

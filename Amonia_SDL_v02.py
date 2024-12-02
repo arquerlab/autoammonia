@@ -11,7 +11,7 @@ from default_config import DEFAULT_CONFIG, CONNECTIONS_INFO, CONFIG_COMPONENTS
 from redis_client import client
 from utils import reset_cache, get_valid_precursors, get_valid_electrolytes
 from valco_valve import switch_port_valve
-from potentiostat import run_cp, run_cp_iter
+from potentiostat import run_cp_iter
 from longer_pumps import run_pump, stop_pump
 from tecan_pumps import draw_and_dispense_tecan, fill_compartment, wash_syringe_unlocked, wash_compartment, draw_and_dispense_and_wash_tecan
 
@@ -253,6 +253,8 @@ def electrodeposition(
     Conducts metal electrodeposition using specified metal ratios, current, and time.
 
     Args:
+        data_path (str): Folder where the data will be stored.
+        experiment_id (str): Unique identifier for the experiment.
         metal_ratios (List[List[float]]): A list of lists, where each inner list contains the metal ratios for the
             electrodeposition process corresponding to different flow cells in the setup. Each item in the list
             represents the metal ratios (e.g., [Cu, Co, Ni]) for a specific flow cell.
@@ -262,7 +264,6 @@ def electrodeposition(
         anolyte_volume (Optional[float]): Volume of anolyte solution (mL). Defaults to config['electrodeposition_anolyte_volume'].
         pump_speed (Optional[float]): Pump speed during electrodeposition (rpm). Defaults to config['electrodeposition_pump_speed'].
         filling_speed (Optional[float]): Speed for filling compartments (mL/s). Defaults to config['electrodeposition_filling_speed'].
-        data_path (Optional[str]): Path where data is meant to be stored. Default to config['electrodeposition_data_path']
         **kwargs (Any): Additional keyword arguments to override the default configuration.
     """
     config = {**DEFAULT_CONFIG, **kwargs}
@@ -273,7 +274,6 @@ def electrodeposition(
     anolyte_volume = anolyte_volume if anolyte_volume is not None else config['electrodeposition_anolyte_volume']
     pump_speed = pump_speed if pump_speed is not None else config['electrodeposition_pump_speed']
     filling_speed = filling_speed if filling_speed is not None else config['electrodeposition_filling_speed']
-    data_path = data_path if data_path is not None else config['electrodeposition_data_path']
     parallel_cells = config['parallel_cells']
 
     precursors, precursors_ports = get_valid_precursors()
@@ -313,6 +313,8 @@ def electrosynthesis(
     Runs a reaction using the specified catholyte, applying a current for a set duration.
 
     Args:
+        data_path (str): Folder where the data will be stored.
+        experiment_id (str): Unique identifier for the experiment.
         catholyte_ratios (List[List[float]]): A list of lists, where each inner list represents the composition of catholyte
             used for the reaction in different flow cells. Each item in the list contains the specific concentration
             values (e.g., [H2O, NaCl, etc.] or [CuSO4, H2SO4, etc.]) for a given flow cell's catholyte.
@@ -322,7 +324,6 @@ def electrosynthesis(
         anolyte_volume (Optional[float]): Volume of anolyte (mL). Defaults to config['reaction_anolyte_volume'].
         pump_speed (Optional[float]): Pump speed during reaction (rpm). Defaults to config['reaction_pump_speed'].
         filling_speed (Optional[float]): Speed for filling compartments (mL/s). Defaults to config['reaction_filling_speed'].
-        data_path (Optional[str]): Path where data is meant to be stored. Default to config['reaction_data_path']
         **kwargs (Any): Additional keyword arguments to override the default configuration.
     """
     config = {**DEFAULT_CONFIG, **kwargs}
@@ -375,12 +376,13 @@ def electrodisolution(
     in acidic conditions for a specified time.
 
     Args:
+        data_path (str): Folder where the data will be stored.
+        experiment_id (str): Unique identifier for the experiment.
         time_rx (Optional[float]): Duration for the dissolution (in seconds).
         catholyte_volume (Optional[float]): Catholyte volume used in the reaction (in mL).
         anolyte_volume (Optional[float]): Anolyte volume used in the reaction (in mL).
         pump_speed (Optional[float]): Pump speed during reaction (in rpm).
         filling_speed (Optional[float]): Pump speed for filling compartment (in mL/s).
-        data_path (Optional[str]): Path where data is meant to be stored. Default to config['electrodisolution_data_path']
         **kwargs (Any): Additional keyword arguments to override the default configuration.
     """
     config = {**DEFAULT_CONFIG, **kwargs}
