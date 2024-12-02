@@ -1,6 +1,6 @@
 import asyncio
 from typing import Optional, Any
-from prefect import task
+from prefect import task, flow
 
 from decorators import run_on_component_with_lock
 from default_config import DEFAULT_CONFIG
@@ -41,7 +41,13 @@ async def run_cp(
     run_cp_func(potentiostat=potentiostat, current=current, time_rx=time_rx,tia_gain=tia_gain, filepath=filepath)
 
 @flow
-async def run_cp_iter(parallel_cells: int, data_path: str, experiment_id: str):
+async def run_cp_iter(parallel_cells: int,
+                      data_path: str,
+                      experiment_id: str,
+                      current: float,
+                      time_rx: float,
+                      tia_gain: int,
+)->None:
     potentiostats = ["potentiostat" + str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]
     filenames = [data_path + '/' + experiment_id + f'_cell{str(cell).zfill(2)}.csv' for cell in
                  range(1, parallel_cells + 1)]
