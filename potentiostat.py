@@ -1,10 +1,12 @@
 import asyncio
 from typing import Optional, Any
-from prefect import task
+from prefect import task, flow
 
 from decorators import run_on_component_with_lock
 from default_config import DEFAULT_CONFIG
-    
+
+
+@flow
 async def run_cp(
         potentiostat: str,
         current: float,
@@ -31,6 +33,7 @@ async def run_cp(
     """
     config = {**DEFAULT_CONFIG,**kwargs}
     acquisition_timeout = acquisition_timeout if acquisition_timeout is not None else config['potentiostat_acq_timeout']
+
     @task
     @run_on_component_with_lock(acquisition_timeout=acquisition_timeout, function_timeout= int(time_rx * 1.1))
     def run_cp_func(potentiostat: str, current: float, time_rx: float, tia_gain: int, filepath:str) -> None:
@@ -38,6 +41,7 @@ async def run_cp(
 
     # Call the wrapped function
     run_cp_func(potentiostat=potentiostat, current=current, time_rx=time_rx,tia_gain=tia_gain, filepath=filepath)
+
 
 @flow
 async def run_cp_iter(parallel_cells: int, data_path: str, experiment_id: str):
