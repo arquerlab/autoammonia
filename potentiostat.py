@@ -4,7 +4,8 @@ from prefect import task
 
 from decorators import run_on_component_with_lock
 from default_config import DEFAULT_CONFIG
-    
+
+@flow
 async def run_cp(
         potentiostat: str,
         current: float,
