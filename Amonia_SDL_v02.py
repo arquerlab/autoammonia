@@ -405,7 +405,7 @@ def electrodisolution(
     client.set(name='flow_cell_content',value='acid')
 
     asyncio.run(run_cp_iter(parallel_cells=parallel_cells, data_path=data_path,
-                            experiment_id=experiment_id, current=current,
+                            experiment_id=experiment_id, current=0,
                             time_rx=time_rx, tia_gain=2, **kwargs))
 
     wash_flow_cell(**kwargs)

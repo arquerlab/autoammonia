@@ -15,7 +15,7 @@ CONFIG_COMPONENTS = {'longerWE01': {'class': Longer_BT100_3J_Pump, 'com_port': '
                                    'ports': None},
                      'valveAZ01': {'class': ValcoSelectionValve, 'com_port': '/dev/valveAZ01','num_port':10,
                                    'ports': None},
-                     'potentiostat01': {'port': 'COM4', 'slaveaddress': 1}
+                     'potentiostat01': {'port': '/dev/potentiostat01', 'slaveaddress': 1}
                      }
 
 DEFAULT_CONFIG = {

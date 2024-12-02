@@ -27,6 +27,10 @@ async def run_cp(
         potentiostat_cp (str): The potentiostat used for the experiment.
         current_cp (float): The current to apply (in A).
         time_rx_cp (float): Duration to apply the current (in seconds).
+        tia_gain_cp (int): Gain resistance to use in the transimpedance amplifier. Integers from
+                0 to 4 refer to the different resistance from 1 k[Ohm] to 10 M[Ohm].
+                This parameter is generally referred in commercial potentiostats as current/potential range.
+        filepath_cp (str): Path where data is meant to be stored.
         acquisition_timeout (Optional[int]): Timeout for acquiring the lock. Defaults to config['potentiostat_lock_timeout']
         **kwargs (Any): Additional configuration options.
     """
@@ -48,12 +52,30 @@ async def run_cp_iter(parallel_cells: int,
                       current: float,
                       time_rx: float,
                       tia_gain: int,
+                      **kwargs,
 )->None:
+    """
+    Runs chrono-potentiometry for multiple cells concurrently by applying a constant current for each cell.
+
+    This function manages the execution of multiple chrono-potentiometry experiments in parallel, each
+    running on a separate potentiostat.
+
+    Args:
+        parallel_cells (int): Number of cells to run the experiment on.
+        data_path (str): Folder where the data will be stored.
+        experiment_id (str): Unique identifier for the experiment.
+        current (float): The current to apply (in A).
+        time_rx (float): Duration to apply the current (in seconds).
+        tia_gain (int): Gain resistance to use in the transimpedance amplifier. Integers from
+                0 to 4 refer to the different resistance from 1 k[Ohm] to 10 M[Ohm].
+                This parameter is generally referred in commercial potentiostats as current/potential range.
+        **kwargs (Any): Additional configuration options.
+    """
     potentiostats = ["potentiostat" + str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]
     filenames = [data_path + '/' + experiment_id + f'_cell{str(cell).zfill(2)}.csv' for cell in
                  range(1, parallel_cells + 1)]
     tasks = [asyncio.create_task(run_cp(potentiostat_cp=potentiostats[i],current_cp=current,time_rx_cp=time_rx,
-                                        tia_gain_cp=tia_gain, filepath_cp=filenames[i]))
+                                        tia_gain_cp=tia_gain, filepath_cp=filenames[i], **kwargs))
              for i in range(parallel_cells)]
 
     # Wait until the first asyncio task completes
