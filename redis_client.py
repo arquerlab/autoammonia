@@ -10,6 +10,8 @@ client = redis.StrictRedis(
         )
 
 def client_initialization(**kwargs)->None:
+        """Initialization of redis server, resetting all variables to the initial stage"""
+
         config = {**DEFAULT_CONFIG,**kwargs}
         parallel_cells = config['parallel_cells']
 

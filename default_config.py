@@ -76,6 +76,7 @@ DEFAULT_CONFIG = {
     "wash_flow_cell_volume": 20,
     "wash_flow_cell_time": 150,
     "wash_flow_cell_speed": 20,
+    "wash_flow_cell_repeats":3,
 
     "wash_vial_repeats": 8,
     "wash_vial_volume": 0.8,
