@@ -457,9 +457,8 @@ def execute_reaction(
 if __name__ == "__main__":
     pass
     #prepare_elyte_mix(syringe_pump = 'tecanRX01', elyte_ratios = [1,1,1], elyte_ports=['Cu','Co','Ni'], compartment='WEvial01',volume = 10)
-    electrodeposition.deploy(
+    electrodeposition.serve(
             name='trial',
-            work_pool_name='test_workpool',
             parameters={'data_path':'Data','experiment_id':'test00','metal_ratios':[[1,1,1]],
                         'current':-0.004,'time_rx':10,'deposition_volume':10,
                         'anolyte_volume':10, 'kwargs':{}},
