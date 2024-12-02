@@ -423,7 +423,7 @@ class PotentiometerCommand:
         filepath = filepath if filepath is not None else f'{datetime.datetime.now().strftime("%Y%m%d_%Hh%Mm%Ss%z")}_CP_{current}_{time}_tia{tia_gain}.csv'
         
         writing_reading_thread = threading.Thread(target= self.read_write_data_pid_active, args=(current,time,tia_gain))
-        saving_thread = threading.Thread(target=self.saving_func)
+        saving_thread = threading.Thread(target=self.saving_func, filepath=filepath)
         
         writing_reading_thread.start()
         saving_thread.start()

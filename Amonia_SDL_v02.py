@@ -133,7 +133,6 @@ def wash_flow_cell(
         repeats: Optional[int] = None,
         wash_time: Optional[float] = None,
         pump_speed: Optional[float] = None,
-        wash_volume: Optional[float] = None,
         filling_speed: Optional[float] = None,
         wash_comp_repeats: Optional[int] = None,
         wash_comp_volume: Optional[float] = None,
@@ -148,7 +147,6 @@ def wash_flow_cell(
         repeats (Optional[int]): Number of wash cycles to repeat. Defaults to config['wash_flow_cell_repeats'].
         wash_time (Optional[float]): Duration for flushing the cell (seconds). Defaults to config['wash_flow_cell_time'].
         pump_speed (Optional[float]): Pump speed during flushing (rpm). Defaults to config['wash_flow_cell_speed'].
-        wash_volume (Optional[float]): Volume dispensed during each wash cycle (mL). Defaults to config['wash_flow_cell_wash_comp_volume'].
         filling_speed (Optional[float]): Pump speed for filling compartments (mL/s). Defaults to config['wash_flow_cell_filling_speed'].
         wash_comp_repeats (Optional[int]): Number of wash cycles per compartment. Defaults to config['wash_flow_cell_wash_comp_repeats'].
         wash_comp_volume (Optional[float]): Volume for each wash of compartments (mL). Defaults to config['wash_flow_cell_wash_comp_volume'].
@@ -170,8 +168,8 @@ def wash_flow_cell(
     empty_and_stop_pumps(wash_time=wash_time, pump_speed=pump_speed, **kwargs)
 
     for _ in range(repeats):
-        fill_compartment(source='water', destination='WEvial01', volume=wash_volume, speed=filling_speed, **kwargs)
-        fill_compartment(source='water', destination='CEvial01', volume=wash_volume, speed=filling_speed, **kwargs)
+        fill_compartment(source='water', destination='WEvial01', volume=wash_comp_volume, speed=filling_speed, **kwargs)
+        fill_compartment(source='water', destination='CEvial01', volume=wash_comp_volume, speed=filling_speed, **kwargs)
         run_pump(pump='longerWE01', speed=pump_speed, **kwargs)
         run_pump(pump='longerCE01', speed=pump_speed, **kwargs)
         client.set(name='flow_cell_content',value='water_contaminated')
