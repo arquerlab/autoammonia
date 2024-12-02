@@ -460,7 +460,9 @@ if __name__ == "__main__":
     electrodeposition.deploy(
             name='trial',
             work_pool_name='test_workpool',
-            parameters={data_path:'Data',experiment_id:'test00',metal_ratios:[[1,1,1]],current:-0.004,time_rx:10,deposition_volume:10,anolyte_volume:10, kwargs:{}},
+            parameters={'data_path':'Data','experiment_id':'test00','metal_ratios':[[1,1,1]],
+                        'current':-0.004,'time_rx':10,'deposition_volume':10,
+                        'anolyte_volume':10, 'kwargs':{}},
             )
     #electrosynthesis(catholyte_ratios=[[1,0,0,0,0,0,0,0,0]],current=+0.004,catholyte_volume=10, anolyte_volume=10)
     #electrodisolution(time_rx=10,catholyte_volume=10, anolyte_volume=10)
