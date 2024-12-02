@@ -38,14 +38,16 @@ DEFAULT_CONFIG = {
     "acquisition_timeout": 300,
     
     "syringe_fail_retrials": 5,
+
+    "elyte_mix_filling_speed": 0.2,
+    "elyte_mix_mixing_speed": 0.4,
     
     "electrodeposition_current": 2.82743339,
     "electrodeposition_time": 6 * 60,
     "electrodeposition_deposition_volume": 10,
     "electrodeposition_anolyte_volume": 10,
     "electrodeposition_pump_speed": 10,
-    "electrodeposition_filling_speed": 0.2,
-    "electrodeposition_mixing_speed": 0.4,
+
     "electrodeposition_data_path":'Data/Electrodeposition',
 
     "reaction_current": 28.2743339,
@@ -123,9 +125,9 @@ CONNECTIONS_INFO = {
         "valve": {'port': 7, 'volume': 0.09, 'usage': None},
         "anolyte": {'port': 6, 'volume': 0.37, 'usage': 'stock'},
         "air": {'port': 5, 'volume': 0.55, 'usage': 'stock'},
-        "Cu": {'port': 4, 'volume': 0.4, 'usage': 'stock'},
-        "Ni": {'port': 3, 'volume': 0.4, 'usage': 'stock'},
-        "Co": {'port': 2, 'volume': 0.32, 'usage': 'stock'},
+        "Cu": {'port': 4, 'volume': 0.4, 'usage': 'stock', 'composition': 'Cu', 'concentration': 0.1},
+        "Ni": {'port': 3, 'volume': 0.4, 'usage': 'stock', 'composition': 'Ni', 'concentration': 0.1},
+        "Co": {'port': 2, 'volume': 0.32, 'usage': 'stock', 'composition': 'Co', 'concentration': 0.1},
         "water": {'port': 1, 'volume': 0.64, 'usage': 'stock'}
     },
     'valveRX01': {

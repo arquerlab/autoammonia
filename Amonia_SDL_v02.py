@@ -1,10 +1,12 @@
 import time
+import json
 from typing import Optional, List, Any
 from prefect import flow
 
 from default_config import DEFAULT_CONFIG, CONNECTIONS_INFO, CONFIG_COMPONENTS
 
 from redis_client import client
+from utils import reset_cache, get_valid_precursors, get_valid_electrolytes
 from valco_valve import switch_port_valve
 from potentiostat import run_cp
 from longer_pumps import run_pump, stop_pump
@@ -186,21 +188,27 @@ def wash_flow_cell(
     client.set(name='CE_vial01_volume', value=0)
 
 @flow
-def mix_metals(
+def prepare_elyte_mix(
         syringe_pump: str,
-        metal_ratios: List[float] = None,
-        deposition_volume: Optional[float] = None,
+        elyte_ratios: List[float],
+        elyte_ports: List[str],
+        compartment: str,
+        volume: Optional[float],
         filling_speed: Optional[float] = None,
         mixing_speed: Optional[float] = None,
         **kwargs: Any,
 ) -> None:
     """
-    Prepares a metal solution in the 'WE_vial' based on specified ratios and volume.
+    Prepares a electrolyte solution in the specified compartment given a ratio of electrolytes (elyte_ratios) and
+    their corresponding ports (elyte_ports). Meant to be used for preparing the metal precursors mix for the
+    electrodeposition step, and the electrolyte mix in the reaction step.
 
     Args:
         syringe_pump (str): Identifier for the syringe pump to use.
-        metal_ratios (List[float]): List of metal ratios (e.g., [Cu, Co, Ni]).
-        deposition_volume (Optional[float]): Total volume of solution to prepare (mL). Defaults to config['electrodeposition_deposition_volume'].
+        elyte_ratios (List[float]): List of metal ratios.
+        elyte_ports (List[str]): List of valve ports corresponding to the electrolyte components to be used.
+        compartment (str): Compartment where the electrolyte mix will be dispensed.
+        volume (float): Total volume of solution to prepare (mL). Defaults to config['electrodeposition_deposition_volume'].
         filling_speed (Optional[float]): Draw/dispense speed (mL/s). Defaults to config['electrodeposition_filling_speed'].
         mixing_speed (Optional[float]): Dispense speed during mixing (mL/s). Defaults to config['electrodeposition_mixing_speed'].
         **kwargs (Any): Additional keyword arguments to override the default configuration.
@@ -208,25 +216,26 @@ def mix_metals(
     config = {**DEFAULT_CONFIG, **kwargs}
 
     # Use provided arguments or fall back to default config
-    deposition_volume = deposition_volume if deposition_volume is not None else config['electrodeposition_deposition_volume']
-    filling_speed = filling_speed if filling_speed is not None else config['electrodeposition_filling_speed']
-    mixing_speed = mixing_speed if mixing_speed is not None else config['electrodeposition_mixing_speed']
+    filling_speed = filling_speed if filling_speed is not None else config['elyte_mix_filling_speed']
+    mixing_speed = mixing_speed if mixing_speed is not None else config['elyte_mix_mixing_speed']
 
-    compositions = [ratio / sum(metal_ratios) for ratio in metal_ratios]
-    volumes = [comp * deposition_volume for comp in compositions]
+    compositions = [ratio / sum(elyte_ratios) for ratio in elyte_ratios]
+    volumes = [comp * volume for comp in compositions]
     
-    for vol, metal in zip(volumes, ['Cu', 'Co', 'Ni']):
-        draw_and_dispense_and_wash_tecan(syringe_pump=syringe_pump, volume=vol, draw_valve_port=metal, 
-                                         dispense_valve_port='WEvial01', speed=filling_speed, **kwargs)
+    for vol, metal in zip(volumes,elyte_ports):
+        if vol > 0:
+            draw_and_dispense_and_wash_tecan(syringe_pump=syringe_pump, volume=vol, draw_valve_port=metal,
+                                             dispense_valve_port=compartment, speed=filling_speed, **kwargs)
 
-    draw_and_dispense_and_wash_tecan(syringe_pump=syringe_pump, volume=deposition_volume * 0.5,
-                                    draw_valve_port='WEvial01', dispense_valve_port='WEvial01', speed=mixing_speed,
-                                     **kwargs)  # Mix the solution slightly
-    client.set(name='WEvial01_volume', value=deposition_volume)
+    draw_and_dispense_and_wash_tecan(syringe_pump=syringe_pump, volume=volume * 0.5,
+                                     draw_valve_port=compartment, dispense_valve_port=compartment,
+                                     speed=mixing_speed, **kwargs)  # Mix the solution slightly
+    client.set(name=f'{compartment}_volume', value=volume)
+
 
 @flow
 def electrodeposition(
-        metal_ratios: List[float],
+        metal_ratios: List[List[float]],
         current: Optional[float] = None,
         time_rx: Optional[float] = None,
         deposition_volume: Optional[float] = None,
@@ -240,7 +249,9 @@ def electrodeposition(
     Conducts metal electrodeposition using specified metal ratios, current, and time.
 
     Args:
-        metal_ratios (List[float]): Metal ratios for electrodeposition (e.g., [Cu, Co, Ni]).
+        metal_ratios (List[List[float]]): A list of lists, where each inner list contains the metal ratios for the
+            electrodeposition process corresponding to different flow cells in the setup. Each item in the list
+            represents the metal ratios (e.g., [Cu, Co, Ni]) for a specific flow cell.
         current (Optional[float]): Current applied (A). Defaults to config['electrodeposition_current'].
         time_rx (Optional[float]): Duration for current application (s). Defaults to config['electrodeposition_time'].
         deposition_volume (Optional[float]): Solution volume (mL) prepared and used. Defaults to config['electrodeposition_deposition_volume'].
@@ -259,21 +270,30 @@ def electrodeposition(
     pump_speed = pump_speed if pump_speed is not None else config['electrodeposition_pump_speed']
     filling_speed = filling_speed if filling_speed is not None else config['electrodeposition_filling_speed']
     data_path = data_path if data_path is not None else config['electrodeposition_data_path']
-    
-    mix_metals(syringe_pump='tecanRX01', metal_ratios=metal_ratios, deposition_volume=deposition_volume,**kwargs)
-    fill_compartment(source='anolyte', destination='CEvial01', volume=anolyte_volume, speed=filling_speed, **kwargs)
+    parallel_cells = config['parallel_cells']
+
+    precursors, precursors_ports = get_valid_precursors()
+
+    for cell_str, ratios_set in zip([str(cell).zfill(2) for cell in range(1,parallel_cells+1)],metal_ratios):
+        prepare_elyte_mix(syringe_pump='tecanRX01', elyte_ratios=ratios_set, elyte_ports=precursors_ports,
+                          compartment=f'WEvial{cell_str}', volume=deposition_volume, **kwargs)
+        fill_compartment(source='anolyte', destination=f'CEvial{cell_str}', volume=anolyte_volume,
+                         speed=filling_speed, **kwargs)
 
     run_pump(pump='longerWE01', speed=pump_speed, **kwargs)
     run_pump(pump='longerCE01', speed=pump_speed, **kwargs)
-    run_cp(potentiostat='potentiostat01', current=current, time_rx=time_rx,
-           filpath=data_path+'/test.csv',**kwargs)
+
+    potentiostats = ["potentiostat"+str(cell).zfill(2) for cell in range(1,parallel_cells+1)]
+    run_cp.map(potentiostat=potentiostats, current=[current] * parallel_cells,
+               time_rx=[time_rx] * parallel_cells, filpath=[data_path + '/test.csv'] * parallel_cells, **kwargs)
     client.set(name='flow_cell_content',value='metal_salts')
 
     wash_flow_cell(**kwargs)
 
+
 @flow
 def reaction(
-        catholyte: str,
+        catholyte_ratios: List[List[float]],
         current: Optional[float] = None,
         time_rx: Optional[float] = None,
         catholyte_volume: Optional[float] = None,
@@ -287,7 +307,9 @@ def reaction(
     Runs a reaction using the specified catholyte, applying a current for a set duration.
 
     Args:
-        catholyte (str): Type of catholyte used for the reaction.
+        catholyte (List[List[float]]): A list of lists, where each inner list represents the composition of catholyte 
+            used for the reaction in different flow cells. Each item in the list contains the specific concentration 
+            values (e.g., [H2O, NaCl, etc.] or [CuSO4, H2SO4, etc.]) for a given flow cell's catholyte.
         current (Optional[float]): Applied current (A). Defaults to config['reaction_current'].
         time_rx (Optional[float]): Duration of the reaction (s). Defaults to config['reaction_time'].
         catholyte_volume (Optional[float]): Volume of catholyte (mL). Defaults to config['reaction_catholyte_volume'].
@@ -306,18 +328,27 @@ def reaction(
     pump_speed = pump_speed if pump_speed is not None else config['reaction_pump_speed']
     filling_speed = filling_speed if filling_speed is not None else config['reaction_filling_speed']
     data_path = data_path if data_path is not None else config['reaction_data_path']
+    parallel_cells = config['parallel_cells']
 
     client.set('reaction_status', "0")
-    fill_compartment(source=catholyte, destination='WEvial01', volume=catholyte_volume, speed=filling_speed, **kwargs)
-    fill_compartment(source='anolyte', destination='WEvial01', volume=anolyte_volume, speed=filling_speed, **kwargs)
+    catholytes, catholytes_ports = get_valid_electrolytes()
+
+    for cell_str, ratios_set in zip([str(cell).zfill(2) for cell in range(1,parallel_cells+1)],catholyte_ratios):
+        prepare_elyte_mix(syringe_pump='tecanRX01',elyte_ratios=ratios_set,elyte_ports=catholytes_ports,
+                          compartment=f'WEvial{cell_str}',volume=catholyte_volume,filling_speed=filling_speed,
+                          **kwargs)
+        fill_compartment(source='anolyte', destination=f'CEvial{cell_str}', volume=anolyte_volume,
+                         speed=filling_speed, **kwargs)
+        client.set(name='flow_cell_content', value=ratios_set)
 
     run_pump(pump='longerWE01', speed=pump_speed, *kwargs)
     run_pump(pump='longerCE01', speed=pump_speed, *kwargs)
 
     client.set(name='reaction_status', value=time_rx)
-    client.set(name='flow_cell_content', value=catholyte)
-    run_cp(potentiostat='potentiostat01', current=current, time_rx=time_rx, 
-           filepath=data_path + '/test.csv',**kwargs) #############################################################################################3
+
+    potentiostats = ["potentiostat" + str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]
+    run_cp.map(potentiostat=potentiostats, current=[current] * parallel_cells,
+               time_rx=[time_rx] * parallel_cells, filpath=[data_path + '/test.csv'] * parallel_cells, **kwargs)
     client.set(name='reaction_status', value="waiting")
 
     wash_flow_cell(**kwargs)
@@ -355,52 +386,60 @@ def electrodisolution(
     pump_speed = pump_speed if pump_speed is not None else config['electrodisolution_pump_speed']
     filling_speed = filling_speed if filling_speed is not None else config['electrodisolution_filling_speed']
     data_path = data_path if data_path is not None else config['electrodisolution_data_path']
-    
-    fill_compartment(source='acid', destination='WEvial01', volume=catholyte_volume, speed=filling_speed, **kwargs)
-    fill_compartment(source='anolyte', destination='CEvial01', volume=anolyte_volume, speed=filling_speed, **kwargs)
+    parallel_cells = config['parallel_cells']
+
+    for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
+        fill_compartment(source='acid', destination=f'WEvial{cell_str}', volume=catholyte_volume,
+                         speed=filling_speed, **kwargs)
+        fill_compartment(source='anolyte', destination=f'CEvial{cell_str}', volume=anolyte_volume,
+                         speed=filling_speed, **kwargs)
 
     run_pump(pump='longerCE01', speed=pump_speed, **kwargs)
     run_pump(pump='longerWE01', speed=pump_speed, **kwargs)
 
     client.set(name='flow_cell_content',value='acid')
-    run_cp(potentiostat='potentiostat01', current=0, time_rx=time_rx, filepath=data_path+'/test.csv',**kwargs)
+
+    potentiostats = ["potentiostat" + str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]
+    run_cp.map(potentiostat=potentiostats, current=[0] * parallel_cells,
+               time_rx=[time_rx] * parallel_cells, filpath=[data_path + '/test.csv'] * parallel_cells, **kwargs)
 
     wash_flow_cell(**kwargs)
 
 @flow
 def execute_reaction(
         metal_ratios: List[float],
+        electrolytes: List[float],
         **kwargs: Any,
 )->None:
     """
     Executes the main reaction loop, which includes electrodeposition, reaction, and dissolution
     based on given metal ratios for catalyst composition.
+    At the start resets the cache, so that electrolytes and precursors values get updated from default_config.
 
     Args:
         metal_ratios (List[float]): List of metal ratios [Cu, Co, Ni].
         **kwargs (Any): Additional keyword arguments to override the default configuration.
     """
     config = {**DEFAULT_CONFIG, **kwargs}
+    
+    parallel_cells = config['parallel_cells']
 
-    compositions = [round(ratio / sum(metal_ratios), 3) for ratio in metal_ratios]
-    compositions_str = "_".join(f"{c:.2f}".replace(".", "") for c in compositions)
-    for catholyte_num in range(0,9):
-        catholyte = 'elyte' + str(catholyte_num)
-        client.set('reaction_catholyte', catholyte)
-        client.set('reaction_metal_ratios',compositions_str)
-        electrodeposition(metal_ratios,current=config['electrodeposition_current'],
-                          time=config['electrodeposition_time'],
-                          deposition_volume=config['electrodeposition_catholyte_volume'],
-                          anolyte_volume=config['electrodeposition_anolyte_volume'],
-                          pump_speed=config['electrodeposition_pump_speed'])
-        reaction(catholyte, **kwargs)
-        electrodisolution(**kwargs)
+    
+    reset_cache()
+    
+    for cell_str, metal_ratio, elyte in zip([str(cell).zfill(2) for cell in range(1,parallel_cells+1)],metal_ratios, electrolytes):
+        client.set(f'flow_cell_{cell_str}_catholyte',json.dumps(elyte))
+        client.set(f'flow_cell_{cell_str}_metal_ratios', json.dumps(metal_ratio))
+
+    electrodeposition(metal_ratios=metal_ratios, **kwargs)
+    reaction(catholyte_ratios=electrolytes, **kwargs)
+    electrodisolution(**kwargs)
 
 
 
 if __name__ == "__main__":
-    
-    mix_metals(syringe_pump = 'tecanRX01', metal_ratios = [1,1,1], deposition_volume = 1)
+    pass
+    #prepare_elyte_mix(syringe_pump = 'tecanRX01', metal_ratios = [1,1,1], deposition_volume = 1)
     #run_cp('potentiostat01',-0.004,5)
 
 

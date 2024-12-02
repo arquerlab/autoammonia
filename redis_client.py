@@ -17,7 +17,7 @@ def client_initialization(**kwargs)->None:
         client.rpush('empty_vials', *['vial1', 'vial2', 'vial3', 'vial4', 'vial5', 'vial6', 'vial7', 'vial8'])
         client.delete('filled_vials')
         
-        for cell in parallel_cells:
+        for cell in range(1,parallel_cells+1):
                 cell_str = str(cell).zfill(2)
                 # Variables to track volume on each compartment
                 client.set(f'WEvial{cell_str}_volume', 0)

@@ -3,22 +3,29 @@ import json
 import time
 from typing import Dict, List, Optional, Any
 
+from decorators import with_lock
 from default_config import DEFAULT_CONFIG, CONNECTIONS_INFO
 from redis_client import client, client_initialization
 from Amonia_SDL_v02 import initialize_pump, restore_pump
 
 
 @task
-def fetch_task_from_redis() -> Optional[Dict[str, str]]:
+@with_lock(acquisition_timeout=5,function_timeout=5)
+def fetch_task_from_redis(list_name: str) -> Optional[Dict[str, str]]:
     """
     Fetch a task from the Redis queue.
+    
+    Args:
+        list_name (str): Redis variable where experiments data will taken from.
 
     Returns:
         dict: The task as a dictionary if found, or None if the queue is empty.
     """
-    experiment = client.lpop("experiment_queue")  # Fetch the first task from the queue
+    experiment = client.lpop(list_name)  # Fetch the first task from the queue
+    logger = get_run_logger()
+    logger.info(f'Current first element: {experiment}')
     if experiment:
-        return json.loads(experiment)  # Convert the task to a dictionary
+        return json.loads(experiment)  # Convert the experiment to a dictionary
     return None
 
 
@@ -87,6 +94,7 @@ def process_experiment_queue(delete_previous_queue: Optional[bool] = None,
             syringe_pumps.append(pump)
     for pump in syringe_pumps:
         initialize_pump(syringe_pump=pump, **kwargs)
+        pass
 
     logger = get_run_logger()
     client.set("stop_signal",0)
@@ -99,21 +107,23 @@ def process_experiment_queue(delete_previous_queue: Optional[bool] = None,
 
             experiments = []  # List to hold fetched tasks
             while len(experiments) < parallel_cells:
-                experiment = fetch_task_from_redis()
-                if task:
+                experiment = fetch_task_from_redis("experiment_queue")
+                if experiment:
                     experiments.append(experiment)
                     logger.info(f"Fetched task {len(experiments)} of {parallel_cells} from the queue.")
                 else:
                     logger.info(f"Waiting for tasks... Currently fetched: {len(experiments)} of {parallel_cells}.")
-                    time.sleep(5)
+                    time.sleep(10)
 
             # Execute the experiment once enough tasks are available
+            logger.warning(experiments)
             execute_experiment(experiments, **kwargs)
     finally:
         for pump in syringe_pumps:
             restore_pump(syringe_pump=pump, **kwargs)
+            pass
         logger.info("Flow stopped. All syringe pumps restored to their default state.")
 
 
 if __name__ == '__main__':
-    process_experiment_queue()
+    process_experiment_queue(delete_previous_queue=True)
