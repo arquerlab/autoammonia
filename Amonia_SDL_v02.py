@@ -287,7 +287,9 @@ def electrodeposition(
     run_pump(pump='longerWE01', speed=pump_speed, **kwargs)
     run_pump(pump='longerCE01', speed=pump_speed, **kwargs)
 
-    asyncio.run(run_cp_iter(parallel_cells, data_path, experiment_id))
+    asyncio.run(run_cp_iter(parallel_cells=parallel_cells, data_path=data_path,
+                            experiment_id=experiment_id, current=current,
+                            time_rx=time_rx, tia_gain=0, **kwargs))
 
     client.set(name='flow_cell_content',value='metal_salts')
 
@@ -348,7 +350,9 @@ def electrosynthesis(
 
     client.set(name='reaction_status', value=time_rx)
 
-    asyncio.run(run_cp_iter(parallel_cells, data_path, experiment_id))
+    asyncio.run(run_cp_iter(parallel_cells=parallel_cells, data_path=data_path,
+                            experiment_id=experiment_id, current=current,
+                            time_rx=time_rx, tia_gain=0, **kwargs))
 
     client.set(name='reaction_status', value="waiting")
 
@@ -400,7 +404,9 @@ def electrodisolution(
 
     client.set(name='flow_cell_content',value='acid')
 
-    asyncio.run(run_cp_iter(parallel_cells, data_path, experiment_id))
+    asyncio.run(run_cp_iter(parallel_cells=parallel_cells, data_path=data_path,
+                            experiment_id=experiment_id, current=current,
+                            time_rx=time_rx, tia_gain=2, **kwargs))
 
     wash_flow_cell(**kwargs)
 

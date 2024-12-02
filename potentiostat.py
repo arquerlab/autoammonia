@@ -40,12 +40,20 @@ async def run_cp(
     run_cp_func(potentiostat=potentiostat, current=current, time_rx=time_rx,tia_gain=tia_gain, filepath=filepath)
 
 @flow
-async def run_cp_iter(parallel_cells: int, data_path: str, experiment_id: str):
+async def run_cp_iter(
+        parallel_cells: int,
+        data_path: str,
+        experiment_id: str,
+        current: float,
+        time_rx: float,
+        tia_gain: int,
+        **kwargs
+):
     potentiostats = ["potentiostat" + str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]
     filenames = [data_path + '/' + experiment_id + f'_cell{str(cell).zfill(2)}.csv' for cell in
                  range(1, parallel_cells + 1)]
     tasks = [asyncio.create_task(run_cp(potentiostat=potentiostats[i],current=current,time_rx=time_rx,
-                                        tia_gain=tia_gain, filepath=filenames[i]))
+                                        tia_gain=tia_gain, filepath=filenames[i],**kwargs))
              for i in range(1,parallel_cells+1)]
 
     # Wait until the first asyncio task completes
