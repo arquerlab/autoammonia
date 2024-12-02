@@ -288,8 +288,22 @@ def electrodeposition(
 
     potentiostats = ["potentiostat"+str(cell).zfill(2) for cell in range(1,parallel_cells+1)]
     filenames = [data_path+'/'+experiment_id+f'_cell{str(cell).zfill(2)}.csv' for cell in range(1,parallel_cells+1)]
-    run_cp.map(potentiostat=potentiostats, current=[current] * parallel_cells,
-               time_rx=[time_rx] * parallel_cells, tia_gain=0,filpath=filenames, **kwargs)
+    tasks = []
+    for cell in range(parallel_cells):
+        task_instance = run_cp.submit(
+            potentiostat=potentiostats[cell],
+            current=current,
+            time_rx=time_rx,
+            tia_gain=0,
+            filpath=filenames[cell],
+            **kwargs
+        )
+        tasks.append(task_instance)
+
+    # Wait for cps to finish
+    for task_instance in tasks:
+        task_instance.result()
+
     client.set(name='flow_cell_content',value='metal_salts')
 
     wash_flow_cell(**kwargs)
@@ -351,8 +365,22 @@ def electrosynthesis(
 
     potentiostats = ["potentiostat" + str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]
     filenames = [data_path+'/'+experiment_id+f'_cell{str(cell).zfill(2)}.csv' for cell in range(1,parallel_cells+1)]
-    run_cp.map(potentiostat=potentiostats, current=[current] * parallel_cells,
-               time_rx=[time_rx] * parallel_cells, tia_gain=0, filpath=filenames, **kwargs)
+    tasks = []
+    for cell in range(parallel_cells):
+        task_instance = run_cp.submit(
+            potentiostat=potentiostats[cell],
+            current=current,
+            time_rx=time_rx,
+            tia_gain=0,
+            filpath=filenames[cell],
+            **kwargs
+        )
+        tasks.append(task_instance)
+
+    # Wait for cps to finish
+    for task_instance in tasks:
+        task_instance.result()
+
     client.set(name='reaction_status', value="waiting")
 
     wash_flow_cell(**kwargs)
@@ -406,8 +434,21 @@ def electrodisolution(
     potentiostats = ["potentiostat" + str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]
     filenames = [data_path + '/' + experiment_id + f'_cell{str(cell).zfill(2)}.csv' for cell in
                  range(1, parallel_cells + 1)]
-    run_cp.map(potentiostat=potentiostats, current=[0] * parallel_cells,
-               time_rx=[time_rx] * parallel_cells, tia_gain=1, filpath=filenames, **kwargs)
+    tasks = []
+    for cell in range(parallel_cells):
+        task_instance = run_cp.submit(
+            potentiostat=potentiostats[cell],
+            current=current,
+            time_rx=time_rx,
+            tia_gain=1,
+            filpath=filenames[cell],
+            **kwargs
+        )
+        tasks.append(task_instance)
+
+    # Wait for cps to finish
+    for task_instance in tasks:
+        task_instance.result()
 
     wash_flow_cell(**kwargs)
 
