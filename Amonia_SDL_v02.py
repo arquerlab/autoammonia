@@ -1,4 +1,6 @@
+import os.path
 import time
+from datetime import datetime
 import json
 from typing import Optional, List, Any
 from prefect import flow
@@ -199,7 +201,7 @@ def prepare_elyte_mix(
         **kwargs: Any,
 ) -> None:
     """
-    Prepares a electrolyte solution in the specified compartment given a ratio of electrolytes (elyte_ratios) and
+    Prepares an electrolyte solution in the specified compartment given a ratio of electrolytes (elyte_ratios) and
     their corresponding ports (elyte_ports). Meant to be used for preparing the metal precursors mix for the
     electrodeposition step, and the electrolyte mix in the reaction step.
 
@@ -235,6 +237,8 @@ def prepare_elyte_mix(
 
 @flow
 def electrodeposition(
+        data_path: str,
+        experiment_id: str,
         metal_ratios: List[List[float]],
         current: Optional[float] = None,
         time_rx: Optional[float] = None,
@@ -242,7 +246,6 @@ def electrodeposition(
         anolyte_volume: Optional[float] = None,
         pump_speed: Optional[float] = None,
         filling_speed: Optional[float] = None,
-        data_path: Optional[str] = None,
         **kwargs: Any,
 ) -> None:
     """
@@ -273,7 +276,7 @@ def electrodeposition(
     parallel_cells = config['parallel_cells']
 
     precursors, precursors_ports = get_valid_precursors()
-
+    
     for cell_str, ratios_set in zip([str(cell).zfill(2) for cell in range(1,parallel_cells+1)],metal_ratios):
         prepare_elyte_mix(syringe_pump='tecanRX01', elyte_ratios=ratios_set, elyte_ports=precursors_ports,
                           compartment=f'WEvial{cell_str}', volume=deposition_volume, **kwargs)
@@ -284,15 +287,18 @@ def electrodeposition(
     run_pump(pump='longerCE01', speed=pump_speed, **kwargs)
 
     potentiostats = ["potentiostat"+str(cell).zfill(2) for cell in range(1,parallel_cells+1)]
+    filenames = [data_path+'/'+experiment_id+f'_cell{str(cell).zfill(2)}.csv' for cell in range(1,parallel_cells+1)]
     run_cp.map(potentiostat=potentiostats, current=[current] * parallel_cells,
-               time_rx=[time_rx] * parallel_cells, filpath=[data_path + '/test.csv'] * parallel_cells, **kwargs)
+               time_rx=[time_rx] * parallel_cells, tia_gain=0,filpath=filenames, **kwargs)
     client.set(name='flow_cell_content',value='metal_salts')
 
     wash_flow_cell(**kwargs)
 
 
 @flow
-def reaction(
+def electrosynthesis(
+        data_path: str,
+        experiment_id: str,
         catholyte_ratios: List[List[float]],
         current: Optional[float] = None,
         time_rx: Optional[float] = None,
@@ -300,15 +306,14 @@ def reaction(
         anolyte_volume: Optional[float] = None,
         pump_speed: Optional[float] = None,
         filling_speed: Optional[float] = None,
-        data_path: Optional[str] = None,
         **kwargs: Any,
 ) -> None:
     """
     Runs a reaction using the specified catholyte, applying a current for a set duration.
 
     Args:
-        catholyte_ratios (List[List[float]]): A list of lists, where each inner list represents the composition of catholyte 
-            used for the reaction in different flow cells. Each item in the list contains the specific concentration 
+        catholyte_ratios (List[List[float]]): A list of lists, where each inner list represents the composition of catholyte
+            used for the reaction in different flow cells. Each item in the list contains the specific concentration
             values (e.g., [H2O, NaCl, etc.] or [CuSO4, H2SO4, etc.]) for a given flow cell's catholyte.
         current (Optional[float]): Applied current (A). Defaults to config['reaction_current'].
         time_rx (Optional[float]): Duration of the reaction (s). Defaults to config['reaction_time'].
@@ -327,7 +332,6 @@ def reaction(
     anolyte_volume = anolyte_volume if anolyte_volume is not None else config['reaction_anolyte_volume']
     pump_speed = pump_speed if pump_speed is not None else config['reaction_pump_speed']
     filling_speed = filling_speed if filling_speed is not None else config['reaction_filling_speed']
-    data_path = data_path if data_path is not None else config['reaction_data_path']
     parallel_cells = config['parallel_cells']
 
     client.set('reaction_status', "0")
@@ -346,8 +350,9 @@ def reaction(
     client.set(name='reaction_status', value=time_rx)
 
     potentiostats = ["potentiostat" + str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]
+    filenames = [data_path+'/'+experiment_id+f'_cell{str(cell).zfill(2)}.csv' for cell in range(1,parallel_cells+1)]
     run_cp.map(potentiostat=potentiostats, current=[current] * parallel_cells,
-               time_rx=[time_rx] * parallel_cells, filpath=[data_path + '/test.csv'] * parallel_cells, **kwargs)
+               time_rx=[time_rx] * parallel_cells, tia_gain=0, filpath=filenames, **kwargs)
     client.set(name='reaction_status', value="waiting")
 
     wash_flow_cell(**kwargs)
@@ -355,12 +360,13 @@ def reaction(
 
 @flow
 def electrodisolution(
+        data_path: str,
+        experiment_id: str,
         time_rx: Optional[float] = None,
         catholyte_volume: Optional[float] = None,
         anolyte_volume: Optional[float] = None,
         pump_speed: Optional[float] = None,
         filling_speed: Optional[float] = None,
-        data_path: Optional[str] = None,
         **kwargs: Any,
 ) -> None:
     """
@@ -384,7 +390,6 @@ def electrodisolution(
     anolyte_volume = anolyte_volume if anolyte_volume is not None else config['electrodisolution_anolyte_volume']
     pump_speed = pump_speed if pump_speed is not None else config['electrodisolution_pump_speed']
     filling_speed = filling_speed if filling_speed is not None else config['electrodisolution_filling_speed']
-    data_path = data_path if data_path is not None else config['electrodisolution_data_path']
     parallel_cells = config['parallel_cells']
 
     for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
@@ -399,8 +404,10 @@ def electrodisolution(
     client.set(name='flow_cell_content',value='acid')
 
     potentiostats = ["potentiostat" + str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]
+    filenames = [data_path + '/' + experiment_id + f'_cell{str(cell).zfill(2)}.csv' for cell in
+                 range(1, parallel_cells + 1)]
     run_cp.map(potentiostat=potentiostats, current=[0] * parallel_cells,
-               time_rx=[time_rx] * parallel_cells, filpath=[data_path + '/test.csv'] * parallel_cells, **kwargs)
+               time_rx=[time_rx] * parallel_cells, tia_gain=1, filpath=filenames, **kwargs)
 
     wash_flow_cell(**kwargs)
 
@@ -419,31 +426,40 @@ def execute_reaction(
         metal_ratios (LList[List[float]]): A list of lists, where each inner list contains the metal ratios for the
             electrodeposition process corresponding to different flow cells in the setup. Each item in the list
             represents the metal ratios (e.g., [Cu, Co, Ni]) for a specific flow cell.
-        electrolytes (List[List[float]]): A list of lists, where each inner list represents the composition of catholyte 
-            used for the reaction in different flow cells. Each item in the list contains the specific concentration 
+        electrolytes (List[List[float]]): A list of lists, where each inner list represents the composition of catholyte
+            used for the reaction in different flow cells. Each item in the list contains the specific concentration
             values (e.g., [H2O, NaCl, etc.] or [CuSO4, H2SO4, etc.]) for a given flow cell's catholyte.
         **kwargs (Any): Additional keyword arguments to override the default configuration.
     """
     config = {**DEFAULT_CONFIG, **kwargs}
     
     parallel_cells = config['parallel_cells']
+    paths = [config['electrodeposition_data_path'],config['reaction_data_path'],config['electrodisolution_data_path']]
+    experiment_id = datetime.now().strftime('%Y%m%d_%Hh%Mm%Ss')
 
-    
     reset_cache()
+
+    for path in paths:
+        if not os.path.exists(path):
+            os.makedirs(path)
+        
     
     for cell_str, metal_ratio, elyte in zip([str(cell).zfill(2) for cell in range(1,parallel_cells+1)],metal_ratios, electrolytes):
         client.set(f'flow_cell_{cell_str}_catholyte',json.dumps(elyte))
         client.set(f'flow_cell_{cell_str}_metal_ratios', json.dumps(metal_ratio))
 
-    electrodeposition(metal_ratios=metal_ratios, **kwargs)
-    reaction(catholyte_ratios=electrolytes, **kwargs)
-    electrodisolution(**kwargs)
+    electrodeposition(data_path=paths[0], experiment_id=experiment_id, metal_ratios=metal_ratios, **kwargs)
+    electrosynthesis(data_path=paths[1], experiment_id=experiment_id, catholyte_ratios=electrolytes, **kwargs)
+    electrodisolution(data_path=paths[2], experiment_id=experiment_id, **kwargs)
 
 
 
 if __name__ == "__main__":
     pass
-    #prepare_elyte_mix(syringe_pump = 'tecanRX01', metal_ratios = [1,1,1], deposition_volume = 1)
+    prepare_elyte_mix(syringe_pump = 'tecanRX01', elyte_ratios = [1,1,1], elyte_ports=['Cu','Co','Ni'], compartment='WEvial01',volume = 10)
+    #electrodeposition(metal_ratios=[[1,1,1]],current=-0.004,time_rx=10,deposition_volume=10,anolyte_volume=10)
+    #electrosynthesis(catholyte_ratios=[[1,0,0,0,0,0,0,0,0]],current=+0.004,catholyte_volume=10, anolyte_volume=10)
+    #electrodisolution(time_rx=10,catholyte_volume=10, anolyte_volume=10)
     #run_cp('potentiostat01',-0.004,5)
 
 

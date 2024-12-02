@@ -8,6 +8,8 @@ def run_cp(
         potentiostat: str,
         current: float,
         time_rx: float,
+        tia_gain: int,
+        filepath: str,
         acquisition_timeout: Optional[int] = None,
         **kwargs: Any,
 ) -> None:
@@ -30,10 +32,10 @@ def run_cp(
     acquisition_timeout = acquisition_timeout if acquisition_timeout is not None else config['potentiostat_acq_timeout']
     @task
     @run_on_component_with_lock(acquisition_timeout=acquisition_timeout, function_timeout= int(time_rx * 1.1))
-    def run_cp_func(potentiostat: str, current: float, time_rx: float) -> None:
-        potentiostat.apply_cp(current, time_rx)
+    def run_cp_func(potentiostat: str, current: float, time_rx: float, tia_gain: int, filepath:str) -> None:
+        potentiostat.apply_cp(current=current, time=time_rx, tia_gain=tia_gain, filepath=filepath)
 
     # Call the wrapped function
-    run_cp_func(potentiostat, current, time_rx)
+    run_cp_func(potentiostat=potentiostat, current=current, time_rx=time_rx,tia_gain=tia_gain, filepath=filepath)
 
     
