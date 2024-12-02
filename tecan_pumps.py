@@ -267,12 +267,6 @@ def draw_and_dispense_tecan_unlocked(
                     syringe_valve_output = port
                     switch_port_valve(valve=syringe_valve_output, port=draw_valve_port, **kwargs)
                     break
-    
-    # Select valve according to the pump type
-    if 'RX' in syringe_pump.upper():
-        syringe_valve = 'valveRX' + syringe_pump[-2:]
-    else:
-        syringe_valve = 'valveAZ' + syringe_pump[-2:]
 
     # Draw and dispense the required air from the input tube if needed
     input_air_volume = 0
@@ -514,7 +508,7 @@ def fill_compartment(
         source (str): The name of the source compartment from which the liquid will be transferred.
         destination (str): The name of the destination compartment to which the liquid will be transferred.
         volume (float): The amount of liquid to transfer (in mL).
-        pump_speed (float): The speed at which the liquid is transferred (in mL/s).
+        speed (float): The speed at which the liquid is transferred (in mL/s).
         **kwargs (Any): Additional keyword arguments to override the default configuration.
     """
     draw_and_dispense_and_wash_tecan(
