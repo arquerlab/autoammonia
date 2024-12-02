@@ -1,10 +1,11 @@
+import asyncio
 from typing import Optional, Any
 from prefect import task
 
 from decorators import run_on_component_with_lock
 from default_config import DEFAULT_CONFIG
     
-def run_cp(
+async def run_cp(
         potentiostat: str,
         current: float,
         time_rx: float,
@@ -38,4 +39,19 @@ def run_cp(
     # Call the wrapped function
     run_cp_func(potentiostat=potentiostat, current=current, time_rx=time_rx,tia_gain=tia_gain, filepath=filepath)
 
-    
+@flow
+async def run_cp_iter(parallel_cells: int, data_path: str, experiment_id: str):
+    potentiostats = ["potentiostat" + str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]
+    filenames = [data_path + '/' + experiment_id + f'_cell{str(cell).zfill(2)}.csv' for cell in
+                 range(1, parallel_cells + 1)]
+    tasks = [asyncio.create_task(run_cp(potentiostat=potentiostats[i],current=current,time_rx=time_rx,
+                                        tia_gain=tia_gain, filepath=filenames[i]))
+             for i in range(1,parallel_cells+1)]
+
+    # Wait until the first asyncio task completes
+    done, pending = await asyncio.wait(tasks, return_when=asyncio.ALL_COMPLETED)
+
+    # Get the result from the completed task(s)
+    for completed_task in done:
+        result = await completed_task
+        print(f"Completed: {result}")
