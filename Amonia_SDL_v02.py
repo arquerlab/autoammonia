@@ -1,3 +1,4 @@
+import asyncio
 import os.path
 import time
 from datetime import datetime
@@ -10,7 +11,7 @@ from default_config import DEFAULT_CONFIG, CONNECTIONS_INFO, CONFIG_COMPONENTS
 from redis_client import client
 from utils import reset_cache, get_valid_precursors, get_valid_electrolytes
 from valco_valve import switch_port_valve
-from potentiostat import run_cp
+from potentiostat import run_cp, run_cp_iter
 from longer_pumps import run_pump, stop_pump
 from tecan_pumps import draw_and_dispense_tecan, fill_compartment, wash_syringe_unlocked, wash_compartment, draw_and_dispense_and_wash_tecan
 
@@ -286,23 +287,7 @@ def electrodeposition(
     run_pump(pump='longerWE01', speed=pump_speed, **kwargs)
     run_pump(pump='longerCE01', speed=pump_speed, **kwargs)
 
-    potentiostats = ["potentiostat"+str(cell).zfill(2) for cell in range(1,parallel_cells+1)]
-    filenames = [data_path+'/'+experiment_id+f'_cell{str(cell).zfill(2)}.csv' for cell in range(1,parallel_cells+1)]
-    tasks = []
-    for cell in range(parallel_cells):
-        task_instance = run_cp.submit(
-            potentiostat=potentiostats[cell],
-            current=current,
-            time_rx=time_rx,
-            tia_gain=0,
-            filpath=filenames[cell],
-            **kwargs
-        )
-        tasks.append(task_instance)
-
-    # Wait for cps to finish
-    for task_instance in tasks:
-        task_instance.result()
+    asyncio.run(run_cp_iter(parallel_cells, data_path, experiment_id))
 
     client.set(name='flow_cell_content',value='metal_salts')
 
@@ -363,23 +348,7 @@ def electrosynthesis(
 
     client.set(name='reaction_status', value=time_rx)
 
-    potentiostats = ["potentiostat" + str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]
-    filenames = [data_path+'/'+experiment_id+f'_cell{str(cell).zfill(2)}.csv' for cell in range(1,parallel_cells+1)]
-    tasks = []
-    for cell in range(parallel_cells):
-        task_instance = run_cp.submit(
-            potentiostat=potentiostats[cell],
-            current=current,
-            time_rx=time_rx,
-            tia_gain=0,
-            filpath=filenames[cell],
-            **kwargs
-        )
-        tasks.append(task_instance)
-
-    # Wait for cps to finish
-    for task_instance in tasks:
-        task_instance.result()
+    asyncio.run(run_cp_iter(parallel_cells, data_path, experiment_id))
 
     client.set(name='reaction_status', value="waiting")
 
@@ -431,24 +400,7 @@ def electrodisolution(
 
     client.set(name='flow_cell_content',value='acid')
 
-    potentiostats = ["potentiostat" + str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]
-    filenames = [data_path + '/' + experiment_id + f'_cell{str(cell).zfill(2)}.csv' for cell in
-                 range(1, parallel_cells + 1)]
-    tasks = []
-    for cell in range(parallel_cells):
-        task_instance = run_cp.submit(
-            potentiostat=potentiostats[cell],
-            current=current,
-            time_rx=time_rx,
-            tia_gain=1,
-            filpath=filenames[cell],
-            **kwargs
-        )
-        tasks.append(task_instance)
-
-    # Wait for cps to finish
-    for task_instance in tasks:
-        task_instance.result()
+    asyncio.run(run_cp_iter(parallel_cells, data_path, experiment_id))
 
     wash_flow_cell(**kwargs)
 
