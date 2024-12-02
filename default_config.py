@@ -47,7 +47,6 @@ DEFAULT_CONFIG = {
     "electrodeposition_deposition_volume": 10,
     "electrodeposition_anolyte_volume": 10,
     "electrodeposition_pump_speed": 10,
-
     "electrodeposition_data_path":'Data/Electrodeposition',
 
     "reaction_current": 28.2743339,
@@ -95,7 +94,7 @@ DEFAULT_CONFIG = {
 CONNECTIONS_INFO = {
     'tecanAZ01': {
         "waste": {'port': 9, 'volume': 1, 'usage': None},
-        "valve": {'port': 8, 'volume': 0.09, 'usage': None},
+        "valveAZ01": {'port': 8, 'volume': 0.09, 'usage': None},
         "WEvial02": {'port': 7, 'volume': 0.18, 'usage': None},
         "WEvial01": {'port': 6, 'volume': 0.18, 'usage': None},
         "uv-vis": {'port': 5, 'volume': 8, 'usage': None},
@@ -122,7 +121,7 @@ CONNECTIONS_INFO = {
         "CEvial02": {'port': 10, 'volume': 0.175, 'usage': None},
         "WEvial01": {'port': 9, 'volume': 0.18, 'usage': None},
         "CEvial01": {'port': 8, 'volume': 0.17, 'usage': None},
-        "valve": {'port': 7, 'volume': 0.09, 'usage': None},
+        "valveRX01": {'port': 7, 'volume': 0.09, 'usage': None},
         "anolyte": {'port': 6, 'volume': 0.37, 'usage': 'stock'},
         "air": {'port': 5, 'volume': 0.55, 'usage': 'stock'},
         "Cu": {'port': 4, 'volume': 0.4, 'usage': 'stock', 'composition': 'Cu', 'concentration': 0.1},

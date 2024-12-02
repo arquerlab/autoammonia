@@ -193,7 +193,7 @@ def prepare_elyte_mix(
         elyte_ratios: List[float],
         elyte_ports: List[str],
         compartment: str,
-        volume: Optional[float],
+        volume: float,
         filling_speed: Optional[float] = None,
         mixing_speed: Optional[float] = None,
         **kwargs: Any,
@@ -307,7 +307,7 @@ def reaction(
     Runs a reaction using the specified catholyte, applying a current for a set duration.
 
     Args:
-        catholyte (List[List[float]]): A list of lists, where each inner list represents the composition of catholyte 
+        catholyte_ratios (List[List[float]]): A list of lists, where each inner list represents the composition of catholyte 
             used for the reaction in different flow cells. Each item in the list contains the specific concentration 
             values (e.g., [H2O, NaCl, etc.] or [CuSO4, H2SO4, etc.]) for a given flow cell's catholyte.
         current (Optional[float]): Applied current (A). Defaults to config['reaction_current'].
@@ -335,8 +335,7 @@ def reaction(
 
     for cell_str, ratios_set in zip([str(cell).zfill(2) for cell in range(1,parallel_cells+1)],catholyte_ratios):
         prepare_elyte_mix(syringe_pump='tecanRX01',elyte_ratios=ratios_set,elyte_ports=catholytes_ports,
-                          compartment=f'WEvial{cell_str}',volume=catholyte_volume,filling_speed=filling_speed,
-                          **kwargs)
+                          compartment=f'WEvial{cell_str}',volume=catholyte_volume, **kwargs)
         fill_compartment(source='anolyte', destination=f'CEvial{cell_str}', volume=anolyte_volume,
                          speed=filling_speed, **kwargs)
         client.set(name='flow_cell_content', value=ratios_set)
@@ -407,8 +406,8 @@ def electrodisolution(
 
 @flow
 def execute_reaction(
-        metal_ratios: List[float],
-        electrolytes: List[float],
+        metal_ratios: List[List[float]],
+        electrolytes: List[List[float]],
         **kwargs: Any,
 )->None:
     """
@@ -417,7 +416,12 @@ def execute_reaction(
     At the start resets the cache, so that electrolytes and precursors values get updated from default_config.
 
     Args:
-        metal_ratios (List[float]): List of metal ratios [Cu, Co, Ni].
+        metal_ratios (LList[List[float]]): A list of lists, where each inner list contains the metal ratios for the
+            electrodeposition process corresponding to different flow cells in the setup. Each item in the list
+            represents the metal ratios (e.g., [Cu, Co, Ni]) for a specific flow cell.
+        electrolytes (List[List[float]]): A list of lists, where each inner list represents the composition of catholyte 
+            used for the reaction in different flow cells. Each item in the list contains the specific concentration 
+            values (e.g., [H2O, NaCl, etc.] or [CuSO4, H2SO4, etc.]) for a given flow cell's catholyte.
         **kwargs (Any): Additional keyword arguments to override the default configuration.
     """
     config = {**DEFAULT_CONFIG, **kwargs}
