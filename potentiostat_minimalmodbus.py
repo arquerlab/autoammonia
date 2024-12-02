@@ -1,5 +1,4 @@
 import os
-import os.path
 import queue
 import threading
 import csv
@@ -375,7 +374,7 @@ class PotentiometerCommand:
         if filepath is None:
             filepath = f'Data/{datetime.datetime.now().strftime("%Y%m%d_%Hh%Mm%Ss%z")}_CA_{potential}_{time}_tia{tia_gain}.csv'
             if os.path.exists('Data'):
-                os.makedir('Data')
+                os.mkdir('Data')
         
         writing_reading_thread = threading.Thread(target=self.read_write_data_pid_inactive,
                                                   args=(potential, time, tia_gain))
@@ -423,7 +422,7 @@ class PotentiometerCommand:
         filepath = filepath if filepath is not None else f'{datetime.datetime.now().strftime("%Y%m%d_%Hh%Mm%Ss%z")}_CP_{current}_{time}_tia{tia_gain}.csv'
         
         writing_reading_thread = threading.Thread(target= self.read_write_data_pid_active, args=(current,time,tia_gain))
-        saving_thread = threading.Thread(target=self.saving_func, filepath=filepath)
+        saving_thread = threading.Thread(target=self.saving_func, args=filepath)
         
         writing_reading_thread.start()
         saving_thread.start()
