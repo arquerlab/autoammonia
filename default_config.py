@@ -48,6 +48,8 @@ DEFAULT_CONFIG = {
     "electrodeposition_anolyte_volume": 10,
     "electrodeposition_pump_speed": 10,
     "electrodeposition_data_path":'Data/Electrodeposition',
+    "electrodeposition_filling_speed": 0.2,
+    "electrodeposition_mixing_speed": 0.4,
 
     "reaction_current": 28.2743339,
     "reaction_time": 15 * 60,
