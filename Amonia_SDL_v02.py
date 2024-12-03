@@ -121,7 +121,7 @@ def empty_and_stop_pumps(
     """
     
     run_pump(pump='longerWE01', speed=pump_speed, direction=False, **kwargs)
-    run_pump(pump='longerCE01', speed=pump_speed, direction=False, *kwargs)
+    run_pump(pump='longerCE01', speed=pump_speed, direction=False, **kwargs)
     time.sleep(wash_time)
     client.set(name='flow_cell_content',value='empty_contaminated')
     stop_pump(pump='longerWE01', *kwargs)
