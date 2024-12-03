@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Any
 from decorators import with_lock
 from default_config import DEFAULT_CONFIG, CONNECTIONS_INFO
 from redis_client import client, client_initialization
-from Amonia_SDL_v02 import initialize_pump, restore_pump, execute_experiment
+from Amonia_SDL_v02 import initialize_pump, restore_pump, execute_experiment, electrodisolution
 
 
 @task
@@ -107,7 +107,6 @@ def process_experiment_queue(delete_previous_queue: Optional[bool] = None,
             for exp in experiments:
                 precursors += [exp['composition']]
                 electrolytes += [exp['electrolyte']]
-            print(precursors)
             execute_experiment(precursors, electrolytes, **kwargs)
     finally:
         if restore_pumps:
@@ -119,4 +118,7 @@ def process_experiment_queue(delete_previous_queue: Optional[bool] = None,
 
 
 if __name__ == '__main__':
-    process_experiment_queue(delete_previous_queue=True)
+    process_experiment_queue(delete_previous_queue=True,
+                             electrodeposition_time=10, electroreduction_time=10, electrodisolution_time=10,
+                             electrodeposition_current=-0.004, electroreduction_time=+0.004, 
+    )
