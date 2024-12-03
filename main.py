@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Any
 from decorators import with_lock
 from default_config import DEFAULT_CONFIG, CONNECTIONS_INFO
 from redis_client import client, client_initialization
-from Amonia_SDL_v02 import initialize_pump, restore_pump
+from Amonia_SDL_v02 import initialize_pump, restore_pump, execute_experiment
 
 
 @task
@@ -30,23 +30,6 @@ def fetch_task_from_redis(list_name: str) -> Optional[Dict[str, str]]:
 
 
 @task
-def execute_experiment(experiments: List[Dict[str, str]]) -> None:
-    """
-    Simulates the execution of an experiment using multiple tasks.
-
-    Args:
-        experiments (list): A list of task dictionaries, each containing 'composition' and 'electrolyte'.
-    """
-    logger = get_run_logger()
-    for idx, experiment in enumerate(experiments, start=1):
-        composition = experiment["composition"]
-        electrolyte = experiment["electrolyte"]
-        logger.info(f"Running experiment with Cell {idx}: Composition {composition}, Electrolyte {electrolyte}")
-    time.sleep(5)  # Simulates the execution time of the experiment
-    logger.info("Experiment complete!")
-
-
-@task
 def should_stop() -> bool:
     """
     Check a Redis key to determine if the flow should stop.
@@ -60,6 +43,8 @@ def should_stop() -> bool:
 @flow
 def process_experiment_queue(delete_previous_queue: Optional[bool] = None,
                              parallel_cells: Optional[int] = None,
+                             initialize_pumps: Optional[bool] = False,
+                             restore_pumps: Optional[bool] = False,
                              **kwargs: Any
 ) -> None:
     """
@@ -92,9 +77,10 @@ def process_experiment_queue(delete_previous_queue: Optional[bool] = None,
     for pump in CONNECTIONS_INFO:
         if 'tecan' in pump:
             syringe_pumps.append(pump)
-    for pump in syringe_pumps:
-        initialize_pump(syringe_pump=pump, **kwargs)
-        pass
+    
+    if initialize_pumps:
+        for pump in syringe_pumps:
+            initialize_pump(syringe_pump=pump, **kwargs)
 
     logger = get_run_logger()
     client.set("stop_signal",0)
@@ -117,12 +103,18 @@ def process_experiment_queue(delete_previous_queue: Optional[bool] = None,
 
             # Execute the experiment once enough tasks are available
             logger.warning(experiments)
-            execute_experiment(experiments, **kwargs)
+            precursors, electrolytes = [],[]
+            for exp in experiments:
+                precursors += [exp['composition']]
+                electrolytes += [exp['electrolyte']]
+            execute_experiment(precursors, electrolytes, **kwargs)
     finally:
-        for pump in syringe_pumps:
-            restore_pump(syringe_pump=pump, **kwargs)
-            pass
-        logger.info("Flow stopped. All syringe pumps restored to their default state.")
+        if restore_pumps:
+            for pump in syringe_pumps:
+                restore_pump(syringe_pump=pump, **kwargs)
+            logger.info("Flow stopped. All syringe pumps restored to their default state.")
+        else:
+            logger.info("Flow stopped.")
 
 
 if __name__ == '__main__':
