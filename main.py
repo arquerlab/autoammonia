@@ -119,6 +119,6 @@ def process_experiment_queue(delete_previous_queue: Optional[bool] = None,
 
 if __name__ == '__main__':
     process_experiment_queue(delete_previous_queue=True,
-                             electrodeposition_time=10, electroreduction_time=10, electrodisolution_time=10,
-                             electrodeposition_current=-0.004, electroreduction_time=+0.004, 
+                             electrodeposition_time=10, reaction_time=10, electrodisolution_time=10,
+                             electrodeposition_current=-0.004, reaction_current=+0.004, 
     )
