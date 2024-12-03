@@ -46,7 +46,6 @@ def get_valid_precursors() -> Tuple[List[str], List[str]]:
     """
     global _cache
     if not _cache['precursors']:
-        print('No precursors')
         _valid_precursors = []
         _precursors_ports = []
         for element in CONNECTIONS_INFO:

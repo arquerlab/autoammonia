@@ -125,13 +125,13 @@ def main() -> None:
     global _valid_electrolytes
     while True:
         reset_cache()
-        precursors, _ = get_valid_precursors()
-        electrolytes, _ = get_valid_electrolytes()
+        _valid_compounds, _ = get_valid_precursors()
+        _valid_electrolytes, _ = get_valid_electrolytes()
 
         while True:
             try:
                 compositions = convert_and_validate_input(
-                    input(f'Type compositions desired. Precursors available: {precursors} \n'),
+                    input(f'Type compositions desired. Precursors available: {_valid_compounds} \n'),
                     is_compositions=True)
                 print('Input sent: ', compositions)
                 break
@@ -141,7 +141,7 @@ def main() -> None:
         while True:
             try:
                 electrolytes = convert_and_validate_input(input('Type electrolyte desired. Electrolytes available: \n'
-                                                           f'{electrolytes} \n'), is_compositions=False)
+                                                           f'{_valid_electrolytes} \n'), is_compositions=False)
                 print('Input sent: ',electrolytes)
                 break
             except ValueError as ve:
