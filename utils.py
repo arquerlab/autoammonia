@@ -53,7 +53,6 @@ def get_valid_precursors() -> Tuple[List[str], List[str]]:
                 for port_name, port_dict in CONNECTIONS_INFO[element].items():
                     if 'composition' in port_dict.keys() and 'lyte' not in port_name:
                         compound = port_dict['composition']
-                        print(compound)
                         _valid_precursors.append(compound)
                         _precursors_ports.append(port_name)
         _cache['precursors'] = _valid_precursors

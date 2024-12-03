@@ -107,6 +107,7 @@ def process_experiment_queue(delete_previous_queue: Optional[bool] = None,
             for exp in experiments:
                 precursors += [exp['composition']]
                 electrolytes += [exp['electrolyte']]
+            print(precursors)
             execute_experiment(precursors, electrolytes, **kwargs)
     finally:
         if restore_pumps:

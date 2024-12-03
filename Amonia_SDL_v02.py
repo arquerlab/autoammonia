@@ -316,22 +316,22 @@ def electrosynthesis(
         catholyte_ratios (List[List[float]]): A list of lists, where each inner list represents the composition of catholyte
             used for the reaction in different flow cells. Each item in the list contains the specific concentration
             values (e.g., [H2O, NaCl, etc.] or [CuSO4, H2SO4, etc.]) for a given flow cell's catholyte.
-        current (Optional[float]): Applied current (A). Defaults to config['reaction_current'].
-        time_rx (Optional[float]): Duration of the reaction (s). Defaults to config['reaction_time'].
-        catholyte_volume (Optional[float]): Volume of catholyte (mL). Defaults to config['reaction_catholyte_volume'].
-        anolyte_volume (Optional[float]): Volume of anolyte (mL). Defaults to config['reaction_anolyte_volume'].
-        pump_speed (Optional[float]): Pump speed during reaction (rpm). Defaults to config['reaction_pump_speed'].
-        filling_speed (Optional[float]): Speed for filling compartments (mL/s). Defaults to config['reaction_filling_speed'].
+        current (Optional[float]): Applied current (A). Defaults to config['electrodeposition_current'].
+        time_rx (Optional[float]): Duration of the reaction (s). Defaults to config['electrodeposition_time'].
+        catholyte_volume (Optional[float]): Volume of catholyte (mL). Defaults to config['electrodeposition_catholyte_volume'].
+        anolyte_volume (Optional[float]): Volume of anolyte (mL). Defaults to config['electrodeposition_anolyte_volume'].
+        pump_speed (Optional[float]): Pump speed during reaction (rpm). Defaults to config['electrodeposition_pump_speed'].
+        filling_speed (Optional[float]): Speed for filling compartments (mL/s). Defaults to config['electrodeposition_filling_speed'].
         **kwargs (Any): Additional keyword arguments to override the default configuration.
     """
     config = {**DEFAULT_CONFIG, **kwargs}
 
-    current = current if current is not None else config['reaction_current']
-    time_rx = time_rx if time_rx is not None else config['reaction_time']
-    catholyte_volume = catholyte_volume if catholyte_volume is not None else config['reaction_catholyte_volume']
-    anolyte_volume = anolyte_volume if anolyte_volume is not None else config['reaction_anolyte_volume']
-    pump_speed = pump_speed if pump_speed is not None else config['reaction_pump_speed']
-    filling_speed = filling_speed if filling_speed is not None else config['reaction_filling_speed']
+    current = current if current is not None else config['electrodeposition_current']
+    time_rx = time_rx if time_rx is not None else config['electrodeposition_time']
+    catholyte_volume = catholyte_volume if catholyte_volume is not None else config['electrodeposition_catholyte_volume']
+    anolyte_volume = anolyte_volume if anolyte_volume is not None else config['electrodeposition_anolyte_volume']
+    pump_speed = pump_speed if pump_speed is not None else config['electrodeposition_pump_speed']
+    filling_speed = filling_speed if filling_speed is not None else config['electrodeposition_filling_speed']
     parallel_cells = config['parallel_cells']
 
     client.set('reaction_status', "0")
@@ -433,7 +433,7 @@ def execute_experiment(
     config = {**DEFAULT_CONFIG, **kwargs}
     
     parallel_cells = config['parallel_cells']
-    paths = [config['electrodeposition_data_path'],config['reaction_data_path'],config['electrodisolution_data_path']]
+    paths = [config['electrodeposition_data_path'],config['electrodeposition_data_path'],config['electrodisolution_data_path']]
     experiment_id = datetime.now().strftime('%Y%m%d_%Hh%Mm%Ss')
 
     reset_cache()
