@@ -19,7 +19,7 @@ def get_valid_electrolytes() -> Tuple[List[str], List[str]]:
             - A list of ports associated with the valid electrolytes.
     """
     global _cache
-    if 'electrolytes' not in _cache:
+    if not _cache['electrolytes']:
         _valid_electrolytes = ['water']
         _elytes_ports = ['water']
         for element in CONNECTIONS_INFO:
@@ -45,14 +45,16 @@ def get_valid_precursors() -> Tuple[List[str], List[str]]:
             - A list of ports associated with the valid precursors.
     """
     global _cache
-    if 'precursors' not in _cache:
+    if not _cache['precursors']:
+        print('No precursors')
         _valid_precursors = []
         _precursors_ports = []
         for element in CONNECTIONS_INFO:
             if 'RX' in element.upper():
                 for port_name, port_dict in CONNECTIONS_INFO[element].items():
-                    if 'composition' in port_dict.keys():
+                    if 'composition' in port_dict.keys() and 'lyte' not in port_name:
                         compound = port_dict['composition']
+                        print(compound)
                         _valid_precursors.append(compound)
                         _precursors_ports.append(port_name)
         _cache['precursors'] = _valid_precursors
