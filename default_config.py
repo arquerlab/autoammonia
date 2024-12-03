@@ -47,7 +47,7 @@ DEFAULT_CONFIG = {
     "electrodeposition_deposition_volume": 10,
     "electrodeposition_anolyte_volume": 10,
     "electrodeposition_pump_speed": 10,
-    "electrodeposition_data_path":'Data/Electrodeposition',
+    "electrodeposition_data_path":'..Data/Electrodeposition',
     "electrodeposition_filling_speed": 0.2,
 
     "reaction_current": 28.2743339,
@@ -56,14 +56,14 @@ DEFAULT_CONFIG = {
     "reaction_anolyte_volume": 20,
     "reaction_pump_speed": 10,
     "reaction_filling_speed": 0.2,
-    "reation_data_path":'Data/Reaction',
+    "reation_data_path":'..Data/Reaction',
 
     "electrodisolution_time": 600,
     "electrodisolution_catholyte_volume": 20,
     "electrodisolution_anolyte_volume": 20,
     "electrodisolution_pump_speed": 10,
     "electrodisolution_filling_speed": 0.2,
-    "electrodisolution_data_path":'Data/Electrodisolution',
+    "electrodisolution_data_path":'..Data/Electrodisolution',
 
     "aliquot_volume": 0.02,
     "detection_reagent_1_volume": 0.2,
