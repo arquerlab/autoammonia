@@ -48,6 +48,8 @@ def convert_and_validate_input(input_str: str, is_compositions: bool = True) -> 
             input_data = [input_data]
     else:
         raise ValueError("Invalid input format")
+    
+    output_data = []
     for item in input_data:
         new_list = []
         if isinstance(item, dict):
@@ -65,8 +67,9 @@ def convert_and_validate_input(input_str: str, is_compositions: bool = True) -> 
             all_0 = all_0 and ratio==0
         if all_0:
             raise ValueError("Invalid input, at least one value must be higher than 0")
+        output_data.append(new_list)
 
-    return new_list
+    return output_data
 
 
 def generate_experiments(compositions: List[List[float]],
