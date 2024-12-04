@@ -1,4 +1,6 @@
-from Amonia_SDL_v02 import run_on_component, CONFIG_COMPONENTS, draw_and_dispense_tecan_func, switch_port_valve, draw_tecan_func, dispense_tecan_func
+from default_config import CONFIG_COMPONENTS
+from tecan_pumps import draw_tecan_func, dispense_tecan_func, draw_and_dispense_tecan_func
+from valco_valve import switch_port_valve
 from default_config import CONNECTIONS_INFO
 
 if __name__ == '__main__':
@@ -37,7 +39,7 @@ if __name__ == '__main__':
                             print('Skipping component')
                             skip_component = True
                             break
-                        else:
+                        elif isinstance(vol, (float, int)):
                             try:
                                 vol = float(vol)
                                 if abs(vol) > max_vol:
@@ -64,3 +66,9 @@ if __name__ == '__main__':
                                 print('Value exceeds the syringe limit, try again.')
                             except Exception as e:
                                 print(Exception, e)
+                        else:
+                            print('Input not valid. Valid entries: \n'
+                                  '- "stop", "skip", "s": for passing to next port \n'
+                                  '- "skip c...", "next c...": for passing to next pump/valve \n'
+                                  '- positive int/float: For dispensing liquid \n'
+                                  '- negative int/float: For dispensing air')

@@ -279,7 +279,7 @@ def draw_and_dispense_tecan_unlocked(
                                     draw_valve_port=draw_valve_port, dispense_valve_port='waste',speed=air_flush_speed,
                                     **kwargs)
     else:
-        input_air_volume = CONNECTIONS_INFO[syringe_pump]["valve"][
+        input_air_volume = CONNECTIONS_INFO[syringe_pump][syringe_valve_input][
             'volume']  # Tube pump-valve will always be empty and air need to be drawn
         if str(CONNECTIONS_INFO[syringe_valve_input][draw_valve_port][
             'usage'].lower()) != 'stock':  # If it's not a stock solution, also need to drawn volume valve-compartment
