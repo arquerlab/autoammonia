@@ -3,7 +3,7 @@ import redis
 from default_config import DEFAULT_CONFIG
 
 client = redis.StrictRedis(
-        host="adrastea",
+        host="localhost",
         port=6379,
         password="potato12",
         decode_responses=True
