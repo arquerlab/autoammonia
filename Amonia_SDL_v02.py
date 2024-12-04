@@ -17,10 +17,6 @@ from tecan_pumps import draw_and_dispense_tecan, fill_compartment, wash_syringe_
 
 from decorators import with_lock
 
-
-
-
-
 @flow
 @with_lock()
 def initialize_pump(
@@ -119,11 +115,13 @@ def empty_and_stop_pumps(
         wash_time (float): Duration of the pump run in the reverse direction (seconds).
         pump_speed (float): Speed of the peristaltic pumps (rpm).
     """
-    
+    config = {**DEFAULT_CONFIG, **kwargs}
+    parallel_cells = config['parallel_cells']
     run_pump(pump='longerWE01', speed=pump_speed, direction=False, **kwargs)
     run_pump(pump='longerCE01', speed=pump_speed, direction=False, **kwargs)
     time.sleep(wash_time)
-    client.set(name='flow_cell_content',value='empty_contaminated')
+    for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
+        client.set(name=f'flow_cell{cell_str}_content',value='empty_contaminated')
     stop_pump(pump='longerWE01', **kwargs)
     stop_pump(pump='longerCE01', **kwargs)
 
@@ -168,25 +166,28 @@ def wash_flow_cell(
     empty_and_stop_pumps(wash_time=wash_time, pump_speed=pump_speed, **kwargs)
 
     for _ in range(repeats):
-        fill_compartment(source='water', destination='WEvial01', volume=wash_comp_volume, speed=filling_speed, **kwargs)
-        fill_compartment(source='water', destination='CEvial01', volume=wash_comp_volume, speed=filling_speed, **kwargs)
+        for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
+            fill_compartment(source='water', destination=f'WEvial{cell_str}', volume=wash_comp_volume, speed=filling_speed, **kwargs)
+            fill_compartment(source='water', destination=f'CEvial{cell_str}', volume=wash_comp_volume, speed=filling_speed, **kwargs)
         run_pump(pump='longerWE01', speed=pump_speed, **kwargs)
         run_pump(pump='longerCE01', speed=pump_speed, **kwargs)
-        client.set(name='flow_cell_content',value='water_contaminated')
+        for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
+            client.set(name=f'flow_cell{cell_str}_content',value='water_contaminated')
         time.sleep(wash_time)
-
-        wash_compartment(syringe_pump='tecanRX01', compartment='WEvial01', repeats=wash_comp_repeats, 
-                         wash_vol=wash_comp_volume, pump_speed=wash_comp_speed, 
-                         pump_speed_last_empty=wash_comp_speed_last_empty, **kwargs)
-        wash_compartment(syringe_pump='tecanRX01', compartment='CEvial01', repeats=wash_comp_repeats, 
-                         wash_vol=wash_comp_volume, pump_speed=wash_comp_speed, 
-                         pump_speed_last_empty=wash_comp_speed_last_empty,**kwargs)
+        for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
+            wash_compartment(syringe_pump='tecanRX01', compartment=f'WEvial{cell_str}', repeats=wash_comp_repeats, 
+                             wash_vol=wash_comp_volume, pump_speed=wash_comp_speed, 
+                             pump_speed_last_empty=wash_comp_speed_last_empty, **kwargs)
+            wash_compartment(syringe_pump='tecanRX01', compartment=f'CEvial{cell_str}', repeats=wash_comp_repeats, 
+                             wash_vol=wash_comp_volume, pump_speed=wash_comp_speed, 
+                             pump_speed_last_empty=wash_comp_speed_last_empty,**kwargs)
 
         empty_and_stop_pumps(wash_time=wash_time, pump_speed=pump_speed,**kwargs)
-
-    client.set(name='flow_cell_content',value='clean')
-    client.set(name='WE_vial01_volume', value=0)
-    client.set(name='CE_vial01_volume', value=0)
+        
+    for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
+        client.set(name=f'flow_cell{cell_str}_content',value='clean')
+        client.set(name=f'WEvial{cell_str}_volume', value=0)
+        client.set(name=f'CEvial{cell_str}_volume', value=0)
 
 @flow
 def prepare_elyte_mix(
@@ -288,8 +289,8 @@ def electrodeposition(
     asyncio.run(run_cp_iter(parallel_cells=parallel_cells, data_path=data_path,
                             experiment_id=experiment_id, current=current,
                             time_rx=time_rx, tia_gain=0, **kwargs))
-
-    client.set(name='flow_cell_content',value='metal_salts')
+    for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
+        client.set(name=f'flow_cell{cell_str}_content',value='metal_salts')
 
     wash_flow_cell(**kwargs)
 
@@ -342,7 +343,8 @@ def electrosynthesis(
                           compartment=f'WEvial{cell_str}',volume=catholyte_volume, **kwargs)
         fill_compartment(source='anolyte', destination=f'CEvial{cell_str}', volume=anolyte_volume,
                          speed=filling_speed, **kwargs)
-        client.set(name='flow_cell_content', value=ratios_set)
+        elyte_info = {name:value for name,value in zip(catholytes, ratios_set) if value > 0}
+        client.set(name=f'flow_cell{cell_str}_content', value=json.dumps(elyte_info))
 
     run_pump(pump='longerWE01', speed=pump_speed, *kwargs)
     run_pump(pump='longerCE01', speed=pump_speed, *kwargs)
@@ -398,11 +400,12 @@ def electrodisolution(
                          speed=filling_speed, **kwargs)
         fill_compartment(source='anolyte', destination=f'CEvial{cell_str}', volume=anolyte_volume,
                          speed=filling_speed, **kwargs)
+        client.set(name=f'flow_cell{cell_str}_content', value='acid')
 
     run_pump(pump='longerCE01', speed=pump_speed, **kwargs)
     run_pump(pump='longerWE01', speed=pump_speed, **kwargs)
 
-    client.set(name='flow_cell_content',value='acid')
+    
 
     asyncio.run(run_cp_iter(parallel_cells=parallel_cells, data_path=data_path,
                             experiment_id=experiment_id, current=0,

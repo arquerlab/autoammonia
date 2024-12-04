@@ -9,8 +9,6 @@ from longer_pumps import run_pump, check_pump
 from Amonia_SDL_v02 import empty_and_stop_pumps
 
 
-
-
 @flow
 def pumps_safety_check(**kwargs)->None:
     """
@@ -73,9 +71,10 @@ def emergency_stop(
                     safe_operation = True
                 time.sleep(emergency_stop_retries_delay)
             if not safe_operation:
-                status = client.get('flow_cell_content')
-                print(f'Warning, an error happened, flow cell could not be cleaned properly after {emergency_stop_retries} retries. \n '
-                      f'flow cell content is {status}')
+                print(f'Warning, an error happened, flow cell could not be cleaned properly after {emergency_stop_retries} retries.')
+                for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
+                    status = client.get(f'flow_cell{cell_str}_content')
+                    print(f'flow_cell{cell_str} content is {status}')
                 break
 
         time.sleep(30)
