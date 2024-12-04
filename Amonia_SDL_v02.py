@@ -348,8 +348,8 @@ def electrosynthesis(
         elyte_info = {name:value for name,value in zip(catholytes, ratios_set) if value > 0}
         client.set(name=f'flow_cell{cell_str}_content', value=json.dumps(elyte_info))
 
-    run_pump(pump='longerWE01', speed=pump_speed, *kwargs)
-    run_pump(pump='longerCE01', speed=pump_speed, *kwargs)
+    run_pump(pump='longerWE01', speed=pump_speed, **kwargs)
+    run_pump(pump='longerCE01', speed=pump_speed, **kwargs)
 
     client.set(name='reaction_status', value=time_rx)
 

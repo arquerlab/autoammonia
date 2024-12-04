@@ -40,7 +40,7 @@ def convert_and_validate_input(input_str: str, is_compositions: bool = True) -> 
         _valid_list = _valid_compounds
     else:
         _valid_list = _valid_electrolytes
-        
+    
     if isinstance(input_data, dict):
         input_data = [input_data]
     elif isinstance(input_data,list):
@@ -66,7 +66,7 @@ def convert_and_validate_input(input_str: str, is_compositions: bool = True) -> 
         if all_0:
             raise ValueError("Invalid input, at least one value must be higher than 0")
 
-    return input_data
+    return new_list
 
 
 def generate_experiments(compositions: List[List[float]],
@@ -156,5 +156,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    _valid_compounds, _ = get_valid_precursors()
+    _valid_electrolytes, _ = get_valid_electrolytes()
+    p = convert_and_validate_input("{'water':1}",is_compositions=False)
+    print(p)
+    #main()
 
