@@ -117,6 +117,7 @@ def empty_and_stop_pumps(
     """
     config = {**DEFAULT_CONFIG, **kwargs}
     parallel_cells = config['parallel_cells']
+    
     run_pump(pump='longerWE01', speed=pump_speed, direction=False, **kwargs)
     run_pump(pump='longerCE01', speed=pump_speed, direction=False, **kwargs)
     time.sleep(wash_time)
@@ -162,6 +163,7 @@ def wash_flow_cell(
     wash_comp_volume = wash_comp_volume if wash_comp_volume is not None else config['wash_flow_cell_wash_comp_volume']
     wash_comp_speed = wash_comp_speed if wash_comp_speed is not None else config['wash_flow_cell_wash_comp_speed']
     wash_comp_speed_last_empty = wash_comp_speed_last_empty if wash_comp_speed_last_empty is not None else config['wash_flow_cell_wash_comp_speed_last_empty']
+    parallel_cells = config['parallel_cells']
 
     empty_and_stop_pumps(wash_time=wash_time, pump_speed=pump_speed, **kwargs)
 

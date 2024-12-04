@@ -70,7 +70,7 @@ def convert_and_validate_input(input_str: str, is_compositions: bool = True) -> 
 
 
 def generate_experiments(compositions: List[List[float]],
-                         electrolytes: List[List[float]]) -> List[Dict[str, Dict[str, float]]]:
+                         electrolytes: List[List[float]]) -> List[Dict[str, List[float]]]:
     """
     Generates all possible combinations of experiments between compositions and electrolytes.
 
