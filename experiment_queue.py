@@ -156,9 +156,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    _valid_compounds, _ = get_valid_precursors()
-    _valid_electrolytes, _ = get_valid_electrolytes()
-    p = convert_and_validate_input("{'water':1}",is_compositions=False)
-    print(p)
-    #main()
+    main()
 
