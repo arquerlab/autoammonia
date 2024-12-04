@@ -120,5 +120,6 @@ def process_experiment_queue(delete_previous_queue: Optional[bool] = None,
 if __name__ == '__main__':
     process_experiment_queue(delete_previous_queue=True,
                              electrodeposition_time=10, reaction_time=10, electrodisolution_time=10,
-                             electrodeposition_current=-0.004, reaction_current=+0.004, 
+                             electrodeposition_current=-0.004, reaction_current=+0.004,
+                             wash_flow_cell_repeats=1, wash_flow_cell_wash_comp_volume=2.5,
     )
