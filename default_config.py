@@ -134,7 +134,7 @@ CONNECTIONS_INFO = {
         "WEvial01": {'port': 9, 'volume': 0.18, 'usage': None},
         "CEvial01": {'port': 8, 'volume': 0.17, 'usage': None},
         "valveRX01": {'port': 7, 'volume': 0.09, 'usage': None},
-        "anolyte": {'port': 6, 'volume': 0.37, 'usage': 'stock'},
+        "acid": {'port': 6, 'volume': 0.37, 'usage': 'stock'},
         "air": {'port': 5, 'volume': 0.55, 'usage': 'stock'},
         "Cu": {'port': 4, 'volume': 0.4, 'usage': 'stock', 'composition': 'Cu', 'concentration': 0.1},
         "Ni": {'port': 3, 'volume': 0.4, 'usage': 'stock', 'composition': 'Ni', 'concentration': 0.1},
@@ -143,7 +143,7 @@ CONNECTIONS_INFO = {
     },
     'valveRX01': {
         "waste": {'port': 10, 'volume': 2.5, 'usage': None},
-        "acid": {'port': 9, 'volume': 0.42, 'usage': 'stock'},
+        "anolyte": {'port': 9, 'volume': 0.42, 'usage': 'stock'},
         "elyte8": {'port': 8, 'volume': 0.42, 'usage': 'stock', 'composition': 'NaNO3', 'concentration': 0.1},
         "elyte7": {'port': 7, 'volume': 0.42, 'usage': 'stock', 'composition': 'KNO3', 'concentration': 0.1},
         "elyte6": {'port': 6, 'volume': 0.39, 'usage': 'stock', 'composition': 'LiNO3', 'concentration': 0.1},

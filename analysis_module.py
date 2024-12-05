@@ -19,7 +19,7 @@ _uv_vis_path =  Path(
 )
 
 @flow
-def take_aliquots(
+def track_reaction(
         num_aliquots: Optional[int] = None,
         volume: Optional[float] = None,
         **kwargs: Any,
@@ -43,12 +43,8 @@ def take_aliquots(
 
     config = {**DEFAULT_CONFIG, **kwargs}
 
-    # Use provided arguments or fall back to default config
     num_aliquots = num_aliquots if num_aliquots is not None else config['aliquote_number']
     volume = volume if volume is not None else config['aliquote_volume']
-    parallel_cells = config['parallel_cells']
-
-    logger = get_run_logger()
 
     while True:
         reaction_status = client.get('reaction_status')
@@ -66,41 +62,9 @@ def take_aliquots(
                 current_time = time.time()
 
                 if period_timing <= current_time:
-                    for cell in range(parallel_cells):
-                        cell_str = str(cell).zfill(2)
-                        WEvial = f'WEvial{cell_str}'
-                        empty_vials = [json.loads(item) for item in client.lrange('empty_vials', 0, -1)]
-
-                        if empty_vials:
-                            vial = empty_vials.pop(0)
-                            client.delete('empty_vials')
-
-                            for item in empty_vials:
-                                client.rpush('empty_vials', json.dumps(item))
-
-                            draw_and_dispense_and_wash_tecan(
-                                'tecanAz01', volume=volume, draw_valve_port=WEvial,
-                                dispense_valve_port=vial, speed=config['aliquot_filling_speed'], **kwargs
-                            )
-                            aliquot_time = time.time()
-                            fill_vial_detection_mix(vial, aliquot_filling_speed=config['aliquot_filling_speed']
-                                                    , **kwargs)
-                            aliquot_time = (aliquot_time + time.time()) / 2
-                            catholyte = client.get(f'flowcell{cell_str}_reaction_catholyte')
-                            metal_ratios = client.get(f'flowcell{cell_str}_reaction_metal_ratios')
-                            measure_time = datetime.utcnow() + timedelta(minutes=30)
-                            time_rxn = aliquot_time - initial_time
-                            measure_vial.submit(task_name=f'Measurment of {vial} from {WEvial}',
-                                                run_at=measure_time
-                                                )(vial=vial,time_rxn=time_rxn,catholyte=catholyte,
-                                                  metal_ratios=metal_ratios, **kwargs)
-                            #client.rpush('filled_vials', json.dumps(vial_info))
-
-                            aliquotes_sent += 1
-                            period_timing += aliquote_interval
-                        else:
-                            logger.warning('Warning! There are no empty vials, waiting for one to get free')
-                            time.sleep(5)
+                    take_aliquots(initial_reaction_time=initial_time, volume=volume)
+                    period_timing += aliquote_interval
+                    
                 time.sleep(2.5)
 
 
@@ -112,7 +76,7 @@ def generate_pickle_file(
 ) -> None:
     """
     Generates a pickle file with the following structure: 
-    "comp_{ratio_Cu}_{ratio_Co}_{ratio_Ni}_{electrolyte}_{reaction_time}s.pkl
+    "comp_{ratio_Cu}_{ratio_Co}_{ratio_Ni}_{electrolyte}_{reaction_time}s.pkl"
     In the metal ratios the decimal dot has been suppressed. Ej: 0.500 -> 0500
 
     Args:
@@ -133,6 +97,43 @@ def generate_pickle_file(
     with open(full_path, "wb") as f:
         pickle.dump(data, f)
 
+@flow
+def take_aliquots(
+        initial_reaction_time: float,
+        volume: float,
+        **kwargs,
+)->None:
+    config = {**DEFAULT_CONFIG, **kwargs}
+    parallel_cells = config['parallel_cells']
+    
+    logger = get_run_logger()
+    
+    for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells)]:
+        WEvial = f'WEvial{cell_str}'
+        while True:
+            vial = client.lpop('empty_vials')
+            if vial:
+                break
+            else:
+                logger.warning('Warning! There are no empty vials, waiting for one to get free')
+                time.sleep(5)
+        draw_and_dispense_and_wash_tecan(
+            'tecanAz01', volume=volume, draw_valve_port=WEvial,
+            dispense_valve_port=vial, speed=config['aliquot_filling_speed'], **kwargs
+        )
+        aliquot_time = time.time()
+        fill_vial_detection_mix(vial, aliquot_filling_speed=config['aliquot_filling_speed']
+                                , **kwargs)
+        aliquot_time = (aliquot_time + time.time()) / 2
+        catholyte = client.get(f'flowcell{cell_str}_reaction_catholyte')
+        metal_ratios = client.get(f'flowcell{cell_str}_reaction_metal_ratios')
+        measure_time = datetime.now() + timedelta(minutes=30)
+        time_rxn = aliquot_time - initial_reaction_time
+        measure_vial.submit(task_name=f'Measurment of {vial} from {WEvial}',
+                            run_at=measure_time
+                            )(vial=vial, time_rxn=time_rxn, catholyte=catholyte,
+                              metal_ratios=metal_ratios, **kwargs)
+        
 
 @flow
 def measure_vial(

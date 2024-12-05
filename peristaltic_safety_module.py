@@ -6,7 +6,7 @@ import traceback
 from default_config import CONFIG_COMPONENTS, DEFAULT_CONFIG
 from redis_client import client
 from longer_pumps import run_pump, check_pump
-from Amonia_SDL_v02 import empty_and_stop_pumps
+from reaction_steps import empty_and_stop_pumps
 
 
 @flow
@@ -32,7 +32,7 @@ def pumps_safety_check(**kwargs)->None:
         time.sleep(15)
 
 @flow
-def emergency_stop(
+def track_safety(
         emergency_stop_retries: Optional[int] = None, 
         emergency_stop_retries_delay: Optional[float] = None,
         **kwargs: Any
@@ -52,6 +52,7 @@ def emergency_stop(
     emergency_stop_retries = emergency_stop_retries if emergency_stop_retries is not None else config['emergency_stop_retries']
     emergency_stop_retries_delay = emergency_stop_retries_delay if emergency_stop_retries_delay is not None else config[
         'emergency_stop_retries_delay']
+    parallel_cells = config['parallel_cells']
     
     safe_operation = False
     while True:

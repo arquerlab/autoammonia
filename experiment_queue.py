@@ -119,7 +119,7 @@ def enqueue_experiment(list_name: str, data: dict) -> None:
     print(client.lrange(list_name, 0, -1))
 
 
-def main() -> None:
+def request_experiments() -> None:
     """
     Main function to interact with the user, gather input for compositions and electrolytes,
     validate the inputs, generate experiments, and enqueue the experiment data into Redis.
@@ -159,5 +159,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    request_experiments()
 
