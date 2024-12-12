@@ -47,7 +47,7 @@ async def run_cp(
 
 @flow
 async def run_cp_iter(parallel_cells: int,
-                      data_path: str,
+                      data_path: Path,
                       experiment_id: str,
                       current: float,
                       time_rx: float,

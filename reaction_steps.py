@@ -5,6 +5,7 @@ from datetime import datetime
 import json
 from typing import Optional, List, Any
 from prefect import flow
+from pathlib import Path
 
 from default_config import DEFAULT_CONFIG, CONNECTIONS_INFO, CONFIG_COMPONENTS
 
@@ -239,7 +240,7 @@ def prepare_elyte_mix(
 
 @flow
 def electrodeposition(
-        data_path: str,
+        data_path: Path,
         experiment_id: str,
         metal_ratios: List[List[float]],
         current: Optional[float] = None,
@@ -299,7 +300,7 @@ def electrodeposition(
 
 @flow
 def electrosynthesis(
-        data_path: str,
+        data_path: Path,
         experiment_id: str,
         catholyte_ratios: List[List[float]],
         current: Optional[float] = None,
@@ -364,7 +365,7 @@ def electrosynthesis(
 
 @flow
 def electrodisolution(
-        data_path: str,
+        data_path: Path,
         experiment_id: str,
         time_rx: Optional[float] = None,
         catholyte_volume: Optional[float] = None,
@@ -438,7 +439,7 @@ def execute_experiment(
     config = {**DEFAULT_CONFIG, **kwargs}
     
     parallel_cells = config['parallel_cells']
-    paths = [config['electrodeposition_data_path'],config['electrodeposition_data_path'],config['electrodisolution_data_path']]
+    paths = [Path(config['adrastea_data_path']) / step for step in ['electrodeposition', 'electrosynthesis', 'electrodissolution']]
     experiment_id = datetime.now().strftime('%Y%m%d_%Hh%Mm%Ss')
 
     reset_cache()

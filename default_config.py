@@ -2,6 +2,7 @@ from matterlab_pumps import TecanXCPump
 from matterlab_valves import ValcoSelectionValve
 from potentiostat_minimalmodbus import PotentiometerCommand
 from peristaltic_pump import Longer_BT100_3J_Pump
+from matterlab_spectrometers import HamamatsuMiniSpectrometer
 
 CONFIG_COMPONENTS = {'longerWE01': {'class': Longer_BT100_3J_Pump, 'com_port': '/dev/longer_pumps', 'address': '1'},
                      'longerCE01': {'class': Longer_BT100_3J_Pump, 'com_port': '/dev/longer_pumps', 'address': '2'},
@@ -15,10 +16,13 @@ CONFIG_COMPONENTS = {'longerWE01': {'class': Longer_BT100_3J_Pump, 'com_port': '
                                    'ports': None},
                      'valveAZ01': {'class': ValcoSelectionValve, 'com_port': '/dev/valveAZ01','num_port':10,
                                    'ports': None},
-                     'potentiostat01': {'port': '/dev/potentiostat01', 'slaveaddress': 1}
+                     'potentiostat01': {'port': '/dev/potentiostat01', 'slaveaddress': 1},
+                     'UVVIS01':{'class': HamamatsuMiniSpectrometer,}
                      }
 
 DEFAULT_CONFIG = {
+    "adrastea_data_path": '~/data',
+    "non_adrastea_data_path":'C:/autoamonia/data',
     "parallel_cells":1,
     "delete_previous_queue": True,
     "emergency_stop_retries": 10,
@@ -47,7 +51,6 @@ DEFAULT_CONFIG = {
     "electrodeposition_deposition_volume": 10,
     "electrodeposition_anolyte_volume": 10,
     "electrodeposition_pump_speed": 10,
-    "electrodeposition_data_path":'..Data/Electrodeposition',
     "electrodeposition_filling_speed": 0.2,
 
     "reaction_current": 28.2743339,
@@ -56,14 +59,14 @@ DEFAULT_CONFIG = {
     "reaction_anolyte_volume": 20,
     "reaction_pump_speed": 10,
     "reaction_filling_speed": 0.2,
-    "reation_data_path":'..Data/Reaction',
+
 
     "electrodisolution_time": 600,
     "electrodisolution_catholyte_volume": 20,
     "electrodisolution_anolyte_volume": 20,
     "electrodisolution_pump_speed": 10,
     "electrodisolution_filling_speed": 0.2,
-    "electrodisolution_data_path":'..Data/Electrodisolution',
+
 
     "aliquot_volume": 0.02,
     "detection_reagent_1_volume": 0.2,

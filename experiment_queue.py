@@ -75,7 +75,7 @@ def convert_and_validate_input(input_str: str, is_compositions: bool = True) -> 
 def generate_experiments(compositions: List[List[float]],
                          electrolytes: List[List[float]]) -> List[Dict[str, List[float]]]:
     """
-    Generates all possible combinations of experiments between compositions and electrolytes.
+    Generates all possible combinations of experiments between precursors compositions and electrolytes.
 
     Args:
         compositions (List[List[float]]): A list of compositions, where each composition is represented as a list of numerical values (floats or ints),
