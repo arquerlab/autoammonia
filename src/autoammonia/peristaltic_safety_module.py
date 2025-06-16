@@ -3,10 +3,11 @@ from prefect import flow
 from typing import Any, Optional
 import traceback
 
-from default_config import CONFIG_COMPONENTS, DEFAULT_CONFIG
-from redis_client import client
-from longer_pumps import run_pump, check_pump
-from reaction_steps import empty_and_stop_pumps
+from .config.config import DEFAULT_CONFIG
+from .config.components_config import CONFIG_COMPONENTS
+from .utils.redis_client import client
+from .hardware.longer_pumps import run_pump, check_pump
+from .reaction_steps import empty_and_stop_pumps
 
 
 @flow

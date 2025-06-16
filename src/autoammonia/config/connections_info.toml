@@ -1,0 +1,51 @@
+[tecanAZ01]
+waste      = { port = 9, volume = 1 }
+valveAZ01  = { port = 8, volume = 0.09 }
+WEvial02   = { port = 7, volume = 0.18 }
+WEvial01   = { port = 6, volume = 0.18 }
+uv_vis     = { port = 5, volume = 8 }
+d3         = { port = 4, volume = 0.115, usage = "stock" }
+d2         = { port = 3, volume = 0.1,   usage = "stock" }
+d1         = { port = 2, volume = 0.1,   usage = "stock" }
+water      = { port = 1, volume = 0.47,  usage = "stock" }
+
+[valveAZ01]
+waste  = { port = 10, volume = 1 }
+vial9  = { port = 9, volume = 0.26 }
+vial8  = { port = 8, volume = 0.26 }
+vial7  = { port = 7, volume = 0.27 }
+vial6  = { port = 6, volume = 0.285 }
+vial5  = { port = 5, volume = 0.275 }
+vial4  = { port = 4, volume = 0.28 }
+vial3  = { port = 3, volume = 0.28 }
+vial2  = { port = 2, volume = 0.285 }
+vial1  = { port = 1, volume = 0.26 }
+
+[tecanRX01]
+waste      = { port = 12, volume = 2.5 }
+WEvial02   = { port = 11, volume = 0.2 }
+CEvial02   = { port = 10, volume = 0.175 }
+WEvial01   = { port = 9,  volume = 0.18 }
+CEvial01   = { port = 8,  volume = 0.17 }
+valveRX01  = { port = 7,  volume = 0.09 }
+acid       = { port = 6,  volume = 0.37, usage = "stock" }
+air        = { port = 5,  volume = 0.55, usage = "stock" }
+Cu         = { port = 4,  volume = 0.4,  usage = "stock", composition = "Cu", concentration = 0.1 }
+Ni         = { port = 3,  volume = 0.4,  usage = "stock", composition = "Ni", concentration = 0.1 }
+Co         = { port = 2,  volume = 0.32, usage = "stock", composition = "Co", concentration = 0.1 }
+water      = { port = 1,  volume = 0.64, usage = "stock" }
+
+[valveRX01]
+waste    = { port = 10, volume = 2.5 }
+anolyte  = { port = 9,  volume = 0.42, usage = "stock" }
+elyte8   = { port = 8,  volume = 0.42, usage = "stock", composition = "NaNO3", concentration = 0.1 }
+elyte7   = { port = 7,  volume = 0.42, usage = "stock", composition = "KNO3",  concentration = 0.1 }
+elyte6   = { port = 6,  volume = 0.39, usage = "stock", composition = "LiNO3", concentration = 0.1 }
+elyte5   = { port = 5,  volume = 0.39, usage = "stock", composition = "Ca(NO3)2", concentration = 0.1 }
+elyte4   = { port = 4,  volume = 0.39, usage = "stock", composition = "Mg(NO3)2", concentration = 0.1 }
+elyte3   = { port = 3,  volume = 0.37, usage = "stock", composition = "NaCl", concentration = 0.1 }
+elyte2   = { port = 2,  volume = 0.37, usage = "stock", composition = "NaBr", concentration = 0.1 }
+elyte1   = { port = 1,  volume = 0.37, usage = "stock", composition = "NaI", concentration = 0.1 }
+
+[setup]
+config_setup_1 = ["potentiostat01", "valve01", "tecanAZ01", "tecanRX01", "longerCE01", "longerWE01"]

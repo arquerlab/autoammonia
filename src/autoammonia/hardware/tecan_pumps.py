@@ -5,10 +5,10 @@ from typing import Union, Optional, Any, List
 from mako.exceptions import RuntimeException
 from prefect import task, flow
 
-from redis_client import client
-from decorators import run_on_component, with_lock
-from default_config import DEFAULT_CONFIG, CONNECTIONS_INFO, CONFIG_COMPONENTS
-from valco_valve import switch_port_valve
+from ..utils.redis_client import client
+from ..utils.decorators import run_on_component, with_lock
+from ..config.config import DEFAULT_CONFIG, CONNECTIONS_INFO, CONFIG_COMPONENTS
+from .valco_valve import switch_port_valve
 
 
 @task

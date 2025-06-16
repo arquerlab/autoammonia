@@ -1,9 +1,9 @@
 from typing import Optional, Any
 from prefect import task
 
-from redis_client import client
-from decorators import run_on_component
-from default_config import DEFAULT_CONFIG
+from ..utils.redis_client import client
+from ..utils.decorators import run_on_component
+from ..config.config import DEFAULT_CONFIG
 
 @task
 def switch_port_valve(

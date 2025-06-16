@@ -1,0 +1,19 @@
+from matterlab_pumps import TecanXCPump, LongerPeristalticPump
+from matterlab_valves import ValcoSelectionValve
+from matterlab_spectrometers import HamamatsuMiniSpectrometer
+
+CONFIG_COMPONENTS = {'longerWE01': {'class': LongerPeristalticPump, 'com_port': '/dev/longer_pumps', 'address': '1'},
+                     'longerCE01': {'class': LongerPeristalticPump, 'com_port': '/dev/longer_pumps', 'address': '2'},
+                     'tecanRX01': {'class': TecanXCPump, 'com_port': '/dev/tecan_pumps', 'address': 2, 'syringe_volume': 2.5e-3,
+                                   'num_valve_port': 13,
+                                   'ports': None},
+                     'valveRX01': {'class': ValcoSelectionValve, 'com_port': '/dev/valveRX01', 'num_port':10,
+                                   'ports': None},
+                     'tecanAZ01': {'class': TecanXCPump, 'com_port': '/dev/tecan_pumps', 'address': 1, 'syringe_volume': 1e-3,
+                                   'num_valve_port': 13,
+                                   'ports': None},
+                     'valveAZ01': {'class': ValcoSelectionValve, 'com_port': '/dev/valveAZ01','num_port':10,
+                                   'ports': None},
+                     'potentiostat01': {'port': '/dev/potentiostat01', 'slaveaddress': 1},
+                     'UVVIS01':{'class': HamamatsuMiniSpectrometer,}
+                     }

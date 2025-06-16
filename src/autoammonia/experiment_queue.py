@@ -1,11 +1,10 @@
 import json
 import ast
-from typing import List, Dict, Union
+from typing import List, Dict
 
-from redis_client import client
-from default_config import CONNECTIONS_INFO
-from decorators import with_lock
-from utils import reset_cache, get_valid_precursors, get_valid_electrolytes
+from .utils.redis_client import client
+from .utils.decorators import with_lock
+from .utils.utils import reset_cache, get_valid_precursors, get_valid_electrolytes
 
 _valid_compounds: List[str] = []
 _valid_electrolytes: List[str] = []

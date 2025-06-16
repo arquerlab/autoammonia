@@ -1,8 +1,8 @@
 from prefect import flow, serve
 
-from analysis_module import track_reaction
-from reaction_module import process_experiment_queue
-from peristaltic_safety_module import track_safety
+from .analysis_module import track_reaction
+from .reaction_module import process_experiment_queue
+from .peristaltic_safety_module import track_safety
 
 
 @flow

@@ -1,20 +1,39 @@
 from typing import Optional, ParamSpec, Callable, Concatenate
 from functools import wraps
 import time
-import minimalmodbus
 from redis.exceptions import LockError
+import redis.lock
 
-from redis_client import client
-from default_config import DEFAULT_CONFIG, CONFIG_COMPONENTS
-from potentiostat_minimalmodbus import PotentiometerCommand
-from matterlab_pumps import TecanXCPump
-from matterlab_valves import ValcoSelectionValve
-from peristaltic_pump import Longer_BT100_3J_Pump
+from ..utils.redis_client import client
+from ..config.config import DEFAULT_CONFIG
+from ..config.components_config import CONFIG_COMPONENTS
+from pyBEEP import PotentiostatDevice, PotentiostatController
 
 _component_instances = {}
 
 P = ParamSpec("P")
 
+def acquire_lock(component_name:str, function_timeout: int, acquisition_timeout: int) -> redis.lock:
+    lock_name = f'{component_name}_lock'
+    ini_time = time.time()
+    lock = client.lock(lock_name, timeout=acquisition_timeout)
+    if lock.acquire(blocking=True):
+        acquisition_time = time.time() - ini_time
+        lock.extend(additional_time=function_timeout - acquisition_time)
+        return lock
+    else:
+        raise LockError(f"Could not acquire lock for {component_name}. Another process is blocking it.")
+
+def get_or_create_component_instance(component_name: str):
+    if component_name not in _component_instances:
+        component_info = CONFIG_COMPONENTS[component_name].copy()
+        if 'potentiostat' in component_name:
+            device = PotentiostatDevice(**component_info)
+            _component_instances[component_name] = PotentiostatController(device)
+        else:
+            componentclass = component_info.pop('class')
+            _component_instances[component_name] = componentclass(**component_info)
+    return _component_instances[component_name]
 
 def with_lock(
         function_timeout: Optional[int] = None,
@@ -74,25 +93,16 @@ def with_lock(
     def decorator(func: Callable[Concatenate[str, P], None]) -> Callable[Concatenate[str, P], None]:
         @wraps(func)
         def wrapper(component_name: str, *args: P.args, **kwargs: P.kwargs) -> None:
-            # Generate the object and a unique lock name for the pump
-            ini_time = time.time()
-            lock_name = f'{component_name}_lock'  # Unique identifier for the instance
-            lock = client.lock(lock_name, timeout=acquisition_timeout)  # Create the lock with a timeout
-            if lock.acquire(blocking=True):  # Attempt to acquire the lock
-                try:
-                    acquisition_time = time.time() - ini_time
-                    lock.extend(additional_time=function_timeout - acquisition_time)
-                    return func(component_name, *args, **kwargs)  # Execute the original function
-                except Exception as e:
-                    raise RuntimeError(f"An error occurred while executing {func.__name__}.") from e
-                finally:
-                    # Release the lock after the function completes
-                    if lock.owned():
-                        lock.release()
-                    print(f"Lock released for {component_name}")
-            else:
-                #client.set('safety_operation', 0)
-                raise LockError(f"Could not acquire lock for {component_name}. Another process is blocking it.")
+            lock = acquire_lock(component_name, function_timeout, acquisition_timeout)
+            try:
+                return func(component_name, *args, **kwargs)  # Execute the original function
+            except Exception as e:
+                raise RuntimeError(f"An error occurred while executing {func.__name__}.") from e
+            finally:
+                # Release the lock after the function completes
+                if lock.owned():
+                    lock.release()
+                print(f"Lock released for {component_name}")
 
         return wrapper
 
@@ -139,19 +149,7 @@ def run_on_component() -> Callable[[Callable[Concatenate[str, P], None]], Callab
     def decorator(func: Callable[Concatenate[str, P], None]) -> Callable[Concatenate[object, P], None]:
         @wraps(func)
         def wrapper(component_name: str, *args: P.args, **kwargs: P.kwargs) -> None:
-            # Generate the object and a unique lock name for the pump
-            if component_name not in _component_instances:
-                # Generates an instance only if it does not exist
-                component_info = CONFIG_COMPONENTS[component_name].copy()
-                if 'potentiostat' in component_name:
-                    potentiostat = minimalmodbus.Instrument(**component_info)
-                    _component_instances[component_name] = PotentiometerCommand(potentiostat)
-                else:
-                    componentclass = component_info.pop('class')  # Extracts the class, rest are arguments
-                    _component_instances[component_name] = componentclass(**component_info)
-
-            # Use the already created instance
-            component = _component_instances[component_name]
+            component = get_or_create_component_instance(component_name)
             try:
                 return func(component, *args, **kwargs)  # Execute the original function
             except Exception as e:
@@ -223,37 +221,17 @@ def run_on_component_with_lock(
     def decorator(func: Callable[Concatenate[str, P], None]) -> Callable[Concatenate[object, P], None]:
         @wraps(func)
         def wrapper(component_name: str, *args: P.args, **kwargs: P.kwargs) -> None:
-            if component_name not in _component_instances:
-                # Generates an instance only if it does not exist
-                component_info = CONFIG_COMPONENTS[component_name].copy()
-                if 'potentiostat' in component_name:
-                    potentiostat = minimalmodbus.Instrument(**component_info)
-                    _component_instances[component_name] = PotentiometerCommand(potentiostat)
-                else:
-                    componentclass = component_info.pop('class')  # Extrae la clase, los demás son argumentos
-                    _component_instances[component_name] = componentclass(**component_info)
-
-            # Use the already created instance
-            component = _component_instances[component_name]
-            # Generate the object and a unique lock name for the pump
-            ini_time = time.time()
-            lock_name = f'{component_name}_lock'  # Unique identifier for the instance
-            lock = client.lock(lock_name, timeout=acquisition_timeout)  # Create the lock with a timeout
-            if lock.acquire(blocking=True):  # Attempt to acquire the lock
-                try:
-                    acquisition_time = time.time() - ini_time
-                    lock.extend(additional_time=function_timeout - acquisition_time)
-                    return func(component, *args, **kwargs)  # Execute the original function
-                except Exception as e:
-                    raise RuntimeError(f"An error occurred while executing {func.__name__}.") from e
-                finally:
-                    # Release the lock after the function completes
-                    if lock.owned():
-                        lock.release()
-                    print(f"Lock released for {component_name}")
-            else:
-                #client.set('safety_operation', 0)
-                raise LockError(f"Could not acquire lock for {component_name}. Another process is blocking it.")
+            component = get_or_create_component_instance(component_name)
+            lock = acquire_lock(component_name, function_timeout, acquisition_timeout)
+            try:
+                return func(component, *args, **kwargs)  # Execute the original function
+            except Exception as e:
+                raise RuntimeError(f"An error occurred while executing {func.__name__}.") from e
+            finally:
+                # Release the lock after the function completes
+                if lock.owned():
+                    lock.release()
+                print(f"Lock released for {component_name}")
 
         return wrapper
 

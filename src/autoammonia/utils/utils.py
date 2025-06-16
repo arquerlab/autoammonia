@@ -1,5 +1,5 @@
 from typing import List, Tuple
-from default_config import CONNECTIONS_INFO
+from ..config.config import CONNECTIONS_INFO
 
 _cache = {
     'electrolytes': [],

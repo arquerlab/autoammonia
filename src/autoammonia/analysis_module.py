@@ -8,10 +8,10 @@ from datetime import datetime, timedelta
 
 from prefect import task, flow, get_run_logger
 
-from default_config import DEFAULT_CONFIG
-from decorators import with_lock
-from redis_client import client
-from tecan_pumps import draw_and_dispense_and_wash_tecan, draw_and_dispense_tecan_unlocked, wash_compartment
+from .config.config import DEFAULT_CONFIG
+from .utils.decorators import with_lock
+from .utils.redis_client import client
+from .hardware.tecan_pumps import draw_and_dispense_and_wash_tecan, draw_and_dispense_tecan_unlocked, wash_compartment
 
 user_name = os.getenv("USER") or os.getenv("USERNAME")
 _uv_vis_path =  Path(

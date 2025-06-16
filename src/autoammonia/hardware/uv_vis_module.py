@@ -6,8 +6,8 @@ from pathlib import Path
 
 from prefect import flow, task
 
-from decorators import run_on_component_with_lock
-from default_config import DEFAULT_CONFIG
+from ..utils.decorators import run_on_component_with_lock
+from ..config.config import DEFAULT_CONFIG
 
 import pandas as pd
 

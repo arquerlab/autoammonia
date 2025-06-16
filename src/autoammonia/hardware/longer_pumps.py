@@ -1,9 +1,9 @@
 from typing import Optional, Any
 from prefect import task
 
-from redis_client import client
-from decorators import run_on_component_with_lock
-from default_config import DEFAULT_CONFIG
+from ..utils.redis_client import client
+from ..utils.decorators import run_on_component_with_lock
+from ..config.config import DEFAULT_CONFIG
 
 
 @task
@@ -64,7 +64,7 @@ def run_pump(
             direction (Optional[bool], default=None): Direction of the pump's rotation.
                 False for clockwise, True for counterclockwise. If None, the default direction is used.
         """
-        pump.run(speed, direction)
+        pump.set_pump(rpm=speed, on=True, direction=direction)
         direction_sign = +1 if direction else -1
         client.set(str(pump), speed * direction_sign)
 
@@ -122,7 +122,7 @@ def stop_pump(
         Args:
             pump (str): The name or identifier of the pump to stop.
         """
-        pump.stop()
+        pump.set_pump(on=False)
 
     try:
         stop_pump_func.with_options(retries=retries)(pump)
@@ -184,7 +184,15 @@ def check_pump(
             float: The current status of the pump: value indicates speed while the sign indicates direction 
             (+ for counterclockwise and - for clockwise).
         """
-        return pump.get_state()
+        state_dict = pump.query_pump()
+        if state_dict['on']:
+            if state_dict['direction']:
+                return state_dict['rpm']
+            else:
+                return -state_dict['rpm']
+        else:
+            return 0
+        
     try:
         return check_pump_func.with_options(retries=retries)(pump)
     except Exception as e:

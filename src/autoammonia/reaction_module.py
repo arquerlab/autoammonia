@@ -1,12 +1,12 @@
 from prefect import flow, task, get_run_logger
 import json
 import time
-from typing import Dict, List, Optional, Any
+from typing import Dict, Optional, Any
 
-from decorators import with_lock
-from default_config import DEFAULT_CONFIG, CONNECTIONS_INFO
-from redis_client import client, client_initialization
-from reaction_steps import initialize_pump, restore_pump, execute_experiment, electrodisolution
+from .utils.decorators import with_lock
+from .config.config import DEFAULT_CONFIG, CONNECTIONS_INFO
+from .utils.redis_client import client, client_initialization
+from .reaction_steps import initialize_pump, restore_pump, execute_experiment
 
 
 @task

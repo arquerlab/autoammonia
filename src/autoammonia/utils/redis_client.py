@@ -1,6 +1,6 @@
 import redis
 
-from default_config import DEFAULT_CONFIG
+from ..config.config import DEFAULT_CONFIG
 
 client = redis.StrictRedis(
         host="localhost",

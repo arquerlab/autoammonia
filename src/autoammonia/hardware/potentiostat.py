@@ -2,8 +2,8 @@ import asyncio
 from typing import Optional, Any
 from prefect import task, flow
 
-from decorators import run_on_component_with_lock
-from default_config import DEFAULT_CONFIG
+from ..utils.decorators import run_on_component_with_lock
+from ..config.config import DEFAULT_CONFIG
 
 @flow
 async def run_cp(
