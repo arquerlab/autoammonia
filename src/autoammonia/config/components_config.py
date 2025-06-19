@@ -1,6 +1,9 @@
 from matterlab_pumps import TecanXCPump, LongerPeristalticPump
 from matterlab_valves import ValcoSelectionValve
 from matterlab_spectrometers import HamamatsuMiniSpectrometer
+from pyBEEP import PotentiostatDevice, PotentiostatController
+
+from ..hardware.uv_vis_lamp import Arduino, MotorSwitchLamp, PulsedLamp
 
 CONFIG_COMPONENTS = {'longerWE01': {'class': LongerPeristalticPump, 'com_port': '/dev/longer_pumps', 'address': '1'},
                      'longerCE01': {'class': LongerPeristalticPump, 'com_port': '/dev/longer_pumps', 'address': '2'},
@@ -14,6 +17,7 @@ CONFIG_COMPONENTS = {'longerWE01': {'class': LongerPeristalticPump, 'com_port': 
                                    'ports': None},
                      'valveAZ01': {'class': ValcoSelectionValve, 'com_port': '/dev/valveAZ01','num_port':10,
                                    'ports': None},
-                     'potentiostat01': {'port': '/dev/potentiostat01', 'slaveaddress': 1},
-                     'UVVIS01':{'class': HamamatsuMiniSpectrometer,}
+                     'potentiostat01': {'class': PotentiostatController, 'device_class': PotentiostatDevice,'port': '/dev/potentiostat01', 'slaveaddress': 1},
+                     'UVVIS01':{'class': HamamatsuMiniSpectrometer},
+                     'lamp01': {'class': Arduino, 'device_class': MotorSwitchLamp, 'com_port': 'COM5', 'pulsed': False}
                      }

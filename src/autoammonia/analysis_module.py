@@ -1,6 +1,7 @@
 import os
 import json
 import pickle
+import socket
 from pathlib import Path
 import time
 from typing import Optional, Any
@@ -17,6 +18,8 @@ user_name = os.getenv("USER") or os.getenv("USERNAME")
 _uv_vis_path =  Path(
     rf"C:\Users\{user_name}\Aspuru-Guzik Lab Dropbox\Lab Manager Aspuru-Guzik\PythonScript\HPLCMS_characterization\sample_to_measure"
 )
+#main_hostname = client.get('main_hostname')
+
 
 @flow
 def track_reaction(
@@ -66,36 +69,6 @@ def track_reaction(
                     period_timing += aliquote_interval
                     
                 time.sleep(2.5)
-
-
-@task
-def generate_pickle_file(
-        compositions_str: str,
-        elyte: str,
-        time_rxn: int,
-) -> None:
-    """
-    Generates a pickle file with the following structure: 
-    "comp_{ratio_Cu}_{ratio_Co}_{ratio_Ni}_{electrolyte}_{reaction_time}s.pkl"
-    In the metal ratios the decimal dot has been suppressed. Ej: 0.500 -> 0500
-
-    Args:
-        compositions_str (str): String representing composition ratios of Cu, Co, Ni.
-        elyte (str): electrolyte used.
-        time_rxn (int): Time at which the sample was acquired.
-    """
-    data = {
-        "injection_name": f"compn_{compositions_str}_{elyte}_{time_rxn}s.txt",
-        "target_name": "",
-        "retention_time": 1,
-        "vial_number": None,
-        "average_absorbance_peak": 250,
-        "average_absorbance_375": 250,
-        "sample_volume": 0.1
-    }
-    full_path = _uv_vis_path / f"{data['injection_name']}.pkl"
-    with open(full_path, "wb") as f:
-        pickle.dump(data, f)
 
 @flow
 def take_aliquots(
@@ -157,11 +130,7 @@ def measure_vial(
         'tecanAZ01', 0.5, draw_valve_port=vial, dispense_valve_port='uv-vis',
         speed=filling_speed, **kwargs
     )
-    generate_pickle_file(
-        elyte=catholyte,
-        compositions_str=metal_ratios,
-        time_rxn=round(float(time_rxn))
-    )
+    #--------TODO: Add here the code to perform the UV-VIS
     logger.info(f'Sample {vial} sent to UV-VIS')
 
     wash_compartment(syringe_pump='tecanAZ01', compartment=vial, repeats=wash_vial_repeats,

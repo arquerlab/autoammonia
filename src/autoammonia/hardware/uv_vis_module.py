@@ -6,15 +6,30 @@ from pathlib import Path
 
 from prefect import flow, task
 
+from ..config.components_config import CONFIG_COMPONENTS
 from ..utils.decorators import run_on_component_with_lock
 from ..config.config import DEFAULT_CONFIG
 
 import pandas as pd
 
 @run_on_component_with_lock
+@task
+def lamp_switch(lamp: str, on: bool=True) -> None:
+    """
+    Switches on/off the lamp used for UV-Vis measurements.
+    
+    Args:
+        lamp (str): The lamp to switch on or off.
+    """
+    if on:
+        lamp.start()
+    else:
+        lamp.stop()
+        
+@run_on_component_with_lock
 @flow
-def measure_spectrum(
-        spectrometer: object,
+def acquire_spectrum(
+        spectrometer: str,
         integration_time: float,
         experiment_id: str,
         vial_id: str,
@@ -24,9 +39,13 @@ def measure_spectrum(
     non_adrastea_data_path = Path(config['non_adrastea_data_path']) / 'uv_vis'
     adrastea_data_path = Path(config['adrastea_data_path']) / 'uv_vis'
     
+    lamp_switch(lamp='lamp01', on=True)
+    
     # Measure the spectrum
     wavelength = spectrometer.wavelength
     data = spectrometer.measure_spectrum(integration_time)
+    
+    lamp_switch(lamp='lamp01', on=False)
 
     # Create a DataFrame
     df = pd.DataFrame({

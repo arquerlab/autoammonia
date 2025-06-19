@@ -13,7 +13,7 @@ from .config.components_config import CONFIG_COMPONENTS
 from .utils.redis_client import client
 from .utils.utils import reset_cache, get_valid_precursors, get_valid_electrolytes
 from .hardware.valco_valve import switch_port_valve
-from .hardware.potentiostat import run_cp_iter
+from .hardware.potentiostat import run_method_parallel
 from .hardware.longer_pumps import run_pump, stop_pump
 from .hardware.tecan_pumps import draw_and_dispense_tecan, fill_compartment, wash_syringe_unlocked, wash_compartment, draw_and_dispense_and_wash_tecan
 
@@ -290,7 +290,7 @@ def electrodeposition(
     run_pump(pump='longerWE01', speed=pump_speed, **kwargs)
     run_pump(pump='longerCE01', speed=pump_speed, **kwargs)
 
-    asyncio.run(run_cp_iter(parallel_cells=parallel_cells, data_path=data_path,
+    asyncio.run(run_method_parallel(parallel_cells=parallel_cells, data_path=data_path,
                             experiment_id=experiment_id, current=current,
                             time_rx=time_rx, tia_gain=0, **kwargs))
     for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
@@ -355,7 +355,7 @@ def electrosynthesis(
 
     client.set(name='reaction_status', value=time_rx)
 
-    asyncio.run(run_cp_iter(parallel_cells=parallel_cells, data_path=data_path,
+    asyncio.run(run_method_parallel(parallel_cells=parallel_cells, data_path=data_path,
                             experiment_id=experiment_id, current=current,
                             time_rx=time_rx, tia_gain=0, **kwargs))
 
@@ -411,7 +411,7 @@ def electrodisolution(
 
     
 
-    asyncio.run(run_cp_iter(parallel_cells=parallel_cells, data_path=data_path,
+    asyncio.run(run_method_parallel(parallel_cells=parallel_cells, data_path=data_path,
                             experiment_id=experiment_id, current=0,
                             time_rx=time_rx, tia_gain=2, **kwargs))
 

@@ -1,21 +1,15 @@
-import time
-
-from prefect import flow, get_run_logger
+from prefect import flow
 
 
 @flow
-def dummy_flow1():
-    logger = get_run_logger()
-    for i in range(3):
-        time.sleep(5)
-        logger.info('Flow1 test')
-    pass
+def my_flow(x: int, y: int):
+    return x + y
 
-@flow
-def dummy_flow2():
-    logger = get_run_logger()
-    for i in range(3):
-        time.sleep(2)
-        logger.info('Flow2 test')
-    pass
+if __name__ == "__main__":
+    my_flow(x=5, y=10)
 
+if __name__ == "__main__":
+    my_flow.serve(
+        name="my_deployment",
+        parameters={"x": 0, "y": 0},  # Default parameters
+    )

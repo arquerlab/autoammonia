@@ -7,7 +7,6 @@ import redis.lock
 from ..utils.redis_client import client
 from ..config.config import DEFAULT_CONFIG
 from ..config.components_config import CONFIG_COMPONENTS
-from pyBEEP import PotentiostatDevice, PotentiostatController
 
 _component_instances = {}
 
@@ -27,11 +26,13 @@ def acquire_lock(component_name:str, function_timeout: int, acquisition_timeout:
 def get_or_create_component_instance(component_name: str):
     if component_name not in _component_instances:
         component_info = CONFIG_COMPONENTS[component_name].copy()
-        if 'potentiostat' in component_name:
-            device = PotentiostatDevice(**component_info)
-            _component_instances[component_name] = PotentiostatController(device)
+        componentclass = component_info.pop('class')
+        if 'device_class' in component_info:
+            deviceclass = component_info.pop('device_class')
+            device_kwargs = component_info.pop('device_kwargs', {})
+            device = deviceclass(**device_kwargs)
+            _component_instances[component_name] = componentclass(device, **component_info)
         else:
-            componentclass = component_info.pop('class')
             _component_instances[component_name] = componentclass(**component_info)
     return _component_instances[component_name]
 
