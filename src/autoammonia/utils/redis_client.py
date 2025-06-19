@@ -1,13 +1,42 @@
 import redis
+import socket
 
 from ..config.config import DEFAULT_CONFIG
 
-client = redis.StrictRedis(
-        host="localhost",
-        port=6379,
-        password="potato12",
-        decode_responses=True
-        )
+def create_redis_client()-> redis.Redis:
+        """
+        Dynamically creates a Redis client based on the hostname of the machine.
+        
+        This function selects the appropriate Redis connection configuration
+        based on the machine's hostname. If the hostname is "localhost", it uses
+        the configuration for the local Redis instance. Otherwise, it defaults to the
+        fallback host "adrastea".
+        
+        Returns:
+            redis.Redis: An initialized Redis client connected to the appropriate host.
+        
+        Raises:
+            redis.ConnectionError: If the connection to Redis fails for both configurations.
+        """
+        # Connection configurations
+        configs = {
+                "localhost": {"host": "localhost", "port": 6379, "password": "potato12"},
+                "adrastea": {"host": "adrastea", "port": 6379, "password": "potato12"}
+        }
+
+        # Dynamically select the configuration based on hostname
+        hostname = socket.gethostname()
+        selected_config = configs["localhost"] if hostname == "localhost" else configs["adrastea"]
+        redis_client = redis.StrictRedis(
+                host=selected_config["host"],
+                port=selected_config["port"],
+                password=selected_config["password"],
+                decode_responses=True
+                )
+        redis_client.ping()
+        return redis_client
+
+client = create_redis_client()
 
 def client_initialization(**kwargs)->None:
         """Initialization of redis server, resetting all variables to the initial stage"""

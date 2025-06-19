@@ -2,6 +2,7 @@ from prefect import flow, task, get_run_logger
 import json
 import time
 from typing import Dict, Optional, Any
+from pathlib import Path
 
 from .utils.decorators import with_lock
 from .config.config import DEFAULT_CONFIG, CONNECTIONS_INFO
@@ -116,6 +117,15 @@ def process_experiment_queue(delete_previous_queue: Optional[bool] = None,
         else:
             logger.info("Flow stopped.")
 
+
+def reaction_module_deploy():
+    process_experiment_queue.from_source(
+        source=Path(__file__).parent,
+        entrypoint=f"reaction_module.py:process_experiment_queue",
+    ).deploy(
+        name="reaction_module_flow",
+        work_pool_name="reaction_module_pool",
+    )
 
 if __name__ == '__main__':
     """process_experiment_queue(delete_previous_queue=True,

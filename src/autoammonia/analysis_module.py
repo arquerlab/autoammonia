@@ -183,3 +183,12 @@ def fill_vial_detection_mix(
                                      speed=aliquot_filling_speed, **kwargs)
     draw_and_dispense_and_wash_tecan('tecanAZ01', d3_volume, 'd3', vial,
                                      speed=aliquot_filling_speed, **kwargs)
+
+def analysis_module_deploy():
+    track_reaction.from_source(
+        source=Path(__file__).parent,
+        entrypoint="analysis_module.py:track_reaction",
+    ).deploy(
+        name="analysis_module_flow",
+        work_pool_name="analysis_module_pool",
+    )

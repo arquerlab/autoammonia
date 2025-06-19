@@ -1,12 +1,7 @@
 import asyncio
 from prefect.client.orchestration import get_client
 
-# Define the list of workflows to trigger
-workflows_to_trigger = [
-    {"flow_name": "analysis_flow", "parameters": {}},
-    {"flow_name": "reaction_flow", "parameters": {}},
-    {"flow_name": "safety_flow", "parameters": {}},
-]
+from project_deploy import flows_to_deploy
 
 async def trigger_workflow(flow_name, parameters):
     async with get_client() as client:
@@ -22,7 +17,7 @@ async def trigger_workflow(flow_name, parameters):
             print(f"❌ Workflow '{flow_name}' not found!")
 
 async def main():
-    tasks = [trigger_workflow(workflow["flow_name"], workflow["parameters"]) for workflow in workflows_to_trigger]
+    tasks = [trigger_workflow(workflow["flow_name"], workflow["parameters"]) for workflow in flows_to_deploy]
     await asyncio.gather(*tasks)
 
 if __name__ == "__main__":

@@ -6,7 +6,6 @@ from pathlib import Path
 
 from prefect import flow, task
 
-from ..config.components_config import CONFIG_COMPONENTS
 from ..utils.decorators import run_on_component_with_lock
 from ..config.config import DEFAULT_CONFIG
 

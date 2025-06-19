@@ -2,6 +2,7 @@ import time
 from prefect import flow
 from typing import Any, Optional
 import traceback
+from pathlib import Path
 
 from .config.config import DEFAULT_CONFIG
 from .config.components_config import CONFIG_COMPONENTS
@@ -80,3 +81,13 @@ def track_safety(
                 break
 
         time.sleep(30)
+        
+        
+def safety_module_deploy():
+    track_safety.from_source(
+        source=Path(__file__).parent,
+        entrypoint=f"safety_module_peri.py:track_safety",
+    ).deploy(
+        name="safety_module_flow",
+        work_pool_name="safety_module_pool",
+    )
