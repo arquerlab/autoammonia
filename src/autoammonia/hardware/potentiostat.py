@@ -11,7 +11,7 @@ async def run_echem_method(
         mode: str,
         method_params: Dict[str, Any],
         tia_gain: int,
-        reducing_factor: int,
+        reducing_factor: int | None,
         filename: str,
         folder: str,    
         acquisition_timeout: Optional[int] = None,
@@ -39,7 +39,7 @@ async def run_echem_method(
     acquisition_timeout = acquisition_timeout if acquisition_timeout is not None else config['potentiostat_acq_timeout']
     @task
     @run_on_component_with_lock(acquisition_timeout=acquisition_timeout, function_timeout= 600)
-    def run_method(potentiostat: str, mode: str, params: Dict[str, Any], tia_gain: int, reducing_factor: int, filename: str, folder: str) -> None:
+    def run_method(potentiostat: str, mode: str, params: Dict[str, Any], tia_gain: int, reducing_factor: int | None, filename: str, folder: str) -> None:
         potentiostat.apply_measurement(potentiostat=potentiostat, mode=mode, params=params, tia_gain=tia_gain, reducing_factor=reducing_factor, filename=filename, folder=folder)
 
     # Call the wrapped function
@@ -52,7 +52,7 @@ async def run_method_parallel(parallel_cells: int,
                       mode: str,
                       params: Dict[str, Any],
                       tia_gain: int,
-                      reducing_factor: int = None,
+                      reducing_factor: int | None = None,
                       **kwargs,
 )->None:
     """
