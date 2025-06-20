@@ -30,7 +30,7 @@ def create_redis_client()-> redis.Redis:
         redis_client = redis.StrictRedis(
                 host=selected_config["host"],
                 port=selected_config["port"],
-                password=selected_config["password"],
+                #password=selected_config["password"],
                 decode_responses=True
                 )
         redis_client.ping()
