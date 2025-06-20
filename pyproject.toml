@@ -22,3 +22,4 @@ where = ["src"]
 [project.scripts]
 autoammonia_deploy = "autoammonia.project_deploy:main"
 autoammonia_run = "autoammonia.project_trigger:main"
+autoammonia_rx_test = "autoammonia.testing.rx_module_test:main"
