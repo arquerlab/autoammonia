@@ -10,6 +10,10 @@ DEFAULT_CONFIG = toml.load(DEFAULT_CONFIG_PATH)
 # Load connections info and setups
 CONNECTIONS_INFO_PATH = Path(__file__).parent / "connections_info.toml"
 _connections_data = toml.load(CONNECTIONS_INFO_PATH)
+for instrument in _connections_data:
+    if instrument != "setup":
+        for port in _connections_data[instrument]:
+            _connections_data[instrument][port].setdefault('usage', None)
 
 # Extract instrument connections, skipping the 'setup' section
 CONNECTIONS_INFO = {
