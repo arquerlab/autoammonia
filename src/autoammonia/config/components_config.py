@@ -17,7 +17,7 @@ CONFIG_COMPONENTS = {'longerWE01': {'class': LongerPeristalticPump, 'com_port': 
                                    'ports': None},
                      'valveAZ01': {'class': ValcoSelectionValve, 'com_port': '/dev/valveAZ01','num_port':10,
                                    'ports': None},
-                     'potentiostat01': {'class': PotentiostatController, 'device_class': PotentiostatDevice,'device_kwargs': {'port': '/dev/potentiostat01', 'slaveaddress': 1}},
+                     'potentiostat01': {'class': PotentiostatController, 'device_class': PotentiostatDevice,'device_kwargs': {'port': '/dev/potentiostat01', 'address': 1}},
                      #'UVVIS01':{'class': HamamatsuMiniSpectrometer},
                      #'lamp01': {'class': Arduino, 'device_class': MotorSwitchLamp, 'com_port': 'COM5', 'pulsed': False}
                      }
