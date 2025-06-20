@@ -1,7 +1,6 @@
-from .config.components_config import CONFIG_COMPONENTS
 from .hardware.tecan_pumps import draw_tecan_func, dispense_tecan_func, draw_and_dispense_tecan_func
 from .hardware.valco_valve import switch_port_valve
-from .config.config import CONNECTIONS_INFO
+from .config.config import CONNECTIONS_INFO, CONFIG_COMPONENTS
 
 if __name__ == '__main__':
     for component in CONNECTIONS_INFO:

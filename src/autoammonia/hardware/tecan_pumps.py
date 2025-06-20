@@ -7,8 +7,7 @@ from prefect import task, flow
 
 from ..utils.redis_client import client
 from ..utils.decorators import run_on_component, with_lock
-from ..config.config import DEFAULT_CONFIG, CONNECTIONS_INFO
-from ..config.components_config import CONFIG_COMPONENTS
+from ..config.config import DEFAULT_CONFIG, CONNECTIONS_INFO, CONFIG_COMPONENTS
 from .valco_valve import switch_port_valve
 
 

@@ -5,8 +5,7 @@ from redis.exceptions import LockError
 import redis.lock
 
 from ..utils.redis_client import client
-from ..config.config import DEFAULT_CONFIG
-from ..config.components_config import CONFIG_COMPONENTS
+from ..config.config import DEFAULT_CONFIG, CONFIG_COMPONENTS
 
 _component_instances = {}
 

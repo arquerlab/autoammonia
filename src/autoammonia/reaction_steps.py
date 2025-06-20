@@ -7,8 +7,7 @@ from typing import Optional, List, Any
 from prefect import flow
 from pathlib import Path
 
-from .config.config import DEFAULT_CONFIG, CONNECTIONS_INFO
-from .config.components_config import CONFIG_COMPONENTS
+from .config.config import DEFAULT_CONFIG, CONNECTIONS_INFO,CONFIG_COMPONENTS
 
 from .utils.redis_client import client
 from .utils.utils import reset_cache, get_valid_precursors, get_valid_electrolytes
