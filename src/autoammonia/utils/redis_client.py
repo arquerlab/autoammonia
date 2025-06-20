@@ -26,7 +26,7 @@ def create_redis_client()-> redis.Redis:
 
         # Dynamically select the configuration based on hostname
         hostname = socket.gethostname()
-        selected_config = configs["localhost"] if hostname == "localhost" else configs["adrastea"]
+        selected_config = configs["localhost"] if hostname == "adrastea" else configs["localhost"]
         redis_client = redis.StrictRedis(
                 host=selected_config["host"],
                 port=selected_config["port"],
