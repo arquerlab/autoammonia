@@ -5,8 +5,8 @@ from pyBEEP import PotentiostatDevice, PotentiostatController
 
 #from ..hardware.uv_vis_lamp import Arduino, MotorSwitchLamp, PulsedLamp
 
-CONFIG_COMPONENTS = {'longerWE01': {'class': LongerPeristalticPump, 'com_port': '/dev/longer_pumps', 'address': '1'},
-                     'longerCE01': {'class': LongerPeristalticPump, 'com_port': '/dev/longer_pumps', 'address': '2'},
+CONFIG_COMPONENTS = {'longerWE01': {'class': LongerPeristalticPump, 'com_port': '/dev/longer_pumps', 'address': 1, 'baudrate': 1200},
+                     'longerCE01': {'class': LongerPeristalticPump, 'com_port': '/dev/longer_pumps', 'address': 2, 'baudrate': 1200},
                      'tecanRX01': {'class': TecanXCPump, 'com_port': '/dev/tecan_pumps', 'address': 2, 'syringe_volume': 2.5e-3,
                                    'num_valve_port': 12,
                                    'ports': None},
