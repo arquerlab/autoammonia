@@ -290,9 +290,9 @@ def electrodeposition(
     run_pump(pump='longerWE01', speed=pump_speed, **kwargs)
     run_pump(pump='longerCE01', speed=pump_speed, **kwargs)
 
-    asyncio.run(run_method_parallel(parallel_cells=parallel_cells, data_path=data_path,
-                            experiment_id=experiment_id, current=current,
-                            time_rx=time_rx, tia_gain=0, **kwargs))
+    asyncio.run(run_method_parallel(parallel_cells=parallel_cells, folder=str(data_path),
+                            experiment_id=experiment_id, mode="CP", params= {'current':current, 'duration':time_rx}, 
+                            tia_gain=0, **kwargs))
     for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
         client.set(name=f'flow_cell{cell_str}_content',value='metal_salts')
 
@@ -355,9 +355,10 @@ def electrosynthesis(
 
     client.set(name='reaction_status', value=time_rx)
 
-    asyncio.run(run_method_parallel(parallel_cells=parallel_cells, data_path=data_path,
-                            experiment_id=experiment_id, current=current,
-                            time_rx=time_rx, tia_gain=0, **kwargs))
+    asyncio.run(run_method_parallel(parallel_cells=parallel_cells, folder=str(data_path),
+                                    experiment_id=experiment_id, mode="CP",
+                                    params={'current': current, 'duration': time_rx},
+                                    tia_gain=0, **kwargs))
 
     client.set(name='reaction_status', value="waiting")
 
@@ -409,11 +410,10 @@ def electrodisolution(
     run_pump(pump='longerCE01', speed=pump_speed, **kwargs)
     run_pump(pump='longerWE01', speed=pump_speed, **kwargs)
 
-    
-
-    asyncio.run(run_method_parallel(parallel_cells=parallel_cells, data_path=data_path,
-                            experiment_id=experiment_id, current=0,
-                            time_rx=time_rx, tia_gain=2, **kwargs))
+    asyncio.run(run_method_parallel(parallel_cells=parallel_cells, folder=str(data_path),
+                                    experiment_id=experiment_id, mode="CP",
+                                    params={'current': 0, 'duration': time_rx},
+                                    tia_gain=2, **kwargs))
 
     wash_flow_cell(**kwargs)
 
