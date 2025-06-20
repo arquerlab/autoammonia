@@ -23,3 +23,4 @@ where = ["src"]
 autoammonia_deploy = "autoammonia.project_deploy:main"
 autoammonia_run = "autoammonia.project_trigger:main"
 autoammonia_rx_test = "autoammonia.testing.rx_module_test:main"
+autoammonia_exp_requester = "autoammonia.experiment_queue:request_experiments"
