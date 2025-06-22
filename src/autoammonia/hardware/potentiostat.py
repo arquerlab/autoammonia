@@ -37,8 +37,11 @@ async def run_echem_method(
     """
     config = {**DEFAULT_CONFIG,**kwargs}
     acquisition_timeout = acquisition_timeout if acquisition_timeout is not None else config['potentiostat_acq_timeout']
+    #If there's duration in params take it as function timeout
+    func_timeout = method_params.get('duration', 300)
+    
     @task
-    @run_on_component_with_lock(acquisition_timeout=acquisition_timeout, function_timeout= 600)
+    @run_on_component_with_lock(acquisition_timeout=acquisition_timeout, function_timeout= func_timeout)
     def run_method(potentiostat: str, mode: str, params: Dict[str, Any], tia_gain: int, reducing_factor: int | None, filename: str, folder: str) -> None:
         potentiostat.apply_measurement(mode=mode, params=params, tia_gain=tia_gain, reducing_factor=reducing_factor, filename=filename, folder=folder)
 

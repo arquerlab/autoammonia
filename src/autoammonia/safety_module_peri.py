@@ -6,7 +6,7 @@ from pathlib import Path
 
 from .config.config import DEFAULT_CONFIG, CONFIG_COMPONENTS
 from .utils.redis_client import client
-from .hardware.longer_pumps import run_pump, check_pump
+from .hardware.peristaltic_pumps import run_pump, check_pump
 from .reaction_steps import empty_and_stop_pumps
 
 

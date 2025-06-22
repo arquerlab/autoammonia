@@ -1,19 +1,18 @@
 import time
 from math import ceil
-from typing import Union, Optional, Any, List
+from typing import Union, Optional, Any, List, Tuple
 
-from mako.exceptions import RuntimeException
 from prefect import task, flow
 
 from ..utils.redis_client import client
 from ..utils.decorators import run_on_component, with_lock
 from ..config.config import DEFAULT_CONFIG, CONNECTIONS_INFO, CONFIG_COMPONENTS
-from .valco_valve import switch_port_valve
+from .selection_valves import switch_port_valve
 
 
 @task
 @run_on_component()
-def draw_tecan_func(
+def syringe_draw(
         syringe_pump: str,
         volume: float,
         valve_port: Union[str, int],
@@ -49,7 +48,7 @@ def draw_tecan_func(
         for trial in range(1,fail_retries+1):
             try:
                 syringe_pump.dispense_all(valve_port='waste', speed=speed)
-                raise RuntimeException(f'Syringe content dispensed successfully to waste') from draw_error
+                raise RuntimeError(f'Syringe content dispensed successfully to waste') from draw_error
             except Exception as dispense_error:
                 print(f"Attempt {trial} to dispense syringe to waste failed: {dispense_error}")
         raise RuntimeError(
@@ -60,7 +59,7 @@ def draw_tecan_func(
 
 @task
 @run_on_component()
-def dispense_tecan_func(
+def syringe_dispense(
         syringe_pump: str,
         volume: float,
         valve_port: Union[str, int],
@@ -106,7 +105,7 @@ def dispense_tecan_func(
 
 
 @flow
-def draw_and_dispense_tecan_func(
+def syringe_draw_and_dispense(
         syringe_pump: str,
         volume: float,
         draw_valve_port: Union[int, str],
@@ -132,14 +131,14 @@ def draw_and_dispense_tecan_func(
         - It only draws and dispenses a specific amount from one port to the other. But should not be used for
           specific volume transfer between vessels.
     """
-    draw_tecan_func(syringe_pump=syringe_pump, volume=volume, valve_port=draw_valve_port, speed=speed, **kwargs)
+    syringe_draw(syringe_pump=syringe_pump, volume=volume, valve_port=draw_valve_port, speed=speed, **kwargs)
     time.sleep(wait)
-    dispense_tecan_func(syringe_pump=syringe_pump, volume=volume, valve_port=dispense_valve_port, speed=speed, **kwargs)
+    syringe_dispense(syringe_pump=syringe_pump, volume=volume, valve_port=dispense_valve_port, speed=speed, **kwargs)
     time.sleep(wait)
 
 
 @flow
-def draw_and_dispense_tecan(
+def syringe_draw_and_dispense_volume(
         syringe_pump: str,
         volume: float,
         draw_valve_port: Union[int, str],
@@ -175,15 +174,71 @@ def draw_and_dispense_tecan(
     volume_per_iteration = volume / dispense_iterations
 
     for i in range(0, dispense_iterations):
-        draw_and_dispense_tecan_func.with_options(
+        syringe_draw_and_dispense.with_options(
             retries=retries,
         )(syringe_pump=syringe_pump, volume=volume_per_iteration, draw_valve_port=draw_valve_port,
           dispense_valve_port=dispense_valve_port, speed=speed, wait=wait, **kwargs)
     print(f'Volume {volume} mL succesfully dispensed from {draw_valve_port} to {dispense_valve_port}')
+
+def get_connected_port(
+    syringe_pump: str,
+    port: Union[str, int],
+    connection_info: dict
+) -> Tuple[Optional[Union[str, int]], Optional[Union[str, int]]]:
+    """
+    Returns a tuple (main_port, sub_port):
+      - If port is directly on syringe_pump, returns (port, None)
+      - If port is found on a valve connected to syringe_pump, returns (valve_name, port)
+      - If not found, returns (None, None)
+    """
+    if port in connection_info[syringe_pump]:
+        return port, None
+    for syringe_port in connection_info[syringe_pump]:
+        if 'valve' in syringe_port:
+            if port in connection_info[syringe_port]:
+                return syringe_port, port
+    return None, None
+
+def get_air_volume(
+        syringe_pump: str,
+        syringe_port: Union[str, int, None],
+        valve_port: Union[str, int, None],
+        connections_info: dict,
+        air_compensation_volume: Optional[float] = None
+) -> float:
+    """
+    Calculates the volume of air to be drawn from the syringe pump or valve port.
+    This function checks if the specified port is connected to a stock solution or not.
+    If it is not connected to a stock solution, it calculates the air volume based on the
+    volume of the syringe and the valve port, if applicable. If it is connected to a stock solution,
+    it returns 0, indicating no air volume needs to be drawn.
     
+    Args:
+        syringe_pump (str): The syringe pump identifier.
+        syringe_port (Union[str, int, None]): The port identifier for the syringe.
+        valve_port (Union[str, int, None]): The port identifier for the valve, if applicable.
+        connections_info (dict): Dictionary containing connection information for the syringe pump and ports.
+        air_compensation_volume (Optional[float]): Additional volume to account for air in the tubing.
+    
+    Returns:
+        float: The calculated air volume to be drawn, or 0 if the port is connected to a stock solution.
+    """
+    if valve_port:
+        air_volume = connections_info[syringe_pump][syringe_port]['volume']
+        if str(connections_info[syringe_port][valve_port]['usage'].lower()) != 'stock':  
+            # If it's not a stock solution, also need to drawn volume valve-compartment
+            air_volume += connections_info[syringe_port][valve_port]['volume']
+        air_volume += air_compensation_volume
+    else:
+        if str(connections_info[syringe_pump][syringe_port]['usage'].lower()) != 'stock':
+            air_volume = connections_info[syringe_pump][syringe_port]['volume']
+        else:
+            return 0.
+    return air_volume
+        
 
 @flow
-def draw_and_dispense_tecan_unlocked(
+def syringe_transfer_unlocked(
         syringe_pump: str,
         volume: float,
         draw_valve_port: Union[int, str],
@@ -251,85 +306,34 @@ def draw_and_dispense_tecan_unlocked(
     air_flush_factor = air_flush_factor if air_flush_factor is not None else config["air_flush_factor"]
     air_flush_speed = air_flush_speed if air_flush_speed is not None else config["air_flush_speed"]
     
-    #Look for where the draw_port is, if either in the pump or in any of the valves connected to it.
-    if not draw_valve_port in CONNECTIONS_INFO[syringe_pump]:
-        for port in CONNECTIONS_INFO[syringe_pump]:
-            if 'valve' in port:
-                if draw_valve_port in CONNECTIONS_INFO[port]: #Look into ports in that valve
-                    syringe_valve_input = port
-                    switch_port_valve(valve=syringe_valve_input, port=draw_valve_port, **kwargs)
-                    break
-    # Look for where the dispense_port is, if either in the pump or in any of the valves connected to it.
-    if not dispense_valve_port in CONNECTIONS_INFO[syringe_pump]:
-        for port in CONNECTIONS_INFO[syringe_pump]:
-            if 'valve' in port:
-                if draw_valve_port in CONNECTIONS_INFO[port]:  # Look into ports in that valve
-                    syringe_valve_output = port
-                    switch_port_valve(valve=syringe_valve_output, port=draw_valve_port, **kwargs)
-                    break
+    #Look for where the draw_port and dispense ports are, if either in the pump or in any of the valves connected to it, 
+    # and switch valves accordingly.
+    syringe_port_input, valve_port_input = get_connected_port(syringe_pump, draw_valve_port, CONNECTIONS_INFO)
+    syringe_port_output, valve_port_output = get_connected_port(syringe_pump, dispense_valve_port, CONNECTIONS_INFO)
+    if valve_port_input: switch_port_valve(valve=syringe_port_input, port=valve_port_input, **kwargs)
+    if valve_port_output: switch_port_valve(valve=syringe_port_output, port=valve_port_output, **kwargs)
+    
 
     # Draw and dispense the required air from the input tube if needed
-    input_air_volume = 0
-    if draw_valve_port in CONNECTIONS_INFO[syringe_pump]:
-        if str(CONNECTIONS_INFO[syringe_pump][draw_valve_port][
-            'usage']).lower() != 'stock':  # If is not a stock solution, tube is empty and air must be drawn before
-            input_air_volume = CONNECTIONS_INFO[syringe_pump][draw_valve_port]['volume']
-            input_air_volume = input_air_volume + air_compensation_volume
-            draw_and_dispense_tecan(syringe_pump=syringe_pump, volume=input_air_volume,
-                                    draw_valve_port=draw_valve_port, dispense_valve_port='waste',speed=air_flush_speed,
-                                    **kwargs)
-    else:
-        input_air_volume = CONNECTIONS_INFO[syringe_pump][syringe_valve_input][
-            'volume']  # Tube pump-valve will always be empty and air need to be drawn
-        if str(CONNECTIONS_INFO[syringe_valve_input][draw_valve_port][
-            'usage'].lower()) != 'stock':  # If it's not a stock solution, also need to drawn volume valve-compartment
-            input_air_volume += CONNECTIONS_INFO[syringe_valve_input][draw_valve_port]['volume']
-        input_air_volume = input_air_volume + air_compensation_volume
-
-        draw_and_dispense_tecan(syringe_pump=syringe_pump, volume=input_air_volume,
-                                draw_valve_port=syringe_valve_input, dispense_valve_port='waste',speed=air_flush_speed,
-                                **kwargs)
+    input_air_volume = get_air_volume(syringe_pump, syringe_port_input, valve_port_input, 
+                                      CONNECTIONS_INFO, air_compensation_volume)
+    if input_air_volume > 0:
+        syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=input_air_volume,
+                                         draw_valve_port=syringe_port_input, dispense_valve_port='waste', 
+                                         speed=air_flush_speed, **kwargs)
 
     # Draw/Dispense liquid + air
     air_flush_volume = air_flush_factor * CONFIG_COMPONENTS[syringe_pump]['syringe_volume'] * 1000
-    if (draw_valve_port in CONNECTIONS_INFO[syringe_pump]) and (dispense_valve_port in CONNECTIONS_INFO[syringe_pump]):
-        draw_and_dispense_tecan(syringe_pump=syringe_pump, volume=volume, draw_valve_port=draw_valve_port,
-                                dispense_valve_port=dispense_valve_port, wait=wait, speed=speed, **kwargs)
-        draw_and_dispense_tecan(syringe_pump=syringe_pump, volume=air_flush_volume, draw_valve_port='air',
-                                dispense_valve_port=dispense_valve_port, wait=wait, speed=air_flush_speed, **kwargs)
-        if input_air_volume > 0:  # If the drawing port does not come from a stock solution, we want to leave it empty
-            draw_and_dispense_tecan(syringe_pump=syringe_pump, volume=air_flush_volume, draw_valve_port='air',
-                                    dispense_valve_port=dispense_valve_port, wait=wait, speed=air_flush_speed, **kwargs)
-    else:
-        if draw_valve_port in CONNECTIONS_INFO[syringe_pump]:
-            draw_and_dispense_tecan(syringe_pump=syringe_pump, volume=volume, draw_valve_port=draw_valve_port,
-                                    dispense_valve_port=syringe_valve_output, wait=wait, speed=speed, **kwargs)
-            draw_and_dispense_tecan(syringe_pump=syringe_pump, volume=air_flush_volume, draw_valve_port='air',
-                                    dispense_valve_port=syringe_valve_output, wait=wait, speed=air_flush_speed, **kwargs)
-            if input_air_volume > 0:  # If the drawing port does not come from a stock solution, we want to leave it empty
-                draw_and_dispense_tecan(syringe_pump=syringe_pump, volume=input_air_volume, draw_valve_port='air',
-                                        dispense_valve_port=syringe_valve_output, wait=wait, speed=air_flush_speed, **kwargs)
-        elif dispense_valve_port in CONNECTIONS_INFO[syringe_pump]:
-            draw_and_dispense_tecan(syringe_pump=syringe_pump, volume=volume, draw_valve_port=syringe_valve_input,
-                                    dispense_valve_port=dispense_valve_port, wait=wait, speed=speed, **kwargs)
-            draw_and_dispense_tecan(syringe_pump=syringe_pump, volume=air_flush_volume, draw_valve_port='air',
-                                    dispense_valve_port=dispense_valve_port, wait=wait, speed=air_flush_speed, **kwargs)
-            if input_air_volume > 0:  # If the drawing port does not come from a stock solution, we want to leave it empty
-                draw_and_dispense_tecan(syringe_pump=syringe_pump, volume=air_flush_volume, draw_valve_port='air',
-                                        dispense_valve_port=dispense_valve_port, wait=wait, speed=air_flush_speed,
-                                        **kwargs)
-        else:
-            draw_and_dispense_tecan(syringe_pump=syringe_pump, volume=volume, draw_valve_port=syringe_valve_input,
-                                    dispense_valve_port=syringe_valve_output, wait=wait, speed=speed, **kwargs)
-            draw_and_dispense_tecan(syringe_pump=syringe_pump, volume=air_flush_volume, draw_valve_port='air',
-                                    dispense_valve_port=syringe_valve_output, wait=wait, speed=air_flush_speed, **kwargs)
-            if input_air_volume > 0:  # If the drawing port does not come from a stock solution, we want to leave it empty
-                draw_and_dispense_tecan(syringe_pump=syringe_pump, volume=input_air_volume, draw_valve_port='air',
-                                        dispense_valve_port=syringe_valve_output, wait=wait, speed=air_flush_speed,
-                                        **kwargs)
+    syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=volume, draw_valve_port=syringe_port_input,
+                                     dispense_valve_port=syringe_port_output, wait=wait, speed=speed, **kwargs)
+    syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=air_flush_volume, draw_valve_port='air',
+                                     dispense_valve_port=syringe_port_output, wait=wait, speed=air_flush_speed, **kwargs)
+    if input_air_volume > 0:  # If the drawing port does not come from a stock solution, we want to leave it empty
+        syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=air_flush_volume, draw_valve_port='air',
+                                         dispense_valve_port=syringe_port_input, wait=wait, speed=air_flush_speed, **kwargs)
 
 @flow
-def wash_syringe_unlocked(
+def syringe_wash_unlocked(
         syringe_pump: str,
         repeats: int,
         wash_vol: float,
@@ -362,8 +366,8 @@ def wash_syringe_unlocked(
 
     # Syringe washing
     for _ in range(repeats):
-        draw_and_dispense_tecan(syringe_pump=syringe_pump, volume=wash_vol, draw_valve_port='water',
-                                dispense_valve_port='waste', speed=speed, **kwargs)
+        syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=wash_vol, draw_valve_port='water',
+                                         dispense_valve_port='waste', speed=speed, **kwargs)
 
     # Valve washing
     if len(wash_valves)>0:
@@ -371,15 +375,15 @@ def wash_syringe_unlocked(
             switch_port_valve(valve=syringe_valve, port='waste', **kwargs)
     
             air_flush_volume = air_flush_factor * CONFIG_COMPONENTS[syringe_pump]['syringe_volume'] * 1000
-            draw_and_dispense_tecan(syringe_pump=syringe_pump, volume=wash_vol, draw_valve_port='water',
-                                    dispense_valve_port=syringe_valve, speed=speed, **kwargs)
-            draw_and_dispense_tecan(syringe_pump=syringe_pump, volume=air_flush_volume, draw_valve_port='air',
-                                    dispense_valve_port=syringe_valve, speed=air_flush_speed, **kwargs)
+            syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=wash_vol, draw_valve_port='water',
+                                             dispense_valve_port=syringe_valve, speed=speed, **kwargs)
+            syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=air_flush_volume, draw_valve_port='air',
+                                             dispense_valve_port=syringe_valve, speed=air_flush_speed, **kwargs)
 
 
 @flow
 @with_lock()
-def draw_and_dispense_and_wash_tecan(
+def syringe_transfer_and_wash(
         syringe_pump: str,
         volume: float,
         draw_valve_port: Union[int, str],
@@ -418,34 +422,26 @@ def draw_and_dispense_and_wash_tecan(
     else:
         wash_vol = config['syringe_wash_volume_RX'] if 'RX' in syringe_pump else config['syringe_wash_volume_AZ']
 
-    draw_and_dispense_tecan_unlocked(
-        syringe_pump, volume=volume, draw_valve_port=draw_valve_port,
+    syringe_transfer_unlocked(
+        syringe_pump=syringe_pump, volume=volume, draw_valve_port=draw_valve_port,
         dispense_valve_port=dispense_valve_port, speed=speed, wait=wait, **kwargs,
     )
     
     #Check if valves were used in draw or dispense
     wash_valves = []
-    if draw_valve_port not in CONNECTIONS_INFO[syringe_pump]:
-        for port in CONNECTIONS_INFO[syringe_pump]:
-            if 'valve' in port:
-                if draw_valve_port in CONNECTIONS_INFO[port]:
-                    wash_valves += [port]
-                    break
-    if dispense_valve_port not in CONNECTIONS_INFO[syringe_pump]:
-        for port in CONNECTIONS_INFO[syringe_pump]:
-            if 'valve' in port:
-                if dispense_valve_port in CONNECTIONS_INFO[port]:
-                    wash_valves += [port]
-                    break
+    syringe_port_input, valve_port_input = get_connected_port(syringe_pump, draw_valve_port, CONNECTIONS_INFO)
+    syringe_port_output, valve_port_output = get_connected_port(syringe_pump, dispense_valve_port, CONNECTIONS_INFO)
+    wash_valves = wash_valves + [valve_port_input,] if valve_port_input else wash_valves
+    wash_valves = wash_valves + [valve_port_output,] if valve_port_output else wash_valves
                     
-    wash_syringe_unlocked(syringe_pump=syringe_pump, repeats=wash_repeats, wash_vol=wash_vol, speed=wash_speed,
+    syringe_wash_unlocked(syringe_pump=syringe_pump, repeats=wash_repeats, wash_vol=wash_vol, speed=wash_speed,
                           wash_valves=wash_valves, **kwargs)
 
 
 
 @flow
 @with_lock()
-def wash_compartment(
+def compartment_wash(
         syringe_pump: str,
         compartment: str,
         repeats: Optional[int] = None,
@@ -478,23 +474,23 @@ def wash_compartment(
     else:  # If it's a vial, just take the full volume inside vial
         volume = config['vial_full_volume']
 
-    draw_and_dispense_tecan_unlocked(syringe_pump=syringe_pump, volume=volume, draw_valve_port=compartment,
-                                     dispense_valve_port='waste', speed=speed, **kwargs)
+    syringe_transfer_unlocked(syringe_pump=syringe_pump, volume=volume, draw_valve_port=compartment,
+                              dispense_valve_port='waste', speed=speed, **kwargs)
     client.set(compartment + '_volume', 0)
 
     for _ in range(repeats):
-        draw_and_dispense_tecan_unlocked(syringe_pump=syringe_pump, volume=wash_vol, draw_valve_port='water',
-                                         dispense_valve_port=compartment, speed=speed, **kwargs)
-        draw_and_dispense_tecan_unlocked(syringe_pump=syringe_pump, volume=wash_vol, draw_valve_port=compartment,
-                                         dispense_valve_port='waste', speed=speed, **kwargs)
+        syringe_transfer_unlocked(syringe_pump=syringe_pump, volume=wash_vol, draw_valve_port='water',
+                                  dispense_valve_port=compartment, speed=speed, **kwargs)
+        syringe_transfer_unlocked(syringe_pump=syringe_pump, volume=wash_vol, draw_valve_port=compartment,
+                                  dispense_valve_port='waste', speed=speed, **kwargs)
 
-    draw_and_dispense_tecan_unlocked(syringe_pump=syringe_pump, volume=wash_vol, draw_valve_port=compartment,
-                                     dispense_valve_port='waste',
-                                     speed=speed_last_empty, **kwargs)
+    syringe_transfer_unlocked(syringe_pump=syringe_pump, volume=wash_vol, draw_valve_port=compartment,
+                              dispense_valve_port='waste',
+                              speed=speed_last_empty, **kwargs)
 
 
 @flow
-def fill_compartment(
+def compartment_fill(
         source: str,
         destination: str,
         volume: float,
@@ -511,7 +507,7 @@ def fill_compartment(
         speed (float): The speed at which the liquid is transferred (in mL/s).
         **kwargs (Any): Additional keyword arguments to override the default configuration.
     """
-    draw_and_dispense_and_wash_tecan(
+    syringe_transfer_and_wash(
         syringe_pump='tecanRX01', volume=volume, draw_valve_port=source,
         dispense_valve_port=destination, speed=speed, **kwargs
     )

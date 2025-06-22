@@ -11,10 +11,10 @@ from .config.config import DEFAULT_CONFIG, CONNECTIONS_INFO,CONFIG_COMPONENTS
 
 from .utils.redis_client import client
 from .utils.utils import reset_cache, get_valid_precursors, get_valid_electrolytes
-from .hardware.valco_valve import switch_port_valve
+from .hardware.selection_valves import switch_port_valve
 from .hardware.potentiostat import run_method_parallel
-from .hardware.longer_pumps import run_pump, stop_pump
-from .hardware.tecan_pumps import draw_and_dispense_tecan, fill_compartment, wash_syringe_unlocked, wash_compartment, draw_and_dispense_and_wash_tecan
+from .hardware.peristaltic_pumps import run_pump, stop_pump
+from .hardware.syringe_pumps import syringe_draw_and_dispense_volume, compartment_fill, syringe_wash_unlocked, compartment_wash, syringe_transfer_and_wash
 
 from .utils.decorators import with_lock
 
@@ -49,8 +49,8 @@ def initialize_pump(
     for port_name, port_info in CONNECTIONS_INFO[syringe_pump].items():
         if port_info['usage'].lower() == 'stock':
             input_tube_volume = port_info['volume']
-            draw_and_dispense_tecan(syringe_pump=syringe_pump, volume=input_tube_volume, draw_valve_port=port_name, 
-                                    dispense_valve_port="waste", speed=speed, **kwargs)
+            syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=input_tube_volume, draw_valve_port=port_name,
+                                             dispense_valve_port="waste", speed=speed, **kwargs)
 
     # Filling of al stock solution tubes leading to the valve assigned to the pump
     wash_valve = False
@@ -58,12 +58,12 @@ def initialize_pump(
         if port_info['usage'].lower() == 'stock':
             input_tube_volume = port_info['volume']
             switch_port_valve(valve=syringe_valve, port=port_name, **kwargs)
-            draw_and_dispense_tecan(syringe_pump=syringe_pump, volume=input_tube_volume, draw_valve_port="valve", 
-                                    dispense_valve_port="waste", speed=speed, **kwargs)
+            syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=input_tube_volume, draw_valve_port="valve",
+                                             dispense_valve_port="waste", speed=speed, **kwargs)
             wash_valve = True
 
-    wash_syringe_unlocked(syringe_pump, repeats=config['syringe_wash_repeats'],wash_vol=wash_vol,
-                          speed=config['syringe_wash_speed'],wash_valve=wash_valve, **kwargs)
+    syringe_wash_unlocked(syringe_pump, repeats=config['syringe_wash_repeats'], wash_vol=wash_vol,
+                          speed=config['syringe_wash_speed'], wash_valve=wash_valve, **kwargs)
 
 @flow
 @with_lock()
@@ -92,15 +92,15 @@ def restore_pump(
     air_flush_volume = air_flush_factor * CONFIG_COMPONENTS[syringe_pump]['syringe_volume'] * 1000
     for port_name, port_info in CONNECTIONS_INFO[syringe_pump].items():
         if port_info['usage'].lower() == 'stock':
-            draw_and_dispense_tecan(syringe_pump=syringe_pump, volume=air_flush_volume, draw_valve_port='air', 
-                                    dispense_valve_port=port_name, speed=air_flush_speed, **kwargs)
+            syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=air_flush_volume, draw_valve_port='air',
+                                             dispense_valve_port=port_name, speed=air_flush_speed, **kwargs)
 
     # Emptying of al stock solution tubes leading to the valve assigned to the pump
     for port_name, port_info in CONNECTIONS_INFO[syringe_valve].items():
         if port_info['usage'].lower() == 'stock':
             switch_port_valve(valve=syringe_valve, port=port_name, **kwargs)
-            draw_and_dispense_tecan(syringe_pump=syringe_pump, volume=air_flush_volume, draw_valve_port="air", 
-                                    dispense_valve_port="valve", speed=air_flush_speed, **kwargs)
+            syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=air_flush_volume, draw_valve_port="air",
+                                             dispense_valve_port="valve", speed=air_flush_speed, **kwargs)
 
 
 @flow
@@ -170,20 +170,20 @@ def wash_flow_cell(
 
     for _ in range(repeats):
         for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
-            fill_compartment(source='water', destination=f'WEvial{cell_str}', volume=wash_comp_volume, speed=filling_speed, **kwargs)
-            fill_compartment(source='water', destination=f'CEvial{cell_str}', volume=wash_comp_volume, speed=filling_speed, **kwargs)
+            compartment_fill(source='water', destination=f'WEvial{cell_str}', volume=wash_comp_volume, speed=filling_speed, **kwargs)
+            compartment_fill(source='water', destination=f'CEvial{cell_str}', volume=wash_comp_volume, speed=filling_speed, **kwargs)
         run_pump(pump='longerWE01', speed=pump_speed, **kwargs)
         run_pump(pump='longerCE01', speed=pump_speed, **kwargs)
         for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
             client.set(name=f'flow_cell{cell_str}_content',value='water_contaminated')
         time.sleep(wash_time)
         for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
-            wash_compartment(syringe_pump='tecanRX01', compartment=f'WEvial{cell_str}', repeats=wash_comp_repeats, 
-                             wash_vol=wash_comp_volume, pump_speed=wash_comp_speed, 
+            compartment_wash(syringe_pump='tecanRX01', compartment=f'WEvial{cell_str}', repeats=wash_comp_repeats,
+                             wash_vol=wash_comp_volume, pump_speed=wash_comp_speed,
                              pump_speed_last_empty=wash_comp_speed_last_empty, **kwargs)
-            wash_compartment(syringe_pump='tecanRX01', compartment=f'CEvial{cell_str}', repeats=wash_comp_repeats, 
-                             wash_vol=wash_comp_volume, pump_speed=wash_comp_speed, 
-                             pump_speed_last_empty=wash_comp_speed_last_empty,**kwargs)
+            compartment_wash(syringe_pump='tecanRX01', compartment=f'CEvial{cell_str}', repeats=wash_comp_repeats,
+                             wash_vol=wash_comp_volume, pump_speed=wash_comp_speed,
+                             pump_speed_last_empty=wash_comp_speed_last_empty, **kwargs)
 
         empty_and_stop_pumps(wash_time=wash_time, pump_speed=pump_speed,**kwargs)
         
@@ -229,12 +229,12 @@ def prepare_elyte_mix(
     
     for vol, metal in zip(volumes,elyte_ports):
         if vol > 0:
-            draw_and_dispense_and_wash_tecan(syringe_pump=syringe_pump, volume=vol, draw_valve_port=metal,
-                                             dispense_valve_port=compartment, speed=filling_speed, **kwargs)
+            syringe_transfer_and_wash(syringe_pump=syringe_pump, volume=vol, draw_valve_port=metal,
+                                      dispense_valve_port=compartment, speed=filling_speed, **kwargs)
 
-    draw_and_dispense_and_wash_tecan(syringe_pump=syringe_pump, volume=volume * 0.5,
-                                     draw_valve_port=compartment, dispense_valve_port=compartment,
-                                     speed=mixing_speed, **kwargs)  # Mix the solution slightly
+    syringe_transfer_and_wash(syringe_pump=syringe_pump, volume=volume * 0.5,
+                              draw_valve_port=compartment, dispense_valve_port=compartment,
+                              speed=mixing_speed, **kwargs)  # Mix the solution slightly
     client.set(name=f'{compartment}_volume', value=volume)
 
 
@@ -283,7 +283,7 @@ def electrodeposition(
     for cell_str, ratios_set in zip([str(cell).zfill(2) for cell in range(1,parallel_cells+1)],metal_ratios):
         prepare_elyte_mix(syringe_pump='tecanRX01', elyte_ratios=ratios_set, elyte_ports=precursors_ports,
                           compartment=f'WEvial{cell_str}', volume=deposition_volume, **kwargs)
-        fill_compartment(source='anolyte', destination=f'CEvial{cell_str}', volume=anolyte_volume,
+        compartment_fill(source='anolyte', destination=f'CEvial{cell_str}', volume=anolyte_volume,
                          speed=filling_speed, **kwargs)
 
     run_pump(pump='longerWE01', speed=pump_speed, **kwargs)
@@ -344,7 +344,7 @@ def electrosynthesis(
     for cell_str, ratios_set in zip([str(cell).zfill(2) for cell in range(1,parallel_cells+1)],catholyte_ratios):
         prepare_elyte_mix(syringe_pump='tecanRX01',elyte_ratios=ratios_set,elyte_ports=catholytes_ports,
                           compartment=f'WEvial{cell_str}',volume=catholyte_volume, **kwargs)
-        fill_compartment(source='anolyte', destination=f'CEvial{cell_str}', volume=anolyte_volume,
+        compartment_fill(source='anolyte', destination=f'CEvial{cell_str}', volume=anolyte_volume,
                          speed=filling_speed, **kwargs)
         elyte_info = {name:value for name,value in zip(catholytes, ratios_set) if value > 0}
         client.set(name=f'flow_cell{cell_str}_content', value=json.dumps(elyte_info))
@@ -400,9 +400,9 @@ def electrodisolution(
     parallel_cells = config['parallel_cells']
 
     for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
-        fill_compartment(source='acid', destination=f'WEvial{cell_str}', volume=catholyte_volume,
+        compartment_fill(source='acid', destination=f'WEvial{cell_str}', volume=catholyte_volume,
                          speed=filling_speed, **kwargs)
-        fill_compartment(source='anolyte', destination=f'CEvial{cell_str}', volume=anolyte_volume,
+        compartment_fill(source='anolyte', destination=f'CEvial{cell_str}', volume=anolyte_volume,
                          speed=filling_speed, **kwargs)
         client.set(name=f'flow_cell{cell_str}_content', value='acid')
 

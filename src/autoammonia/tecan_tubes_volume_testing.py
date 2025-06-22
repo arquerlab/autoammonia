@@ -1,5 +1,5 @@
-from .hardware.tecan_pumps import draw_tecan_func, dispense_tecan_func, draw_and_dispense_tecan_func
-from .hardware.valco_valve import switch_port_valve
+from .hardware.syringe_pumps import syringe_draw, syringe_dispense, syringe_draw_and_dispense
+from .hardware.selection_valves import switch_port_valve
 from .config.config import CONNECTIONS_INFO, CONFIG_COMPONENTS
 
 if __name__ == '__main__':
@@ -46,20 +46,20 @@ if __name__ == '__main__':
                                     raise ValueError
                                 if vol>0:
                                     if port == 'valve':
-                                        draw_and_dispense_tecan_func(pump, vol, 'water', port, speed=0.005)
+                                        syringe_draw_and_dispense(pump, vol, 'water', port, speed=0.005)
                                         total_vol += vol
                                     else:
                                         draw_port = port if 'valve' not in component else 'valve'
-                                        draw_tecan_func(pump,vol,draw_port,speed=0.0075)
-                                        dispense_tecan_func(pump,vol,'air_waste',speed=1000)
+                                        syringe_draw(pump, vol, draw_port, speed=0.0075)
+                                        syringe_dispense(pump, vol, 'air_waste', speed=1000)
                                         total_vol += vol
                                 if vol<0:
                                     if port == 'valve':
-                                        draw_and_dispense_tecan_func(pump, abs(vol), port, 'air_waste', speed=1000)
+                                        syringe_draw_and_dispense(pump, abs(vol), port, 'air_waste', speed=1000)
                                         total_vol = 0
                                     else:
                                         dispense_port = port if 'valve' not in component else 'valve'
-                                        draw_and_dispense_tecan_func(pump,abs(vol),'air_waste',dispense_port,speed=1000)
+                                        syringe_draw_and_dispense(pump, abs(vol), 'air_waste', dispense_port, speed=1000)
                                         total_vol = 0
                             except ValueError:
                                 print('Value exceeds the syringe limit, try again.')

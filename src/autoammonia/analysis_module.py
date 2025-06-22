@@ -12,7 +12,7 @@ from prefect import task, flow, get_run_logger
 from .config.config import DEFAULT_CONFIG
 from .utils.decorators import with_lock
 from .utils.redis_client import client
-from .hardware.tecan_pumps import draw_and_dispense_and_wash_tecan, draw_and_dispense_tecan_unlocked, wash_compartment
+from .hardware.syringe_pumps import syringe_transfer_and_wash, syringe_transfer_unlocked, compartment_wash
 
 user_name = os.getenv("USER") or os.getenv("USERNAME")
 _uv_vis_path =  Path(
@@ -90,7 +90,7 @@ def take_aliquots(
             else:
                 logger.warning('Warning! There are no empty vials, waiting for one to get free')
                 time.sleep(5)
-        draw_and_dispense_and_wash_tecan(
+        syringe_transfer_and_wash(
             'tecanAz01', volume=volume, draw_valve_port=WEvial,
             dispense_valve_port=vial, speed=config['aliquot_filling_speed'], **kwargs
         )
@@ -126,15 +126,15 @@ def measure_vial(
 
     logger = get_run_logger()
 
-    draw_and_dispense_and_wash_tecan(
+    syringe_transfer_and_wash(
         'tecanAZ01', 0.5, draw_valve_port=vial, dispense_valve_port='uv-vis',
         speed=filling_speed, **kwargs
     )
     #--------TODO: Add here the code to perform the UV-VIS
     logger.info(f'Sample {vial} sent to UV-VIS')
 
-    wash_compartment(syringe_pump='tecanAZ01', compartment=vial, repeats=wash_vial_repeats,
-                     wash_vol=wash_vial_volume,speed=wash_vial_speed, speed_last_empty=wash_vial_last_empty,
+    compartment_wash(syringe_pump='tecanAZ01', compartment=vial, repeats=wash_vial_repeats,
+                     wash_vol=wash_vial_volume, speed=wash_vial_speed, speed_last_empty=wash_vial_last_empty,
                      **kwargs)
 
     # Add vial back to empty vials list
@@ -174,15 +174,15 @@ def fill_vial_detection_mix(
     aliquot_filling_speed = aliquot_filling_speed if aliquot_filling_speed is not None else config[
         'aliquot_filling_speed']
 
-    draw_and_dispense_tecan_unlocked(
+    syringe_transfer_unlocked(
         'tecanAZ01', volume=0.2 - aliquot_volume, draw_valve_port='water',
         dispense_valve_port=vial, speed=aliquot_filling_speed, **kwargs)
-    draw_and_dispense_and_wash_tecan('tecanAZ01', d1_volume, 'd1', vial,
-                                     speed=aliquot_filling_speed, **kwargs)
-    draw_and_dispense_and_wash_tecan('tecanAZ01', d2_volume, 'd2', vial,
-                                     speed=aliquot_filling_speed, **kwargs)
-    draw_and_dispense_and_wash_tecan('tecanAZ01', d3_volume, 'd3', vial,
-                                     speed=aliquot_filling_speed, **kwargs)
+    syringe_transfer_and_wash('tecanAZ01', d1_volume, 'd1', vial,
+                              speed=aliquot_filling_speed, **kwargs)
+    syringe_transfer_and_wash('tecanAZ01', d2_volume, 'd2', vial,
+                              speed=aliquot_filling_speed, **kwargs)
+    syringe_transfer_and_wash('tecanAZ01', d3_volume, 'd3', vial,
+                              speed=aliquot_filling_speed, **kwargs)
 
 def analysis_module_deploy():
     track_reaction.from_source(

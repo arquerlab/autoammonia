@@ -26,6 +26,9 @@ def lamp_switch(lamp: str, on: bool=True) -> None:
         lamp.stop()
         
 @run_on_component_with_lock
+
+        
+@run_on_component_with_lock
 @flow
 def acquire_spectrum(
         spectrometer: str,
