@@ -12,7 +12,6 @@ from .safety_module_peri import track_safety, safety_module_deploy
 flows_to_deploy = [
         ("analysis_module_flow", "analysis_module_pool",),
         ("reaction_module_flow", "reaction_module_pool",),
-        ("safety_module_flow", "safety_module_pool",),
     ]
 
 def main():
@@ -26,7 +25,7 @@ def main():
                 await client.create_work_pool(
                     work_pool=WorkPoolCreate(
                         name=pool_name,
-                        type="docker",
+                        type="process",
                         base_job_template={},
                     )
                 )
@@ -43,18 +42,15 @@ def main():
         safety_module_deploy()
 
     def print_computer_instructions(main_hostname):
-        print("\n🖥️  If running all from a single computer:")
+        print("\n🖥️  For setting the workers responsible of executing the workflows:")
         print("Run the following command:\n")
         print(f"   export PREFECT_API_URL=http://{main_hostname}:4200/api")
-        print("   prefect agent start -p safety-pool -p reaction-pool -p analysis-pool\n")
+        print("   prefect worker start -p reaction_module_pool\n"
+              "And then in another terminal/computer:\n"
+              "   export PREFECT_API_URL=http://{main_hostname}:4200/api"
+              "   prefect worker start-p analysis_module_pool\n")
 
-        print("🖥️  If running from different computers:")
-        print("On MAIN computer:\n")
-        print(f"   export PREFECT_API_URL=http://{main_hostname}:4200/api")
-        print("   prefect agent start -p safety-pool -p reaction-pool\n")
-        print("On SIDE computer:\n")
-        print(f"   export PREFECT_API_URL=http://{main_hostname}:4200/api")
-        print("   prefect agent start -p analysis-pool\n")
+
             
     # Run all steps
     asyncio.run(create_all_work_pools())

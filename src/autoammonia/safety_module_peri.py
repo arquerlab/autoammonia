@@ -88,5 +88,5 @@ def safety_module_deploy():
         entrypoint=f"safety_module_peri.py:track_safety",
     ).deploy(
         name="safety_module_flow",
-        work_pool_name="safety_module_pool",
+        work_pool_name="reaction_module_pool",
     )
