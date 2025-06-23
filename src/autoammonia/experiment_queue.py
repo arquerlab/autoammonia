@@ -30,6 +30,7 @@ def convert_and_validate_input(input_str: str, is_compositions: bool = True) -> 
             - At least one value in a sublist is not a number (int or float).
             - All values in a sublist are zero (at least one non-zero value is required).
     """
+    print(input_str)
     try:
         input_data = ast.literal_eval(input_str)
     except (ValueError, SyntaxError) as e:
