@@ -7,9 +7,9 @@ if simulation:
     from ..hardware.mock.pyBEEP_mock import PotentiostatDeviceMock as PotentiostatDevice
     from ..hardware.mock.pyBEEP_mock import PotentiostatControllerMock as PotentiostatController
     from ..hardware.mock.hamamatsu_mock import HamamatsuMiniSpectrometerMock as HamamatsuMiniSpectrometer
-    from ..hardware.mock.uv_vis_lamp_mock import ArduinoMock as Arduino
-    from ..hardware.mock.uv_vis_lamp_mock import MotorSwitchLampMock as MotorSwitchLamp
-    from ..hardware.mock.uv_vis_lamp_mock import PulsedLampMock as PulsedLamp
+    from ..hardware.mock.lamp_mock import ArduinoMock as Arduino
+    from ..hardware.mock.lamp_mock import MotorSwitchLampMock as MotorSwitchLamp
+    from ..hardware.mock.lamp_mock import PulsedLampMock as PulsedLamp
 else:
     from matterlab_pumps import TecanXCPump, LongerPeristalticPump
     from matterlab_valves import ValcoSelectionValve
