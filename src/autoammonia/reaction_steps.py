@@ -241,7 +241,7 @@ def prepare_elyte_mix(
 @flow
 def electrodeposition(
         data_path: Path,
-        experiment_ids: List[str],
+        experiment_ids: List[int],
         metal_ratios_list: List[List[Tuple[str, float]]],
         current: Optional[float] = None,
         time_rx: Optional[float] = None,
@@ -256,7 +256,7 @@ def electrodeposition(
 
     Args:
         data_path (str): Folder where the data will be stored.
-        experiment_ids (List[str]): Unique identifier for the experiment.
+        experiment_ids (List[int]): Unique identifier for the experiment.
         metal_ratios_list (List[List[Tuple[str, float]]]): A list of lists, where each inner list contains the metal ratios for the
             electrodeposition process corresponding to different flow cells in the setup. Each item in the list
             represents the metal ratios (e.g., [Cu, Co, Ni]) for a specific flow cell.

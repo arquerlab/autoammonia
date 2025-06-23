@@ -89,10 +89,6 @@ def generate_experiments(compositions: List[List[Tuple[str, float]]],
                 'composition': composition_set,
                 'electrolyte': electrolyte_set
             })
-    print("electrolytes in gneerate_experiments:\n",
-            electrolytes,"\n")
-    print("compositions in gneerate_experiments:\n",
-          compositions,"\n")
     return experiments
 
 @with_lock(acquisition_timeout=5,function_timeout=5)
