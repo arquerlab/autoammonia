@@ -12,6 +12,7 @@ from .safety_module_peri import track_safety, safety_module_deploy
 flows_to_deploy = [
         ("analysis_module_flow", "analysis_module_pool",),
         ("reaction_module_flow", "reaction_module_pool",),
+        ("safety_module_flow", "reaction_module_pool",),
     ]
 
 def main():
