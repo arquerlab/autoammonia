@@ -19,7 +19,7 @@ def convert_and_validate_input(input_str: str, is_compositions: bool = True) -> 
         is_compositions (bool): Flag indicating whether the input is for compositions (True) or electrolytes (False).
 
     Returns:
-        List[List[Tuple[str,float]}]: A nested list of tuples where each tuple contains a valid compound or electrolyte
+        List[List[Tuple[str,float]]]: A nested list of tuples where each tuple contains a valid compound or electrolyte
                                         name and its corresponding value.
 
     Raises:
@@ -60,7 +60,7 @@ def convert_and_validate_input(input_str: str, is_compositions: bool = True) -> 
             raise ValueError("Invalid input: all values must be integers or floats")
         if all(ratio == 0 for ratio in new_list):
             raise ValueError("Invalid input: at least one value must be higher than 0")
-        tuple_list = [(name, float(value)) for name, value in zip(_valid_list, new_list)]
+        tuple_list = [(name, float(value)) for name, port, value in zip(_valid_list, new_list)]
         output_data.append(tuple_list)
 
     return output_data
@@ -89,7 +89,10 @@ def generate_experiments(compositions: List[List[Tuple[str, float]]],
                 'composition': composition_set,
                 'electrolyte': electrolyte_set
             })
-    print(experiments)
+    print("electrolytes in gneerate_experiments:\n",
+            electrolytes,"\n")
+    print("compositions in gneerate_experiments:\n",
+          compositions,"\n")
     return experiments
 
 @with_lock(acquisition_timeout=5,function_timeout=5)
@@ -141,7 +144,7 @@ def request_experiments() -> None:
             try:
                 _valid_electrolytes_names = ', '.join([electrolyte[0] for electrolyte in _valid_electrolytes])
                 electrolytes = convert_and_validate_input(input('Type electrolyte desired. Electrolytes available: \n'
-                                                           f'{_valid_electrolytes} \n'), is_compositions=False)
+                                                           f'{_valid_electrolytes_names} \n'), is_compositions=False)
                 print('Input sent: ',electrolytes)
                 break
             except ValueError as ve:

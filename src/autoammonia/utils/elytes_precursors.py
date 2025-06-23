@@ -64,5 +64,3 @@ def reset_cache() -> None:
     global _cache
     _cache['electrolytes'] = []
     _cache['precursors'] = []
-    _cache['electrolytes_ports'] = []
-    _cache['precursors_ports'] = []
