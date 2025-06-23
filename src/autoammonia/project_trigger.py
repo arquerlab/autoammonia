@@ -1,6 +1,6 @@
 import asyncio
 from prefect.client.orchestration import get_client
-from prefect.client.schemas.filters import DeploymentFilter
+from prefect.client.schemas.filters import DeploymentFilter, DeploymentFilterId
 
 from .project_deploy import flows_to_deploy
 
@@ -14,8 +14,10 @@ async def trigger_workflow(flow_name, parameters):
             return
 
         # Check if there is an active run
-        print(deployment)
-        flow_runs = await client.read_flow_runs(deployment_filter=DeploymentFilter(id=deployment.id))
+        deployment_filter = DeploymentFilter(
+            id=DeploymentFilterId(any_=[deployment.id])
+        )
+        flow_runs = await client.read_flow_runs(deployment_filter=deployment_filter)
         running = any(fr.state.is_running() for fr in flow_runs)
 
         if running:
