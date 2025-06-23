@@ -28,7 +28,7 @@ class Experiment(Base):
     id = Column(Integer, primary_key=True)
     date = Column(DateTime, default=datetime.datetime.now)
     notes = Column(Text)
-    metadata = Column(JSON)
+    exp_metadata = Column(JSON)
 
     catalyst_compositions = relationship("CatalystComposition", back_populates="experiment")
     electrolyte_compositions = relationship("ElectrolyteComposition", back_populates="experiment")

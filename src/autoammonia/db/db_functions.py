@@ -58,7 +58,7 @@ def add_experiment_to_db(
     session = Session()
     try:
         # Create and add a new Experiment record
-        experiment = Experiment(notes=notes, metadata=metadata or {})
+        experiment = Experiment(notes=notes, exp_metadata=metadata or {})
         session.add(experiment)
         session.flush()  # Ensure experiment.id is available
 
