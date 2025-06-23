@@ -17,7 +17,7 @@ async def trigger_workflow(flow_name, parameters):
             print(f"❌ Workflow '{flow_name}' not found!")
 
 async def gather_workflows():
-    tasks = [trigger_workflow(f"{func.replace('_', '-')}/{flow}", {}) for func, flow, pool in flows_to_deploy]
+    tasks = [trigger_workflow(f"{func.replace('_', '-')}/{flow}", {"kwargs":{}}) for func, flow, pool in flows_to_deploy]
     await asyncio.gather(*tasks)
     
 def main():
