@@ -8,6 +8,7 @@ from prefect import flow, get_run_logger
 import pandas as pd
 
 from .config.config import DEFAULT_CONFIG
+from .db.db_functions import add_results_to_db
 from .hardware.uv_vis_module import acquire_spectrum
 from .utils.decorators import with_lock
 from .utils.redis_client import client
@@ -133,8 +134,17 @@ def measure_vial(
     df.to_csv(filepath, index=False)
     hostname = socket.gethostname()
     if hostname != client.get('main_hostname'):
-        transfer_file_scp(local_file=filepath, remote_folder=client.get('data_path_uvvis'),
+        filepath_db = transfer_file_scp(local_file=filepath, remote_folder=client.get('data_path_uvvis'),
                           username='poten', hostname=client.get('main_hostname'))
+    else:
+        filepath_db = filepath
+    
+    add_results_to_db(
+        exp_id=exp_id, result_type='UVVIS', result_role='raw_data', file_path=str(filepath_db),
+        metadata={'original_path': filepath if hostname != client.get('main_hostname') else str(filepath_db),
+                  'vial': vial, 'time_rxn': time_rxn, 'integration_time': uv_vis_integration_time}
+    )
+    
     # UV-VIS washing of flow cell
     compartment_fill(
         syringe_pump='tecanAZ01', volume=uv_vis_wash_volume, draw_valve_port=vial, dispense_valve_port='uv-vis',

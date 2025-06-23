@@ -61,6 +61,7 @@ def transfer_file_scp(
         sftp.close()
 
         print(f"File {local_file} successfully transferred to {remote_user}@{remote_host}:{remote_path}")
+        return remote_path
     except Exception as e:
         print(f"Error during SCP transfer: {e}")
         raise

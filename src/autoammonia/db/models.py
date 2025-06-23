@@ -183,7 +183,7 @@ class Result(Base):
     result_role = Column(String(50))  # e.g., 'reaction', 'post-reaction', 'analysis'
     file_path = Column(Text, nullable=False)
     description = Column(Text)
-    metadata = Column(JSON)
+    results_metadata = Column(JSON)
     created_at = Column(DateTime, default=datetime.datetime.now)
 
     experiment = relationship("Experiment", back_populates="results")

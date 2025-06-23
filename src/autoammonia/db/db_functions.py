@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import SQLAlchemyError
 
 from .db import Session
-from .models import Precursor, Electrolyte, Experiment, CatalystComposition, ElectrolyteComposition
+from .models import Precursor, Electrolyte, Experiment, CatalystComposition, ElectrolyteComposition, Result
 from ..utils.elytes_precursors import get_valid_electrolytes, get_valid_precursors
 
 @task
@@ -91,5 +91,47 @@ def add_experiment_to_db(
     except (SQLAlchemyError, ValueError) as e:
         session.rollback()
         print(f"Error adding experiment: {e}")
+    finally:
+        session.close()
+        
+@task
+def add_results_to_db(
+        experiment_id: int,
+        result_type: str,
+        result_role: str,
+        file_path: str,
+        description: str | None = None,
+        metadata: dict | None = None,
+) -> None:
+    """
+    Adds a result file to the database associated with a specific experiment.
+
+    Args:
+        experiment_id (int): The ID of the experiment to which the result belongs.
+        result_type (str): The type of the result (e.g., 'spectrum', 'image').
+        result_role (str): The role of the result (e.g., 'raw', 'processed').
+        file_path (str): The path to the result file.
+        description (str | None, optional): A description of the result. Defaults to None.
+        metadata (dict | None, optional): Additional metadata for the result. Defaults to None.
+
+    Returns:
+        None
+    """
+    session = Session()
+    try:
+        # Create and add a new Result record
+        result = Result(
+            experiment_id=experiment_id,
+            type=result_type,
+            role=result_role,
+            file_path=file_path,
+            description=description,
+            metadata=metadata or {}
+        )
+        session.add(result)
+        session.commit()
+    except SQLAlchemyError as e:
+        session.rollback()
+        print(f"Error adding result: {e}")
     finally:
         session.close()
