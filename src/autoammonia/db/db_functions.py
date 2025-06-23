@@ -3,7 +3,6 @@ from decimal import Decimal
 from prefect import task, get_run_logger
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import SQLAlchemyError
-from win32comext.adsi.demos.scp import logger
 
 from .db import Session
 from .models import Precursor, Electrolyte, Experiment, CatalystComposition, ElectrolyteComposition, Result
