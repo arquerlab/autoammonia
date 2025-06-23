@@ -13,7 +13,7 @@ async def trigger_workflow(flow_name, parameters):
             return
 
         # Check if there is an active run
-        flow_runs = await client.read_flow_runs(deployment_id=deployment.id, limit=10)
+        flow_runs = await client.read_flow_runs(flow_run_filter=flow_name)
         running = any(fr.state.is_running() for fr in flow_runs)
 
         if running:
