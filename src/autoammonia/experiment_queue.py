@@ -1,6 +1,6 @@
 import json
 import ast
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 from .utils.redis_client import client
 from .utils.decorators import with_lock
@@ -9,7 +9,7 @@ from .utils.elytes_precursors import reset_cache, get_valid_precursors, get_vali
 _valid_compounds: List[str] = []
 _valid_electrolytes: List[str] = []
 
-def convert_and_validate_input(input_str: str, is_compositions: bool = True) -> List[List[float]]:
+def convert_and_validate_input(input_str: str, is_compositions: bool = True) -> List[List[Tuple[str, float]]]:
     """
     Converts and validates a user input string into a controlled list of (name, value) tuples for compositions or electrolytes.
 
@@ -56,7 +56,6 @@ def convert_and_validate_input(input_str: str, is_compositions: bool = True) -> 
             new_list = item
         if len(new_list) != len(_valid_list):
             raise ValueError(f"Input list must contain exactly {len(_valid_list)} values.")
-        all_0 = True
         if not all(isinstance(ratio, (int, float)) for ratio in new_list):
             raise ValueError("Invalid input: all values must be integers or floats")
         if all(ratio == 0 for ratio in new_list):
@@ -67,8 +66,8 @@ def convert_and_validate_input(input_str: str, is_compositions: bool = True) -> 
     return output_data
 
 
-def generate_experiments(compositions: List[List[float]],
-                         electrolytes: List[List[float]]) -> List[Dict[str, List[float]]]:
+def generate_experiments(compositions: List[List[Tuple[str, float]]],
+                         electrolytes: List[List[Tuple[str, float]]]) -> List[Dict[str, List[Tuple[str,float]]]]:
     """
     Generates all possible combinations of experiments between precursors compositions and electrolytes.
 
@@ -90,6 +89,7 @@ def generate_experiments(compositions: List[List[float]],
                 'composition': composition_set,
                 'electrolyte': electrolyte_set
             })
+    print(experiments)
     return experiments
 
 @with_lock(acquisition_timeout=5,function_timeout=5)
