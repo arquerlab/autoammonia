@@ -10,9 +10,9 @@ from .reaction_module import process_experiment_queue, reaction_module_deploy
 from .safety_module_peri import track_safety, safety_module_deploy
 
 flows_to_deploy = [
-        ("analysis_module_flow", "analysis_module_pool",),
-        ("reaction_module_flow", "reaction_module_pool",),
-        ("safety_module_flow", "reaction_module_pool",),
+        ("track_reaction", "analysis_module_flow", "analysis_module_pool",),
+        ("process_experiment_queue", "reaction_module_flow", "reaction_module_pool",),
+        ("track_safety", "safety_module_flow", "reaction_module_pool",),
     ]
 
 def main():
@@ -34,7 +34,7 @@ def main():
             else:
                 print(f"ℹ️ Work pool already exists: {pool_name}")
     async def create_all_work_pools():
-        for _, pool in flows_to_deploy:
+        for _, _, pool in flows_to_deploy:
             await create_work_pool_if_not_exists(pool)
 
     def deploy_flows():
