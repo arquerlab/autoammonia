@@ -1,7 +1,7 @@
 import asyncio
 from prefect.client.orchestration import get_client
 
-from project_deploy import flows_to_deploy
+from .project_deploy import flows_to_deploy
 
 async def trigger_workflow(flow_name, parameters):
     async with get_client() as client:
