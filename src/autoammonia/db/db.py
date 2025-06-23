@@ -4,5 +4,5 @@ This module provides a globally available, thread-safe SQLAlchemy session factor
 """
 from .session import get_scoped_session
 
-DB_URL = "postgresql://user:dummy@dummy/autoammoni_db"  # Or read from config
+DB_URL = "postgresql://dummy:dummy@127.0.0.1:5432/autoammonia_db"
 Session = get_scoped_session(DB_URL)
