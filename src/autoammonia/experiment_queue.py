@@ -30,7 +30,6 @@ def convert_and_validate_input(input_str: str, is_compositions: bool = True) -> 
             - At least one value in a sublist is not a number (int or float).
             - All values in a sublist are zero (at least one non-zero value is required).
     """
-    print(input_str)
     try:
         input_data = ast.literal_eval(input_str)
     except (ValueError, SyntaxError) as e:
@@ -48,7 +47,7 @@ def convert_and_validate_input(input_str: str, is_compositions: bool = True) -> 
             input_data = [input_data]
     else:
         raise ValueError("Invalid input format")
-    
+
     output_data = []
     for item in input_data:
         if isinstance(item, dict):
@@ -61,7 +60,7 @@ def convert_and_validate_input(input_str: str, is_compositions: bool = True) -> 
             raise ValueError("Invalid input: all values must be integers or floats")
         if all(ratio == 0 for ratio in new_list):
             raise ValueError("Invalid input: at least one value must be higher than 0")
-        tuple_list = [(name, float(value)) for name, port, value in zip(_valid_list, new_list)]
+        tuple_list = [(name, float(value)) for (name, port), value in zip(_valid_list, new_list)]
         output_data.append(tuple_list)
 
     return output_data
