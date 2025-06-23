@@ -44,8 +44,8 @@ def track_reaction(
 
     config = {**DEFAULT_CONFIG, **kwargs}
     
-    num_aliquots = num_aliquots if num_aliquots is not None else config['aliquote_number']
-    volume = volume if volume is not None else config['aliquote_volume']
+    num_aliquots = num_aliquots if num_aliquots is not None else config['aliquot_number']
+    volume = volume if volume is not None else config['aliquot_volume']
 
     while True:
         reaction_status = client.get('reaction_status')
