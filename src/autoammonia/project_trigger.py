@@ -18,7 +18,7 @@ async def trigger_workflow(flow_name, parameters):
 
 async def gather_workflows():
     
-    tasks = [trigger_workflow(workflow["flow_name"], workflow["parameters"]) for workflow in flows_to_deploy]
+    tasks = [trigger_workflow(name, pool) for name, pool in flows_to_deploy]
     await asyncio.gather(*tasks)
     
 def main():
