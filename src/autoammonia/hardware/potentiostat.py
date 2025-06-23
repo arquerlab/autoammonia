@@ -1,5 +1,5 @@
 import asyncio
-from typing import Optional, Any, Dict
+from typing import Optional, Any, Dict, List
 from prefect import task, flow
 
 from ..utils.decorators import run_on_component_with_lock
@@ -51,7 +51,7 @@ async def run_echem_method(
 @flow
 async def run_method_parallel(parallel_cells: int,
                       folder: str,
-                      experiment_id: str,
+                      experiment_ids: List[str],
                       mode: str,
                       params: Dict[str, Any],
                       tia_gain: int,
@@ -67,7 +67,7 @@ async def run_method_parallel(parallel_cells: int,
     Args:
         parallel_cells (int): Number of cells/potentiostats to run in parallel.
         folder (str): Directory where all data files will be stored.
-        experiment_id (str): Unique identifier for the experiment (used in filenames).
+        experiment_ids (List[str]): List of unique identifier for the experiment (used in filenames).
         mode (str): Measurement mode key (e.g., 'CA', 'CV', etc.).
         params (Dict[str, Any]): Dictionary of measurement parameters to use for each cell.
         tia_gain (int): Gain setting for the transimpedance amplifier.
@@ -75,8 +75,8 @@ async def run_method_parallel(parallel_cells: int,
         **kwargs: Additional configuration options.
     """
     potentiostats = ["potentiostat" + str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]
-    filenames = [experiment_id + f'_cell{str(cell).zfill(2)}.csv' for cell in
-                 range(1, parallel_cells + 1)]
+    filenames = [f'{exp_id}_cell{str(cell).zfill(2)}_method_{mode}.csv' for cell, exp_id in
+                 zip(range(1, parallel_cells + 1), experiment_ids)]
     tasks = [asyncio.create_task(run_echem_method(potentiostat=potentiostats[i],mode=mode, method_params=params,
                                         tia_gain=tia_gain, reducing_factor=reducing_factor, 
                                                   filename=filenames[i], folder=folder, **kwargs))

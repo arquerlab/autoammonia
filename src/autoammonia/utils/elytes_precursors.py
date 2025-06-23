@@ -4,45 +4,38 @@ from ..config.config import CONNECTIONS_INFO
 _cache = {
     'electrolytes': [],
     'precursors': [],
-    'electrolytes_ports': [],
-    'precursors_ports': [],
 }
 
-def get_valid_electrolytes() -> Tuple[List[str], List[str]]:
+def get_valid_electrolytes() -> List[Tuple[str, str]]:
     """
     Retrieves the list of valid electrolytes from the CONNECTIONS_INFO dictionary.
     The list is cached after the first retrieval for improved performance.
 
     Returns:
-        Tuple[List[str], List[str]]: A tuple containing:
+        List[Tuple[str, str]]: A tuple containing:
             - A list of valid electrolytes. If no electrolytes are found, it includes 'water' by default.
             - A list of ports associated with the valid electrolytes.
     """
     global _cache
     if not _cache['electrolytes']:
-        _valid_electrolytes = ['water']
-        _elytes_ports = ['water']
+        _valid_electrolytes = [('water', 'water')]
         for element in CONNECTIONS_INFO:
             if 'RX' in element.upper():
                 for port_name, port_dict in CONNECTIONS_INFO[element].items():
                     if 'lyte' in port_name.lower() and 'composition' in port_dict.keys():
                         electrolyte = port_dict['composition']
-                        _valid_electrolytes.append(electrolyte)
-                        _elytes_ports.append(port_name)
+                        _valid_electrolytes.append(tuple((electrolyte, port_name)))
         _cache['electrolytes'] = _valid_electrolytes
-        _cache['electrolytes_ports'] = _elytes_ports
-    return _cache['electrolytes'], _cache['electrolytes_ports']
+    return _cache['electrolytes']
 
 
-def get_valid_precursors() -> Tuple[List[str], List[str]]:
+def get_valid_precursors() -> List[Tuple[str, str]]:
     """
     Retrieves the list of valid precursors from the CONNECTIONS_INFO dictionary.
     The list is cached after the first retrieval for improved performance.
 
     Returns:
-        Tuple[List[str], List[str]]: A tuple containing:
-            - A list of valid precursors.
-            - A list of ports associated with the valid precursors.
+        List[Tuple[str, str]]: A list of tuple containing (precursor, port_name)
     """
     global _cache
     if not _cache['precursors']:
@@ -53,11 +46,9 @@ def get_valid_precursors() -> Tuple[List[str], List[str]]:
                 for port_name, port_dict in CONNECTIONS_INFO[element].items():
                     if 'composition' in port_dict.keys() and 'lyte' not in port_name:
                         compound = port_dict['composition']
-                        _valid_precursors.append(compound)
-                        _precursors_ports.append(port_name)
+                        _valid_precursors.append(tuple((compound, port_name)))
         _cache['precursors'] = _valid_precursors
-        _cache['precursors_ports'] = _precursors_ports
-    return _cache['precursors'], _cache['precursors_ports']
+    return _cache['precursors']
 
 
 def reset_cache() -> None:

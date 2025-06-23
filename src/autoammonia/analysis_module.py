@@ -1,23 +1,20 @@
-import os
 import json
-import pickle
 import socket
 from pathlib import Path
 import time
 from typing import Optional, Any
 from datetime import datetime, timedelta
-
-from prefect import task, flow, get_run_logger
+from prefect import flow, get_run_logger
+import pandas as pd
 
 from .config.config import DEFAULT_CONFIG
+from .hardware.uv_vis_module import acquire_spectrum
 from .utils.decorators import with_lock
 from .utils.redis_client import client
-from .hardware.syringe_pumps import syringe_transfer_and_wash, syringe_transfer_unlocked, compartment_wash
+from .hardware.syringe_pumps import syringe_transfer_and_wash, syringe_transfer_unlocked, compartment_wash, compartment_fill
+from .utils.files import get_default_folder, transfer_file_scp
 
-user_name = os.getenv("USER") or os.getenv("USERNAME")
-_uv_vis_path =  Path(
-    rf"C:\Users\{user_name}\Aspuru-Guzik Lab Dropbox\Lab Manager Aspuru-Guzik\PythonScript\HPLCMS_characterization\sample_to_measure"
-)
+
 #main_hostname = client.get('main_hostname')
 
 
@@ -45,7 +42,7 @@ def track_reaction(
     """
 
     config = {**DEFAULT_CONFIG, **kwargs}
-
+    
     num_aliquots = num_aliquots if num_aliquots is not None else config['aliquote_number']
     volume = volume if volume is not None else config['aliquote_volume']
 
@@ -77,12 +74,14 @@ def take_aliquots(
         **kwargs,
 )->None:
     config = {**DEFAULT_CONFIG, **kwargs}
+    
     parallel_cells = config['parallel_cells']
     
     logger = get_run_logger()
     
     for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells)]:
         WEvial = f'WEvial{cell_str}'
+        exp_id = client.get(f'WEvial{cell_str}_EXP_ID')
         while True:
             vial = client.lpop('empty_vials')
             if vial:
@@ -91,30 +90,26 @@ def take_aliquots(
                 logger.warning('Warning! There are no empty vials, waiting for one to get free')
                 time.sleep(5)
         syringe_transfer_and_wash(
-            'tecanAz01', volume=volume, draw_valve_port=WEvial,
+            'tecanAZ01', volume=volume, draw_valve_port=WEvial,
             dispense_valve_port=vial, speed=config['aliquot_filling_speed'], **kwargs
         )
         aliquot_time = time.time()
         fill_vial_detection_mix(vial, aliquot_filling_speed=config['aliquot_filling_speed']
                                 , **kwargs)
         aliquot_time = (aliquot_time + time.time()) / 2
-        catholyte = client.get(f'flowcell{cell_str}_reaction_catholyte')
-        metal_ratios = client.get(f'flowcell{cell_str}_reaction_metal_ratios')
         measure_time = datetime.now() + timedelta(minutes=30)
         time_rxn = aliquot_time - initial_reaction_time
         measure_vial.submit(task_name=f'Measurment of {vial} from {WEvial}',
                             run_at=measure_time
-                            )(vial=vial, time_rxn=time_rxn, catholyte=catholyte,
-                              metal_ratios=metal_ratios, **kwargs)
+                            )(vial=vial, time_rxn=time_rxn, exp_id=exp_id, **kwargs)
         
 
 @flow
 def measure_vial(
         vial: str,
         time_rxn: float,
-        catholyte: str,
-        metal_ratios: str,
-        **kwargs
+        exp_id: str,
+        **kwargs: Any,
 )->None:
 
     config = {**DEFAULT_CONFIG,**kwargs}
@@ -123,14 +118,29 @@ def measure_vial(
     wash_vial_speed = config['wash_vial_speed']
     wash_vial_last_empty = config['wash_vial_last_empty']
     filling_speed = config['aliquot_filling_speed']
+    uv_vis_integration_time = config['uv_vis_integration_time']
+    uv_vis_wash_volume = config['uv_vis_wash_volume']
 
     logger = get_run_logger()
 
-    syringe_transfer_and_wash(
-        'tecanAZ01', 0.5, draw_valve_port=vial, dispense_valve_port='uv-vis',
+    compartment_fill(
+        syringe_pump='tecanAZ01', volume=0.5, draw_valve_port=vial, dispense_valve_port='uv-vis',
         speed=filling_speed, **kwargs
     )
-    #--------TODO: Add here the code to perform the UV-VIS
+    df = acquire_spectrum(spectrometer='UVVIS01', lamp='lamp01',integration_time= uv_vis_integration_time)
+    folder = get_default_folder('UVVIS')
+    filepath = folder / f'ID{exp_id}_RXT{time_rxn}_VIAL{vial}.csv'
+    df.to_csv(filepath, index=False)
+    hostname = socket.gethostname()
+    if hostname != client.get('main_hostname'):
+        transfer_file_scp(local_file=filepath, remote_folder=client.get('data_path_uvvis'),
+                          username='poten', hostname=client.get('main_hostname'))
+    # UV-VIS washing of flow cell
+    compartment_fill(
+        syringe_pump='tecanAZ01', volume=uv_vis_wash_volume, draw_valve_port=vial, dispense_valve_port='uv-vis',
+        speed=filling_speed, **kwargs
+    )
+        
     logger.info(f'Sample {vial} sent to UV-VIS')
 
     compartment_wash(syringe_pump='tecanAZ01', compartment=vial, repeats=wash_vial_repeats,

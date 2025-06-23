@@ -6,13 +6,16 @@ if simulation:
     from ..hardware.mock.valco_mock import ValcoSelectionValveMock as ValcoSelectionValve
     from ..hardware.mock.pyBEEP_mock import PotentiostatDeviceMock as PotentiostatDevice
     from ..hardware.mock.pyBEEP_mock import PotentiostatControllerMock as PotentiostatController
-    #from ..hardware.mock.hamamatsu_mock import HamamatsuMiniSpectrometerMock as HamamatsuMiniSpectrometer
+    from ..hardware.mock.hamamatsu_mock import HamamatsuMiniSpectrometerMock as HamamatsuMiniSpectrometer
+    from ..hardware.mock.uv_vis_lamp_mock import ArduinoMock as Arduino
+    from ..hardware.mock.uv_vis_lamp_mock import MotorSwitchLampMock as MotorSwitchLamp
+    from ..hardware.mock.uv_vis_lamp_mock import PulsedLampMock as PulsedLamp
 else:
     from matterlab_pumps import TecanXCPump, LongerPeristalticPump
     from matterlab_valves import ValcoSelectionValve
     from pyBEEP import PotentiostatDevice, PotentiostatController
-    # from matterlab_spectrometers import HamamatsuMiniSpectrometer
-    # from ..hardware.uv_vis_lamp import Arduino, MotorSwitchLamp, PulsedLamp
+    from matterlab_spectrometers import HamamatsuMiniSpectrometer
+    from ..hardware.uv_vis_lamp import Arduino, MotorSwitchLamp, PulsedLamp
 
 CONFIG_COMPONENTS = {'longerWE01': {'class': LongerPeristalticPump, 'com_port': '/dev/longer_pumps', 'address': 1, 'baudrate': 1200},
                      'longerCE01': {'class': LongerPeristalticPump, 'com_port': '/dev/longer_pumps', 'address': 2, 'baudrate': 1200},
@@ -27,6 +30,6 @@ CONFIG_COMPONENTS = {'longerWE01': {'class': LongerPeristalticPump, 'com_port': 
                      'valveAZ01': {'class': ValcoSelectionValve, 'com_port': '/dev/valveAZ01','num_port':10,
                                    'ports': None},
                      'potentiostat01': {'class': PotentiostatController, 'device_class': PotentiostatDevice,'device_kwargs': {'port': '/dev/potentiostat01', 'address': 1}},
-                     #'UVVIS01':{'class': HamamatsuMiniSpectrometer},
-                     #'lamp01': {'class': Arduino, 'device_class': MotorSwitchLamp, 'com_port': 'COM5', 'pulsed': False}
+                     'UVVIS01':{'class': HamamatsuMiniSpectrometer},
+                     'lamp01': {'class': Arduino, 'device_class': MotorSwitchLamp, 'com_port': 'COM5', 'pulsed': False}
                      }

@@ -4,14 +4,14 @@ from typing import List, Dict
 
 from .utils.redis_client import client
 from .utils.decorators import with_lock
-from .utils.utils import reset_cache, get_valid_precursors, get_valid_electrolytes
+from .utils.elytes_precursors import reset_cache, get_valid_precursors, get_valid_electrolytes
 
 _valid_compounds: List[str] = []
 _valid_electrolytes: List[str] = []
 
 def convert_and_validate_input(input_str: str, is_compositions: bool = True) -> List[List[float]]:
     """
-    Converts and validates a user input string into a controlled list format for compositions or electrolytes.
+    Converts and validates a user input string into a controlled list of (name, value) tuples for compositions or electrolytes.
 
     Args:
         input_str (str): The input string provided by the user. It can represent a single experiment (as a dictionary or list)
@@ -19,8 +19,8 @@ def convert_and_validate_input(input_str: str, is_compositions: bool = True) -> 
         is_compositions (bool): Flag indicating whether the input is for compositions (True) or electrolytes (False).
 
     Returns:
-        List[List[float]]: A nested list where each sublist corresponds to an experiment. Each sublist contains numerical values
-                           (floats or integers) representing the quantities of valid compositions or electrolytes.
+        List[List[Tuple[str,float]}]: A nested list of tuples where each tuple contains a valid compound or electrolyte
+                                        name and its corresponding value.
 
     Raises:
         ValueError: If:
@@ -50,23 +50,19 @@ def convert_and_validate_input(input_str: str, is_compositions: bool = True) -> 
     
     output_data = []
     for item in input_data:
-        new_list = []
         if isinstance(item, dict):
-            for compound in _valid_list:
-                new_list += [item[compound] if compound in item else 0]
+            new_list = [item.get(compound, 0) for compound in _valid_list]
         else:
             new_list = item
         if len(new_list) != len(_valid_list):
             raise ValueError(f"Input list must contain exactly {len(_valid_list)} values.")
         all_0 = True
-        for ratio in new_list:
-            if not isinstance(ratio, (int, float)):
-                raise ValueError("Invalid input, all values must be integers or floats")
-        for ratio in new_list:
-            all_0 = all_0 and ratio==0
-        if all_0:
-            raise ValueError("Invalid input, at least one value must be higher than 0")
-        output_data.append(new_list)
+        if not all(isinstance(ratio, (int, float)) for ratio in new_list):
+            raise ValueError("Invalid input: all values must be integers or floats")
+        if all(ratio == 0 for ratio in new_list):
+            raise ValueError("Invalid input: at least one value must be higher than 0")
+        tuple_list = [(name, float(value)) for name, value in zip(_valid_list, new_list)]
+        output_data.append(tuple_list)
 
     return output_data
 
@@ -127,13 +123,14 @@ def request_experiments() -> None:
     global _valid_electrolytes
     while True:
         reset_cache()
-        _valid_compounds, _ = get_valid_precursors()
-        _valid_electrolytes, _ = get_valid_electrolytes()
+        _valid_compounds = get_valid_precursors()
+        _valid_electrolytes = get_valid_electrolytes()
 
         while True:
             try:
+                _valid_compounds_names = ', '.join([compound[0] for compound in _valid_compounds])
                 compositions = convert_and_validate_input(
-                    input(f'Type compositions desired. Precursors available: {_valid_compounds} \n'),
+                    input(f'Type compositions desired. Precursors available: {_valid_compounds_names} \n'),
                     is_compositions=True)
                 print('Input sent: ', compositions)
                 break
@@ -142,6 +139,7 @@ def request_experiments() -> None:
 
         while True:
             try:
+                _valid_electrolytes_names = ', '.join([electrolyte[0] for electrolyte in _valid_electrolytes])
                 electrolytes = convert_and_validate_input(input('Type electrolyte desired. Electrolytes available: \n'
                                                            f'{_valid_electrolytes} \n'), is_compositions=False)
                 print('Input sent: ',electrolytes)

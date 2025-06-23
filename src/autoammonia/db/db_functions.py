@@ -6,7 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from .db import Session
 from .models import Precursor, Electrolyte, Experiment, CatalystComposition, ElectrolyteComposition
-from ..utils.utils import get_valid_electrolytes, get_valid_precursors
+from ..utils.elytes_precursors import get_valid_electrolytes, get_valid_precursors
 
 @task
 def add_valid_electrolytes_and_metals_to_db() -> None:
@@ -18,16 +18,16 @@ def add_valid_electrolytes_and_metals_to_db() -> None:
         None
     """
     # Get lists from your existing functions
-    valid_electrolytes, _ = get_valid_electrolytes()
-    valid_precursors, _ = get_valid_precursors()
+    valid_electrolytes = get_valid_electrolytes()
+    valid_precursors = get_valid_precursors()
 
     session = Session()
     try:
         if valid_precursors:
-            stmt_m = insert(Precursor).values([{"name": m} for m in valid_precursors]).on_conflict_do_nothing(index_elements=["name"])
+            stmt_m = insert(Precursor).values([{"name": m} for m, port in valid_precursors]).on_conflict_do_nothing(index_elements=["name"])
             session.execute(stmt_m)
         if valid_electrolytes:
-            stmt_e = insert(Electrolyte).values([{"name": e} for e in valid_electrolytes]).on_conflict_do_nothing(index_elements=["name"])
+            stmt_e = insert(Electrolyte).values([{"name": e} for e, port in valid_electrolytes]).on_conflict_do_nothing(index_elements=["name"])
             session.execute(stmt_e)
         session.commit()
     finally:
@@ -39,7 +39,7 @@ def add_experiment_to_db(
     electrolyte_ratios: List[Tuple[str, float]],
     notes: Optional[str] = None,
     metadata: Optional[dict] = None,
-) -> None:
+) -> int:
     """
     Adds a new experiment to the database, including its catalyst and electrolyte compositions.
 
@@ -87,6 +87,7 @@ def add_experiment_to_db(
             session.add(electrolyte_comp)
 
         session.commit()
+        return experiment.id
     except (SQLAlchemyError, ValueError) as e:
         session.rollback()
         print(f"Error adding experiment: {e}")

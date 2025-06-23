@@ -1,16 +1,16 @@
 import asyncio
-import os.path
 import time
-from datetime import datetime
 import json
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Tuple, Union
 from prefect import flow
 from pathlib import Path
 
+from autoammonia.db.db_functions import add_experiment_to_db
+from autoammonia.utils.files import get_default_folder
 from .config.config import DEFAULT_CONFIG, CONNECTIONS_INFO,CONFIG_COMPONENTS
 
 from .utils.redis_client import client
-from .utils.utils import reset_cache, get_valid_precursors, get_valid_electrolytes
+from .utils.elytes_precursors import reset_cache, get_valid_precursors, get_valid_electrolytes
 from .hardware.selection_valves import switch_port_valve
 from .hardware.potentiostat import run_method_parallel
 from .hardware.peristaltic_pumps import run_pump, stop_pump
@@ -80,7 +80,7 @@ def restore_pump(
     config = {**DEFAULT_CONFIG, **kwargs}
 
     air_flush_speed = config["air_flush_speed"]
-    air_flush_factor = config["air_flush_speed"]
+    air_flush_factor = config["air_flush_factor"]
 
     # Select valve according to the pump type
     if 'RX' in syringe_pump.upper():
@@ -195,8 +195,7 @@ def wash_flow_cell(
 @flow
 def prepare_elyte_mix(
         syringe_pump: str,
-        elyte_ratios: List[float],
-        elyte_ports: List[str],
+        elyte_info: List[Tuple[str, float, Union[str, int]]],
         compartment: str,
         volume: float,
         filling_speed: Optional[float] = None,
@@ -210,8 +209,7 @@ def prepare_elyte_mix(
 
     Args:
         syringe_pump (str): Identifier for the syringe pump to use.
-        elyte_ratios (List[float]): List of metal ratios.
-        elyte_ports (List[str]): List of valve ports corresponding to the electrolyte components to be used.
+        elyte_info (List[Tuple[str, float, Union[str, int]]]): List of tuples with structure (compound, ratio, port).
         compartment (str): Compartment where the electrolyte mix will be dispensed.
         volume (float): Total volume of solution to prepare (mL). Defaults to config['electrodeposition_deposition_volume'].
         filling_speed (Optional[float]): Draw/dispense speed (mL/s). Defaults to config['electrodeposition_filling_speed'].
@@ -224,12 +222,14 @@ def prepare_elyte_mix(
     filling_speed = filling_speed if filling_speed is not None else config['elyte_mix_filling_speed']
     mixing_speed = mixing_speed if mixing_speed is not None else config['elyte_mix_mixing_speed']
 
+    elyte_ports = [port for _, _, port in elyte_info]
+    elyte_ratios = [ratio for _, ratio, _ in elyte_info]
     compositions = [ratio / sum(elyte_ratios) for ratio in elyte_ratios]
-    volumes = [comp * volume for comp in compositions]
+    elyte_volumes = [comp * volume for comp in compositions]
     
-    for vol, metal in zip(volumes,elyte_ports):
+    for vol, port in zip(elyte_volumes,elyte_ports):
         if vol > 0:
-            syringe_transfer_and_wash(syringe_pump=syringe_pump, volume=vol, draw_valve_port=metal,
+            syringe_transfer_and_wash(syringe_pump=syringe_pump, volume=vol, draw_valve_port=port,
                                       dispense_valve_port=compartment, speed=filling_speed, **kwargs)
 
     syringe_transfer_and_wash(syringe_pump=syringe_pump, volume=volume * 0.5,
@@ -241,8 +241,8 @@ def prepare_elyte_mix(
 @flow
 def electrodeposition(
         data_path: Path,
-        experiment_id: str,
-        metal_ratios: List[List[float]],
+        experiment_ids: List[str],
+        metal_ratios_list: List[List[Tuple[str, float]]],
         current: Optional[float] = None,
         time_rx: Optional[float] = None,
         deposition_volume: Optional[float] = None,
@@ -256,8 +256,8 @@ def electrodeposition(
 
     Args:
         data_path (str): Folder where the data will be stored.
-        experiment_id (str): Unique identifier for the experiment.
-        metal_ratios (List[List[float]]): A list of lists, where each inner list contains the metal ratios for the
+        experiment_ids (List[str]): Unique identifier for the experiment.
+        metal_ratios_list (List[List[Tuple[str, float]]]): A list of lists, where each inner list contains the metal ratios for the
             electrodeposition process corresponding to different flow cells in the setup. Each item in the list
             represents the metal ratios (e.g., [Cu, Co, Ni]) for a specific flow cell.
         current (Optional[float]): Current applied (A). Defaults to config['electrodeposition_current'].
@@ -278,10 +278,12 @@ def electrodeposition(
     filling_speed = filling_speed if filling_speed is not None else config['electrodeposition_filling_speed']
     parallel_cells = config['parallel_cells']
 
-    precursors, precursors_ports = get_valid_precursors()
+    _valid_precursor_ports = get_valid_precursors()
     
-    for cell_str, ratios_set in zip([str(cell).zfill(2) for cell in range(1,parallel_cells+1)],metal_ratios):
-        prepare_elyte_mix(syringe_pump='tecanRX01', elyte_ratios=ratios_set, elyte_ports=precursors_ports,
+    for cell_str, metal_ratios in zip([str(cell).zfill(2) for cell in range(1,parallel_cells+1)],metal_ratios_list):
+        ports_dict = dict(_valid_precursor_ports)
+        precursors_info = [(metal, ratio, ports_dict[metal]) for metal, ratio in metal_ratios]
+        prepare_elyte_mix(syringe_pump='tecanRX01', elyte_info=precursors_info,
                           compartment=f'WEvial{cell_str}', volume=deposition_volume, **kwargs)
         compartment_fill(source='anolyte', destination=f'CEvial{cell_str}', volume=anolyte_volume,
                          speed=filling_speed, **kwargs)
@@ -290,7 +292,7 @@ def electrodeposition(
     run_pump(pump='longerCE01', speed=pump_speed, **kwargs)
 
     asyncio.run(run_method_parallel(parallel_cells=parallel_cells, folder=str(data_path),
-                            experiment_id=experiment_id, mode="CP", params= {'current':current, 'duration':time_rx}, 
+                            experiment_ids=experiment_ids, mode="CP", params= {'current':current, 'duration':time_rx}, 
                             tia_gain=0, **kwargs))
     for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
         client.set(name=f'flow_cell{cell_str}_content',value='metal_salts')
@@ -301,8 +303,8 @@ def electrodeposition(
 @flow
 def electrosynthesis(
         data_path: Path,
-        experiment_id: str,
-        catholyte_ratios: List[List[float]],
+        experiment_ids: List[str],
+        elyte_ratios_list: List[List[Tuple[str,float]]],
         current: Optional[float] = None,
         time_rx: Optional[float] = None,
         catholyte_volume: Optional[float] = None,
@@ -316,8 +318,8 @@ def electrosynthesis(
 
     Args:
         data_path (str): Folder where the data will be stored.
-        experiment_id (str): Unique identifier for the experiment.
-        catholyte_ratios (List[List[float]]): A list of lists, where each inner list represents the composition of catholyte
+        experiment_ids (str): Unique identifier for the experiment.
+        elyte_ratios_list (List[List[Tuple[str,float]]]): A list of lists, where each inner list represents the composition of catholyte
             used for the reaction in different flow cells. Each item in the list contains the specific concentration
             values (e.g., [H2O, NaCl, etc.] or [CuSO4, H2SO4, etc.]) for a given flow cell's catholyte.
         current (Optional[float]): Applied current (A). Defaults to config['reaction_current'].
@@ -339,15 +341,18 @@ def electrosynthesis(
     parallel_cells = config['parallel_cells']
 
     client.set('reaction_status', "0")
-    catholytes, catholytes_ports = get_valid_electrolytes()
+    _valid_catholytes_ports = get_valid_electrolytes()
 
-    for cell_str, ratios_set in zip([str(cell).zfill(2) for cell in range(1,parallel_cells+1)],catholyte_ratios):
-        prepare_elyte_mix(syringe_pump='tecanRX01',elyte_ratios=ratios_set,elyte_ports=catholytes_ports,
+    for cell_str, elyte_ratios, exp_id in zip([str(cell).zfill(2) for cell in range(1, parallel_cells + 1)],
+                                            elyte_ratios_list, experiment_ids):
+        ports_dict = dict(_valid_catholytes_ports)
+        catholyte_info = [(elyte, ratio, ports_dict[elyte]) for elyte, ratio in elyte_ratios]
+        
+        prepare_elyte_mix(syringe_pump='tecanRX01',elyte_info=catholyte_info,
                           compartment=f'WEvial{cell_str}',volume=catholyte_volume, **kwargs)
         compartment_fill(source='anolyte', destination=f'CEvial{cell_str}', volume=anolyte_volume,
                          speed=filling_speed, **kwargs)
-        elyte_info = {name:value for name,value in zip(catholytes, ratios_set) if value > 0}
-        client.set(name=f'flow_cell{cell_str}_content', value=json.dumps(elyte_info))
+        client.set(name=f'ID{exp_id}_content', value=json.dumps(dict(elyte_ratios)))
 
     run_pump(pump='longerWE01', speed=pump_speed, **kwargs)
     run_pump(pump='longerCE01', speed=pump_speed, **kwargs)
@@ -355,7 +360,7 @@ def electrosynthesis(
     client.set(name='reaction_status', value=time_rx)
 
     asyncio.run(run_method_parallel(parallel_cells=parallel_cells, folder=str(data_path),
-                                    experiment_id=experiment_id, mode="CP",
+                                    experiment_ids=experiment_ids, mode="CP",
                                     params={'current': current, 'duration': time_rx},
                                     tia_gain=0, **kwargs))
 
@@ -367,7 +372,7 @@ def electrosynthesis(
 @flow
 def electrodisolution(
         data_path: Path,
-        experiment_id: str,
+        experiment_ids: List[str],
         time_rx: Optional[float] = None,
         catholyte_volume: Optional[float] = None,
         anolyte_volume: Optional[float] = None,
@@ -381,7 +386,7 @@ def electrodisolution(
 
     Args:
         data_path (str): Folder where the data will be stored.
-        experiment_id (str): Unique identifier for the experiment.
+        experiment_ids (List[str]): Unique identifier for the experiment.
         time_rx (Optional[float]): Duration for the dissolution (in seconds).
         catholyte_volume (Optional[float]): Catholyte volume used in the reaction (in mL).
         anolyte_volume (Optional[float]): Anolyte volume used in the reaction (in mL).
@@ -399,7 +404,8 @@ def electrodisolution(
     filling_speed = filling_speed if filling_speed is not None else config['electrodisolution_filling_speed']
     parallel_cells = config['parallel_cells']
 
-    for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
+    for cell_str, exp_id in zip([str(cell).zfill(2) for cell in range(1, parallel_cells + 1)],
+                               experiment_ids):
         compartment_fill(source='acid', destination=f'WEvial{cell_str}', volume=catholyte_volume,
                          speed=filling_speed, **kwargs)
         compartment_fill(source='anolyte', destination=f'CEvial{cell_str}', volume=anolyte_volume,
@@ -410,7 +416,7 @@ def electrodisolution(
     run_pump(pump='longerWE01', speed=pump_speed, **kwargs)
 
     asyncio.run(run_method_parallel(parallel_cells=parallel_cells, folder=str(data_path),
-                                    experiment_id=experiment_id, mode="CP",
+                                    experiment_ids=experiment_ids, mode="CP",
                                     params={'current': 0, 'duration': time_rx},
                                     tia_gain=2, **kwargs))
 
@@ -418,8 +424,8 @@ def electrodisolution(
 
 @flow
 def execute_experiment(
-        metal_ratios: List[List[float]],
-        electrolytes: List[List[float]],
+        metal_ratios_list: List[List[Tuple[str, float]]],
+        elyte_ratios_list: List[List[Tuple[str, float]]],
         **kwargs: Any,
 )->None:
     """
@@ -428,10 +434,10 @@ def execute_experiment(
     At the start resets the cache, so that electrolytes and precursors values get updated from default_config.
 
     Args:
-        metal_ratios (LList[List[float]]): A list of lists, where each inner list contains the metal ratios for the
+        metal_ratios_list (List[List[Tuple[str, float]]]): A list of lists, where each inner list contains the metal ratios for the
             electrodeposition process corresponding to different flow cells in the setup. Each item in the list
             represents the metal ratios (e.g., [Cu, Co, Ni]) for a specific flow cell.
-        electrolytes (List[List[float]]): A list of lists, where each inner list represents the composition of catholyte
+        elyte_ratios_list (List[List[Tuple[str, float]]]): A list of lists, where each inner list represents the composition of catholyte
             used for the reaction in different flow cells. Each item in the list contains the specific concentration
             values (e.g., [H2O, NaCl, etc.] or [CuSO4, H2SO4, etc.]) for a given flow cell's catholyte.
         **kwargs (Any): Additional keyword arguments to override the default configuration.
@@ -439,23 +445,24 @@ def execute_experiment(
     config = {**DEFAULT_CONFIG, **kwargs}
     
     parallel_cells = config['parallel_cells']
-    paths = [Path(config['adrastea_data_path']) / step for step in ['electrodeposition', 'electrosynthesis', 'electrodissolution']]
-    experiment_id = datetime.now().strftime('%Y%m%d_%Hh%Mm%Ss')
-
+    measurement_types = ['electrodeposition', 'electrosynthesis', 'electrodissolution', 'uvvis']
+    paths = [get_default_folder(step) for step in measurement_types]
+    for path, type in zip(paths, measurement_types):
+        client.set(f'data_path_{type}', path)
     reset_cache()
-
-    for path in paths:
-        if not os.path.exists(path):
-            os.makedirs(path)
+    experiment_ids = []
+    for cell_str, metal_ratio, elyte_ratios in zip([str(cell).zfill(2) for cell in range(1,parallel_cells+1)],
+                                            metal_ratios_list, elyte_ratios_list):
+        exp_id = add_experiment_to_db(precursor_ratios=metal_ratio, electrolyte_ratios=elyte_ratios, 
+                                      metadata={'cell': cell_str})
+        client.set(f'ID{exp_id}_catholyte',json.dumps(elyte_ratios))
+        client.set(f'ID{exp_id}_metal_ratios', json.dumps(metal_ratio))
+        client.set(f'WEvial{cell_str}_EXP_ID', str(exp_id))
+        experiment_ids += [exp_id]
         
-    
-    for cell_str, metal_ratio, elyte in zip([str(cell).zfill(2) for cell in range(1,parallel_cells+1)],metal_ratios, electrolytes):
-        client.set(f'flow_cell_{cell_str}_catholyte',json.dumps(elyte))
-        client.set(f'flow_cell_{cell_str}_metal_ratios', json.dumps(metal_ratio))
-
-    electrodeposition(data_path=paths[0], experiment_id=experiment_id, metal_ratios=metal_ratios, **kwargs)
-    electrosynthesis(data_path=paths[1], experiment_id=experiment_id, catholyte_ratios=electrolytes, **kwargs)
-    electrodisolution(data_path=paths[2], experiment_id=experiment_id, **kwargs)
+    electrodeposition(data_path=paths[0], experiment_ids=experiment_ids, metal_ratios_list=metal_ratios_list, **kwargs)
+    electrosynthesis(data_path=paths[1], experiment_ids=experiment_ids, elyte_ratios_list=elyte_ratios_list, **kwargs)
+    electrodisolution(data_path=paths[2], experiment_ids=experiment_ids, **kwargs)
 
 
 
