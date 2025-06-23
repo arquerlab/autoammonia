@@ -91,17 +91,13 @@ def add_experiment_to_db(
             session.add(electrolyte_comp)
 
         session.commit()
+        return experiment.id
     except (SQLAlchemyError, ValueError) as e:
         session.rollback()
         logger.error(f"Error adding experiment: {e}")
-        raise e
+        raise
     finally:
         session.close()
-    try:
-        return experiment.id
-    except:
-        raise ValueError("Experiment ID could not be retrieved. Ensure the experiment was added successfully.")
-
 
 @task
 def add_results_to_db(
