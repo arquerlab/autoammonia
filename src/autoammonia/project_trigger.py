@@ -16,9 +16,13 @@ async def trigger_workflow(flow_name, parameters):
         else:
             print(f"❌ Workflow '{flow_name}' not found!")
 
-async def main():
+async def gather_workflows():
+    
     tasks = [trigger_workflow(workflow["flow_name"], workflow["parameters"]) for workflow in flows_to_deploy]
     await asyncio.gather(*tasks)
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    
+def main():
+    """
+    Main function to trigger all workflows defined in the project.
+    """
+    asyncio.run(gather_workflows())
