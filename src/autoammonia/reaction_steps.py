@@ -447,8 +447,8 @@ def execute_experiment(
     parallel_cells = config['parallel_cells']
     measurement_types = ['electrodeposition', 'electrosynthesis', 'electrodissolution', 'uvvis']
     paths = [get_default_folder(step) for step in measurement_types]
-    for path, type in zip(paths, measurement_types):
-        client.set(f'data_path_{type}', path)
+    for path, exp_type in zip(paths, measurement_types):
+        client.set(f'data_path_{exp_type}', str(path))
     reset_cache()
     experiment_ids = []
     for cell_str, metal_ratio, elyte_ratios in zip([str(cell).zfill(2) for cell in range(1,parallel_cells+1)],
