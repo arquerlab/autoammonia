@@ -459,7 +459,7 @@ def execute_experiment(
         client.set(f'ID{exp_id}_metal_ratios', json.dumps(metal_ratio))
         client.set(f'WEvial{cell_str}_EXP_ID', str(exp_id))
         experiment_ids += [exp_id]
-    print(experiment_ids)
+
     electrodeposition(data_path=paths[0], experiment_ids=experiment_ids, metal_ratios_list=metal_ratios_list, **kwargs)
     electrosynthesis(data_path=paths[1], experiment_ids=experiment_ids, elyte_ratios_list=elyte_ratios_list, **kwargs)
     electrodisolution(data_path=paths[2], experiment_ids=experiment_ids, **kwargs)

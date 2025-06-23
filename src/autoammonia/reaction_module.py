@@ -4,6 +4,7 @@ import time
 from typing import Dict, Optional, Any
 from pathlib import Path
 
+from autoammonia.db.db_functions import add_valid_electrolytes_and_metals_to_db
 from .utils.decorators import with_lock
 from .config.config import DEFAULT_CONFIG, CONNECTIONS_INFO
 from .utils.redis_client import client, client_initialization
@@ -108,6 +109,7 @@ def process_experiment_queue(delete_previous_queue: Optional[bool] = None,
             for exp in experiments:
                 precursors += [exp['composition']]
                 electrolytes += [exp['electrolyte']]
+            add_valid_electrolytes_and_metals_to_db()
             execute_experiment(precursors, electrolytes, **kwargs)
     finally:
         if restore_pumps:

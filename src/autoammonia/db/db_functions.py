@@ -1,8 +1,9 @@
 from typing import List, Tuple, Optional
 from decimal import Decimal
-from prefect import task
+from prefect import task, get_run_logger
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import SQLAlchemyError
+from win32comext.adsi.demos.scp import logger
 
 from .db import Session
 from .models import Precursor, Electrolyte, Experiment, CatalystComposition, ElectrolyteComposition, Result
@@ -21,14 +22,17 @@ def add_valid_electrolytes_and_metals_to_db() -> None:
     valid_electrolytes = get_valid_electrolytes()
     valid_precursors = get_valid_precursors()
 
+    logger = get_run_logger()
     session = Session()
     try:
         if valid_precursors:
             stmt_m = insert(Precursor).values([{"name": m} for m, port in valid_precursors]).on_conflict_do_nothing(index_elements=["name"])
             session.execute(stmt_m)
+            logger.info(f"Inserted {len(valid_precursors)} valid precursors into the database.")
         if valid_electrolytes:
             stmt_e = insert(Electrolyte).values([{"name": e} for e, port in valid_electrolytes]).on_conflict_do_nothing(index_elements=["name"])
             session.execute(stmt_e)
+            logger.info(f"Inserted {len(valid_electrolytes)} valid electrolytes into the database.")
         session.commit()
     finally:
         session.close()
@@ -55,6 +59,7 @@ def add_experiment_to_db(
     Raises:
         ValueError: If any precursor or electrolyte is not found in the database.
     """
+    logger = get_run_logger()
     session = Session()
     try:
         # Create and add a new Experiment record
@@ -89,15 +94,16 @@ def add_experiment_to_db(
         session.commit()
     except (SQLAlchemyError, ValueError) as e:
         session.rollback()
-        print(f"Error adding experiment: {e}")
+        logger.error(f"Error adding experiment: {e}")
+        raise e
     finally:
         session.close()
     try:
         return experiment.id
     except:
         raise ValueError("Experiment ID could not be retrieved. Ensure the experiment was added successfully.")
-        
-        
+
+
 @task
 def add_results_to_db(
         experiment_id: int,
@@ -121,6 +127,7 @@ def add_results_to_db(
     Returns:
         None
     """
+    logger = get_run_logger()
     session = Session()
     try:
         # Create and add a new Result record
@@ -136,6 +143,6 @@ def add_results_to_db(
         session.commit()
     except SQLAlchemyError as e:
         session.rollback()
-        print(f"Error adding result: {e}")
+        logger.error(f"Error adding result: {e}")
     finally:
         session.close()
