@@ -303,7 +303,7 @@ def electrodeposition(
 @flow
 def electrosynthesis(
         data_path: Path,
-        experiment_ids: List[str],
+        experiment_ids: List[int],
         elyte_ratios_list: List[List[Tuple[str,float]]],
         current: Optional[float] = None,
         time_rx: Optional[float] = None,
@@ -318,7 +318,7 @@ def electrosynthesis(
 
     Args:
         data_path (str): Folder where the data will be stored.
-        experiment_ids (str): Unique identifier for the experiment.
+        experiment_ids (List[int]): Unique identifier for the experiment.
         elyte_ratios_list (List[List[Tuple[str,float]]]): A list of lists, where each inner list represents the composition of catholyte
             used for the reaction in different flow cells. Each item in the list contains the specific concentration
             values (e.g., [H2O, NaCl, etc.] or [CuSO4, H2SO4, etc.]) for a given flow cell's catholyte.
@@ -372,7 +372,7 @@ def electrosynthesis(
 @flow
 def electrodisolution(
         data_path: Path,
-        experiment_ids: List[str],
+        experiment_ids: List[int],
         time_rx: Optional[float] = None,
         catholyte_volume: Optional[float] = None,
         anolyte_volume: Optional[float] = None,
@@ -386,7 +386,7 @@ def electrodisolution(
 
     Args:
         data_path (str): Folder where the data will be stored.
-        experiment_ids (List[str]): Unique identifier for the experiment.
+        experiment_ids (List[int]): Unique identifier for the experiment.
         time_rx (Optional[float]): Duration for the dissolution (in seconds).
         catholyte_volume (Optional[float]): Catholyte volume used in the reaction (in mL).
         anolyte_volume (Optional[float]): Anolyte volume used in the reaction (in mL).

@@ -51,7 +51,7 @@ async def run_echem_method(
 @flow
 async def run_method_parallel(parallel_cells: int,
                       folder: str,
-                      experiment_ids: List[str],
+                      experiment_ids: List[int],
                       mode: str,
                       params: Dict[str, Any],
                       tia_gain: int,
