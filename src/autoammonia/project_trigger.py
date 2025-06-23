@@ -6,7 +6,7 @@ from .project_deploy import flows_to_deploy
 async def trigger_workflow(flow_name, parameters):
     async with get_client() as client:
         print(f"🚀 Triggering workflow '{flow_name}'...")
-        deployment = await client.read_deployment_by_flow_name(flow_name)
+        deployment = await client.read_deployment_by_name(flow_name)
         if deployment:
             run = await client.create_flow_run_from_deployment(
                 deployment_id=deployment.id,
