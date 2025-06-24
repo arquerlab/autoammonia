@@ -20,9 +20,21 @@ address = 2
 syringe_volume = 0.0025
 num_valve_port = 12
 
+[tecanAZ01]
+class = "matterlab_pumps.TecanXCPump"
+com_port = "/dev/tecan_pumps"
+address = 1
+syringe_volume = 0.001
+num_valve_port = 12
+
 [valveRX01]
 class = "matterlab_valves.ValcoSelectionValve"
 com_port = "/dev/valveRX01"
+num_port = 10
+
+[valveAZ01]
+class = "matterlab_valves.ValcoSelectionValve"
+com_port = "/dev/valveAZ01"
 num_port = 10
 
 [potentiostat01]
