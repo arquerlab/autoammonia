@@ -5,9 +5,9 @@ from prefect.client.schemas.actions import WorkPoolCreate
 from prefect.filesystems import LocalFileSystem
 from pathlib import Path
 
-from .analysis_module import track_reaction, analysis_module_deploy
-from .reaction_module import process_experiment_queue, reaction_module_deploy
-from .safety_module_peri import track_safety, safety_module_deploy
+from ..analysis_module import track_reaction, analysis_module_deploy
+from ..reaction_module import process_experiment_queue, reaction_module_deploy
+from ..safety_module_peri import track_safety, safety_module_deploy
 
 flows_to_deploy = [
         ("track_reaction", "analysis_module_flow", "analysis_module_pool",),
