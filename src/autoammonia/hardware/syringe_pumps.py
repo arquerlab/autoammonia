@@ -2,7 +2,7 @@ import time
 from math import ceil
 from typing import Union, Optional, Any, List, Tuple
 
-from prefect import task, flow
+from prefect import task, flow, get_run_logger
 
 from ..utils.redis_client import client
 from ..utils.decorators import run_on_component, with_lock
@@ -197,10 +197,10 @@ def get_connected_port(
         if 'valve' in syringe_port:
             if port in connection_info[syringe_port]:
                 return syringe_port, port
-    print(connection_info[syringe_pump])
-    print(f"Port {port} not found in syringe pump {syringe_pump} connections.")
-    print("Available ports:", list(connection_info[syringe_pump].keys()))
-    raise RuntimeError('Port not found in syringe pump connections. Please check the configuration.')
+    logger = get_run_logger()
+    logger.error(f"Port {port} not found in syringe pump {syringe_pump} connections.")
+    logger.error("Available ports: {list(connection_info[syringe_pump].keys())}")
+    raise ValueError('Port not found in syringe pump connections. Please check the configuration.')
 
 def get_air_volume(
         syringe_pump: str,
@@ -228,12 +228,12 @@ def get_air_volume(
     """
     if valve_port is not None:
         air_volume = connections_info[syringe_pump][syringe_port]['volume']
-        if str(connections_info[syringe_port][valve_port]['usage'].lower()) != 'stock':  
+        if str(connections_info[syringe_port][valve_port]['usage']).lower() != 'stock':  
             # If it's not a stock solution, also need to drawn volume valve-compartment
             air_volume += connections_info[syringe_port][valve_port]['volume']
         air_volume += air_compensation_volume
     else:
-        if str(connections_info[syringe_pump][syringe_port]['usage'].lower()) != 'stock':
+        if str(connections_info[syringe_pump][syringe_port]['usage']).lower() != 'stock':
             air_volume = connections_info[syringe_pump][syringe_port]['volume']
         else:
             return 0.
