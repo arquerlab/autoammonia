@@ -46,6 +46,8 @@ def track_reaction(
     
     num_aliquots = num_aliquots if num_aliquots is not None else config['aliquot_number']
     volume = volume if volume is not None else config['aliquot_volume']
+    
+    logger = get_run_logger()
 
     while True:
         reaction_status = client.get('reaction_status')
@@ -54,6 +56,7 @@ def track_reaction(
         elif reaction_status == "0":
             time.sleep(0.1)
         else:
+            logger.info('Reaction started, aliquotes tracking initiated')
             initial_time = time.time()
             aliquotes_sent = 0
             aliquote_interval = (float(reaction_status) - 60) / num_aliquots
@@ -64,6 +67,7 @@ def track_reaction(
 
                 if period_timing <= current_time:
                     take_aliquots(initial_reaction_time=initial_time, volume=volume)
+                    logger.info(f'Aliquot {aliquotes_sent + 1} taken at {current_time - initial_time:.2f} seconds')
                     period_timing += aliquote_interval
                     
                 time.sleep(2.5)
