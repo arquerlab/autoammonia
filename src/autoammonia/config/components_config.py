@@ -1,4 +1,4 @@
-simulation = False
+simulation = True
 
 if simulation:
     from ..hardware.mock.longer_mock import LongerPeristalticPumpMock as LongerPeristalticPump
