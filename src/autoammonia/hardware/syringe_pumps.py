@@ -197,7 +197,10 @@ def get_connected_port(
         if 'valve' in syringe_port:
             if port in connection_info[syringe_port]:
                 return syringe_port, port
-    return None, None
+    print(connection_info[syringe_pump])
+    print(f"Port {port} not found in syringe pump {syringe_pump} connections.")
+    print("Available ports:", list(connection_info[syringe_pump].keys()))
+    raise RuntimeError('Port not found in syringe pump connections. Please check the configuration.')
 
 def get_air_volume(
         syringe_pump: str,
@@ -223,7 +226,7 @@ def get_air_volume(
     Returns:
         float: The calculated air volume to be drawn, or 0 if the port is connected to a stock solution.
     """
-    if valve_port:
+    if valve_port is not None:
         air_volume = connections_info[syringe_pump][syringe_port]['volume']
         if str(connections_info[syringe_port][valve_port]['usage'].lower()) != 'stock':  
             # If it's not a stock solution, also need to drawn volume valve-compartment
