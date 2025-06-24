@@ -1,6 +1,7 @@
 from .hardware.syringe_pumps import syringe_draw, syringe_dispense, syringe_draw_and_dispense
 from .hardware.selection_valves import switch_port_valve
-from .config.config import CONNECTIONS_INFO, CONFIG_COMPONENTS
+from .config.config import CONNECTIONS_INFO
+from .config.components_config import CONFIG_COMPONENTS
 
 if __name__ == '__main__':
     for component in CONNECTIONS_INFO:

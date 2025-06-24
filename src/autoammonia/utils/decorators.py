@@ -5,7 +5,9 @@ from redis.exceptions import LockError
 import redis.lock
 
 from ..utils.redis_client import client
-from ..config.config import DEFAULT_CONFIG, CONFIG_COMPONENTS
+from ..config.config import DEFAULT_CONFIG
+from ..config.components_config import get_config_components
+from ..utils.importing import resolve_class
 
 _component_instances = {}
 
@@ -24,15 +26,18 @@ def acquire_lock(component_name:str, function_timeout: int, acquisition_timeout:
 
 def get_or_create_component_instance(component_name: str):
     if component_name not in _component_instances:
-        component_info = CONFIG_COMPONENTS[component_name].copy()
-        componentclass = component_info.pop('class')
-        if 'device_class' in component_info:
-            deviceclass = component_info.pop('device_class')
-            device_kwargs = component_info.pop('device_kwargs', {})
-            device = deviceclass(**device_kwargs)
-            _component_instances[component_name] = componentclass(device, **component_info)
+        all_configs = get_config_components()
+        component_info = all_configs[component_name].copy()
+        component_class = resolve_class(component_info.pop("class"))
+        if "device_class" in component_info:
+            # If a nested device is needed, resolve and initialize it first
+            device_class = resolve_class(component_info.pop("device_class"))
+            device_kwargs = component_info.pop("device_kwargs", {})
+            device = device_class(**device_kwargs)
+            _component_instances[component_name] = component_class(device, **component_info)
         else:
-            _component_instances[component_name] = componentclass(**component_info)
+            _component_instances[component_name] = component_class(**component_info)
+
     return _component_instances[component_name]
 
 def with_lock(

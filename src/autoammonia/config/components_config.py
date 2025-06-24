@@ -1,35 +1,51 @@
-simulation = False
+import toml
+from pathlib import Path
+from .config import CONNECTIONS_INFO
 
-if simulation:
-    from ..hardware.mock.longer_mock import LongerPeristalticPumpMock as LongerPeristalticPump
-    from ..hardware.mock.tecan_mock import TecanXCPumpMock as TecanXCPump
-    from ..hardware.mock.valco_mock import ValcoSelectionValveMock as ValcoSelectionValve
-    from ..hardware.mock.pyBEEP_mock import PotentiostatDeviceMock as PotentiostatDevice
-    from ..hardware.mock.pyBEEP_mock import PotentiostatControllerMock as PotentiostatController
-    from ..hardware.mock.hamamatsu_mock import HamamatsuMiniSpectrometerMock as HamamatsuMiniSpectrometer
-    from ..hardware.mock.lamp_mock import ArduinoMock as Arduino
-    from ..hardware.mock.lamp_mock import MotorSwitchLampMock as MotorSwitchLamp
-    from ..hardware.mock.lamp_mock import PulsedLampMock as PulsedLamp
-else:
-    from matterlab_pumps import TecanXCPump, LongerPeristalticPump
-    from matterlab_valves import ValcoSelectionValve
-    from pyBEEP import PotentiostatDevice, PotentiostatController
-    from matterlab_spectrometers import HamamatsuMiniSpectrometer
-    from ..hardware.uv_vis_lamp import Arduino, MotorSwitchLamp, PulsedLamp
+MOCK_OVERRIDES = {
+    "matterlab_pumps.LongerPeristalticPump": "autoammonia.hardware.mock.longer_mock.LongerPeristalticPumpMock",
+    "matterlab_pumps.TecanXCPump": "autoammonia.hardware.mock.tecan_mock.TecanXCPumpMock",
+    "matterlab_valves.ValcoSelectionValve": "autoammonia.hardware.mock.valco_mock.ValcoSelectionValveMock",
+    "pyBEEP.PotentiostatController": "autoammonia.hardware.mock.pyBEEP_mock.PotentiostatControllerMock",
+    "pyBEEP.PotentiostatDevice": "autoammonia.hardware.mock.pyBEEP_mock.PotentiostatDeviceMock",
+    "matterlab_spectrometers.HamamatsuMiniSpectrometer": "autoammonia.hardware.mock.hamamatsu_mock.HamamatsuMiniSpectrometerMock",
+    "autoammonia.hardware.uv_vis_lamp.Arduino": "autoammonia.hardware.mock.lamp_mock.ArduinoMock",
+    "autoammonia.hardware.uv_vis_lamp.MotorSwitchLamp": "autoammonia.hardware.mock.lamp_mock.MotorSwitchLampMock",
+    "autoammonia.hardware.uv_vis_lamp.PulsedLamp": "autoammonia.hardware.mock.lamp_mock.PulsedLampMock",
+}
 
-CONFIG_COMPONENTS = {'longerWE01': {'class': LongerPeristalticPump, 'com_port': '/dev/longer_pumps', 'address': 1, 'baudrate': 1200},
-                     'longerCE01': {'class': LongerPeristalticPump, 'com_port': '/dev/longer_pumps', 'address': 2, 'baudrate': 1200},
-                     'tecanRX01': {'class': TecanXCPump, 'com_port': '/dev/tecan_pumps', 'address': 2, 'syringe_volume': 2.5e-3,
-                                   'num_valve_port': 12,
-                                   'ports': None},
-                     'valveRX01': {'class': ValcoSelectionValve, 'com_port': '/dev/valveRX01', 'num_port':10,
-                                   'ports': None},
-                     'tecanAZ01': {'class': TecanXCPump, 'com_port': '/dev/tecan_pumps', 'address': 1, 'syringe_volume': 1e-3,
-                                   'num_valve_port': 12,
-                                   'ports': None},
-                     'valveAZ01': {'class': ValcoSelectionValve, 'com_port': '/dev/valveAZ01','num_port':10,
-                                   'ports': None},
-                     'potentiostat01': {'class': PotentiostatController, 'device_class': PotentiostatDevice,'device_kwargs': {'port': '/dev/potentiostat01', 'address': 1}},
-                     'UVVIS01':{'class': HamamatsuMiniSpectrometer},
-                     'lamp01': {'class': Arduino, 'device_class': MotorSwitchLamp, 'com_port': 'COM5', 'pulsed': False}
-                     }
+_config_components = toml.load(Path(__file__).parent / "components.toml")
+simulation = _config_components.pop('global', {}).get('simulation', False)
+
+def get_config_components() -> dict[str, dict]:
+    """
+    Return the raw component configs with class names optionally replaced by mocks.
+    Classes are NOT resolved/imported yet.
+    Adds dynamic 'ports' info from CONNECTIONS_INFO if present.
+    """
+    result = {}
+    for name, cfg in _config_components.items():
+        if name == "global":
+            continue
+
+        cfg = cfg.copy()
+
+        # Replace class/device_class with mock version if in simulation mode
+        for key in ("class", "device_class"):
+            if key in cfg:
+                target = cfg[key]
+                if simulation and target in MOCK_OVERRIDES:
+                    cfg[key] = MOCK_OVERRIDES[target]
+
+        # Add 'ports' info if available
+        if name in CONNECTIONS_INFO:
+            cfg["ports"] = {
+                port: CONNECTIONS_INFO[name][port]["port"]
+                for port in CONNECTIONS_INFO[name]
+            }
+
+        result[name] = cfg
+
+    return result
+
+CONFIG_COMPONENTS = get_config_components()

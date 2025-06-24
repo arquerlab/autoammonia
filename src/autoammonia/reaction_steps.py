@@ -7,7 +7,8 @@ from pathlib import Path
 
 from autoammonia.db.db_functions import add_experiment_to_db
 from autoammonia.utils.files import get_default_folder
-from .config.config import DEFAULT_CONFIG, CONNECTIONS_INFO,CONFIG_COMPONENTS
+from .config.config import DEFAULT_CONFIG, CONNECTIONS_INFO
+from .config.components_config import CONFIG_COMPONENTS
 
 from .utils.redis_client import client
 from .utils.elytes_precursors import reset_cache, get_valid_precursors, get_valid_electrolytes

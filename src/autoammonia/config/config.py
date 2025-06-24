@@ -1,8 +1,6 @@
 import toml
 from pathlib import Path
 
-from .components_config import CONFIG_COMPONENTS
-
 # Load default configuration
 DEFAULT_CONFIG_PATH = Path(__file__).parent / "default_config.toml"
 DEFAULT_CONFIG = toml.load(DEFAULT_CONFIG_PATH)
@@ -24,6 +22,3 @@ CONNECTIONS_INFO = {
 
 # Extract setups (e.g., config_setup_1)
 CONFIG_SETUP_1 = _connections_data.get("setup", {}).get("config_setup_1", [])
-
-for instrument in CONNECTIONS_INFO:
-    CONFIG_COMPONENTS[instrument]['ports'] = {port: CONNECTIONS_INFO[instrument][port]['port'] for port in CONNECTIONS_INFO[instrument]}
