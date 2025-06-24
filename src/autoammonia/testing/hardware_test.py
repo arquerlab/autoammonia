@@ -1,9 +1,4 @@
-from ..config.config import DEFAULT_CONFIG
-from ..hardware.peristaltic_pumps import run_pump, stop_pump, check_pump
-from ..hardware.selection_valves import switch_port_valve
 from ..utils.redis_client import client
-from ..hardware.syringe_pumps import syringe_draw, syringe_dispense
-from ..hardware.uv_vis_module import lamp_switch, acquire_spectrum
 
 def main():
     """
@@ -14,6 +9,7 @@ def main():
     #Checking peristaltic pumps
     for pump in ['longerCE01', 'longerWE01']:
         try:
+            from ..hardware.peristaltic_pumps import run_pump, stop_pump, check_pump
             run_pump(pump=pump, speed=1.0, direction=True)
             expected_status = float(client.get(pump))
             actual_status = check_pump(pump=pump)
@@ -30,6 +26,7 @@ def main():
     #Checking syringe pumps
     for pump in ['tecanAZ01', 'tecanRX01']:
         try:
+            from ..hardware.syringe_pumps import syringe_draw, syringe_dispense
             syringe_draw(syringe_pump=pump, volume=0.05, valve_port='waste', speed=DEFAULT_CONFIG['syringe_wash_speed'])
             syringe_dispense(syringe_pump=pump, volume=0.25, valve_port='waste', speed=DEFAULT_CONFIG['syringe_wash_speed'])
             print(f"Syringe pump {pump} checked successfully.")
@@ -39,6 +36,7 @@ def main():
     #Checking valves
     for valve in ['valveRX01', 'valveAZ01']:
         try:
+            from ..hardware.selection_valves import switch_port_valve
             switch_port_valve(valve=valve, port=2)
             switch_port_valve(valve=valve, port=1)
             print(f"Valve {valve} switched to port 2 and back to port 1 successfully.")
@@ -47,6 +45,7 @@ def main():
         
     #checking spectrometer and lamp
     try:
+        from ..hardware.uv_vis_module import lamp_switch, acquire_spectrum
         lamp_switch(lamp='lamp01', on=True)
         acquire_spectrum(spectrometer='UVVIS01', lamp='lamp01', integration_time=1.0)
         lamp_switch(lamp='lamp01', on=False)
