@@ -434,8 +434,8 @@ def syringe_transfer_and_wash(
     wash_valves = []
     syringe_port_input, valve_port_input = get_connected_port(syringe_pump, draw_valve_port, CONNECTIONS_INFO)
     syringe_port_output, valve_port_output = get_connected_port(syringe_pump, dispense_valve_port, CONNECTIONS_INFO)
-    wash_valves = wash_valves + [valve_port_input,] if valve_port_input else wash_valves
-    wash_valves = wash_valves + [valve_port_output,] if valve_port_output else wash_valves
+    wash_valves = wash_valves + [syringe_port_input,] if valve_port_input else wash_valves
+    wash_valves = wash_valves + [syringe_port_output,] if valve_port_output else wash_valves
                     
     syringe_wash_unlocked(syringe_pump=syringe_pump, repeats=wash_repeats, wash_vol=wash_vol, speed=wash_speed,
                           wash_valves=wash_valves, **kwargs)
