@@ -1,14 +1,7 @@
-import os.path
-from typing import Any
-from pathlib import Path
-
-
 from prefect import flow, task
+import pandas as pd
 
 from ..utils.decorators import run_on_component_with_lock
-from ..config.config import DEFAULT_CONFIG
-
-import pandas as pd
 
 @run_on_component_with_lock
 @task
