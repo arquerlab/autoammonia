@@ -67,7 +67,8 @@ def track_reaction(
 
                 if period_timing <= current_time:
                     take_aliquots(initial_reaction_time=initial_time, volume=volume)
-                    logger.info(f'Aliquot {aliquotes_sent + 1} taken at {current_time - initial_time:.2f} seconds')
+                    aliquotes_sent += 1
+                    logger.info(f'Aliquot {aliquotes_sent} taken at {current_time - initial_time:.2f} seconds')
                     period_timing += aliquote_interval
                     
                 time.sleep(2.5)
