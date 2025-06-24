@@ -1,5 +1,3 @@
-from prefect import get_run_logger
-
 from ..config.config import DEFAULT_CONFIG
 from ..hardware.peristaltic_pumps import run_pump, stop_pump, check_pump
 from ..hardware.selection_valves import switch_port_valve
@@ -30,20 +28,29 @@ def main():
             
     #Checking syringe pumps
     for pump in ['tecanAZ01', 'tecanRX01']:
-        syringe_draw(syringe_pump=pump, volume=0.05, valve_port='waste', speed=DEFAULT_CONFIG['syringe_wash_speed'])
-        syringe_dispense(syringe_pump=pump, volume=0.25, valve_port='waste', speed=DEFAULT_CONFIG['syringe_wash_speed'])
-        print(f"Syringe pump {pump} checked successfully.")
+        try:
+            syringe_draw(syringe_pump=pump, volume=0.05, valve_port='waste', speed=DEFAULT_CONFIG['syringe_wash_speed'])
+            syringe_dispense(syringe_pump=pump, volume=0.25, valve_port='waste', speed=DEFAULT_CONFIG['syringe_wash_speed'])
+            print(f"Syringe pump {pump} checked successfully.")
+        except Exception as e:
+            print(f"Error checking syringe pump {pump}: {e}")
     
     #Checking valves
     for valve in ['valveRX01', 'valveAZ01']:
-        switch_port_valve(valve=valve, port=2)
-        switch_port_valve(valve=valve, port=1)
-        print(f"Valve {valve} switched to port 2 and back to port 1 successfully.")
+        try:
+            switch_port_valve(valve=valve, port=2)
+            switch_port_valve(valve=valve, port=1)
+            print(f"Valve {valve} switched to port 2 and back to port 1 successfully.")
+        except Exception as e:
+            print(f"Error switching valve {valve}: {e}")
         
     #checking spectrometer and lamp
-    lamp_switch(lamp='lamp01', on=True)
-    acquire_spectrum(spectrometer='UVVIS01', lamp='lamp01', integration_time=1.0)
-    lamp_switch(lamp='lamp01', on=False)
-    print("Spectrometer and lamp checked successfully.")
+    try:
+        lamp_switch(lamp='lamp01', on=True)
+        acquire_spectrum(spectrometer='UVVIS01', lamp='lamp01', integration_time=1.0)
+        lamp_switch(lamp='lamp01', on=False)
+        print("Spectrometer and lamp checked successfully.")
+    except Exception as e:
+        print(f"Error checking spectrometer or lamp: {e}")
 
         
