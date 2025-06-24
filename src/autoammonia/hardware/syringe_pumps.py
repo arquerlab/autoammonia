@@ -494,6 +494,7 @@ def compartment_wash(
 
 @flow
 def compartment_fill(
+        syringe_pump: str,
         source: str,
         destination: str,
         volume: float,
@@ -504,6 +505,7 @@ def compartment_fill(
     Transfers liquid from one compartment to another using a syringe pump and updates destination compartment volume accordingly
 
     Args:
+        syringe_pump (str): The syringe pump to use for the transfer.
         source (str): The name of the source compartment from which the liquid will be transferred.
         destination (str): The name of the destination compartment to which the liquid will be transferred.
         volume (float): The amount of liquid to transfer (in mL).
@@ -511,7 +513,7 @@ def compartment_fill(
         **kwargs (Any): Additional keyword arguments to override the default configuration.
     """
     syringe_transfer_and_wash(
-        syringe_pump='tecanRX01', volume=volume, draw_valve_port=source,
+        syringe_pump=syringe_pump, volume=volume, draw_valve_port=source,
         dispense_valve_port=destination, speed=speed, **kwargs
     )
     client.set(f"{destination}_volume", volume)

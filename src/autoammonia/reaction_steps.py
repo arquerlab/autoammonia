@@ -170,8 +170,8 @@ def wash_flow_cell(
 
     for _ in range(repeats):
         for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
-            compartment_fill(source='water', destination=f'WEvial{cell_str}', volume=wash_comp_volume, speed=filling_speed, **kwargs)
-            compartment_fill(source='water', destination=f'CEvial{cell_str}', volume=wash_comp_volume, speed=filling_speed, **kwargs)
+            compartment_fill(syringe_pump='tecanRX01', source='water', destination=f'WEvial{cell_str}', volume=wash_comp_volume, speed=filling_speed, **kwargs)
+            compartment_fill(syringe_pump='tecanRX01', source='water', destination=f'CEvial{cell_str}', volume=wash_comp_volume, speed=filling_speed, **kwargs)
         run_pump(pump='longerWE01', speed=pump_speed, **kwargs)
         run_pump(pump='longerCE01', speed=pump_speed, **kwargs)
         for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
@@ -285,7 +285,7 @@ def electrodeposition(
         precursors_info = [(metal, ratio, ports_dict[metal]) for metal, ratio in metal_ratios]
         prepare_elyte_mix(syringe_pump='tecanRX01', elyte_info=precursors_info,
                           compartment=f'WEvial{cell_str}', volume=deposition_volume, **kwargs)
-        compartment_fill(source='anolyte', destination=f'CEvial{cell_str}', volume=anolyte_volume,
+        compartment_fill(syringe_pump='tecanRX01', source='anolyte', destination=f'CEvial{cell_str}', volume=anolyte_volume,
                          speed=filling_speed, **kwargs)
 
     run_pump(pump='longerWE01', speed=pump_speed, **kwargs)
@@ -350,7 +350,7 @@ def electrosynthesis(
         
         prepare_elyte_mix(syringe_pump='tecanRX01',elyte_info=catholyte_info,
                           compartment=f'WEvial{cell_str}',volume=catholyte_volume, **kwargs)
-        compartment_fill(source='anolyte', destination=f'CEvial{cell_str}', volume=anolyte_volume,
+        compartment_fill(syringe_pump='tecanRX01', source='anolyte', destination=f'CEvial{cell_str}', volume=anolyte_volume,
                          speed=filling_speed, **kwargs)
         client.set(name=f'ID{exp_id}_content', value=json.dumps(dict(elyte_ratios)))
 
@@ -406,9 +406,9 @@ def electrodisolution(
 
     for cell_str, exp_id in zip([str(cell).zfill(2) for cell in range(1, parallel_cells + 1)],
                                experiment_ids):
-        compartment_fill(source='acid', destination=f'WEvial{cell_str}', volume=catholyte_volume,
+        compartment_fill(syringe_pump='tecanRX01', source='acid', destination=f'WEvial{cell_str}', volume=catholyte_volume,
                          speed=filling_speed, **kwargs)
-        compartment_fill(source='anolyte', destination=f'CEvial{cell_str}', volume=anolyte_volume,
+        compartment_fill(syringe_pump='tecanRX01', source='anolyte', destination=f'CEvial{cell_str}', volume=anolyte_volume,
                          speed=filling_speed, **kwargs)
         client.set(name=f'flow_cell{cell_str}_content', value='acid')
 
