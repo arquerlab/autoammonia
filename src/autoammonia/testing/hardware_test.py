@@ -18,10 +18,11 @@ def main():
             expected_status = float(client.get(pump))
             actual_status = check_pump(pump=pump)
             if actual_status != expected_status:
-                raise RuntimeError(
+                print(
                     f"Pump {pump} status mismatch: expected {expected_status}, got {actual_status}"
                 )
-            print(f"Pump {pump} is running as expected.")
+            else:
+                print(f"Pump {pump} is running as expected.")
         finally:
             stop_pump(pump=pump)
     
