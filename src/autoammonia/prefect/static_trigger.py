@@ -15,7 +15,7 @@ async def trigger_deployments_async(deployment_list: List[str]):
         run = await run_deployment(
             name=f"{deployment}",
             timeout=0,
-            kwargs={},
+            parameters={'kwargs': {}},
         )
         print(f"Triggered {deployment} with run ID: {run.id}")
 
