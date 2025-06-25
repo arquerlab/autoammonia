@@ -43,15 +43,3 @@ def main():
             print(f"Valve {valve} switched to port <waste> successfully.")
         except Exception as e:
             print(f"Error switching valve {valve}: {e}")
-        
-    #checking spectrometer and lamp
-    try:
-        from ..hardware.uv_vis_module import lamp_switch, acquire_spectrum
-        lamp_switch(lamp='lamp01', on=True)
-        acquire_spectrum(spectrometer='UVVIS01', lamp='lamp01', integration_time=1.0)
-        lamp_switch(lamp='lamp01', on=False)
-        print("Spectrometer and lamp checked successfully.")
-    except Exception as e:
-        print(f"Error checking spectrometer or lamp: {e}")
-
-        
