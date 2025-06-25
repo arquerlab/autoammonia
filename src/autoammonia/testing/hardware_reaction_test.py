@@ -13,7 +13,7 @@ def main():
             from ..hardware.peristaltic_pumps import run_pump, stop_pump, check_pump
             run_pump(pump=pump, speed=1.0, direction=True)
             print(f"Running peristaltic pump {pump} at speed 1.0 in forward direction.")
-            client.set(pump, str(1.0))
+            #client.set(pump, str(1.0))
             expected_status = float(client.get(str(pump)))
             print(f"Expected status for pump {pump}: {expected_status}")
             actual_status = check_pump(pump=pump)
