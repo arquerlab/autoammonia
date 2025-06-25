@@ -29,7 +29,7 @@ class Lamp(ABC):
         pass
 
 class MotorSwitchLamp(Lamp):
-    def __init__(self, arduino: Arduino, on_degrees: int, off_degrees: int):
+    def __init__(self, arduino: Arduino, on_degrees: int = 50, off_degrees: int = 0):
         self.arduino = arduino
         self.on_degrees = on_degrees
         self.off_degrees = off_degrees

@@ -46,7 +46,8 @@ device_kwargs = { port = "/dev/potentiostat01", address = 1 }
 class = "matterlab_spectrometers.HamamatsuMiniSpectrometer"
 
 [lamp01]
-class = "autoammonia.hardware.uv_vis_lamp.Arduino"
-device_class = "autoammonia.hardware.uv_vis_lamp.MotorSwitchLamp"
+class = "autoammonia.hardware.uv_vis_lamp.MotorSwitchLamp"
+device_class = "autoammonia.hardware.uv_vis_lamp.Arduino"
 com_port = "COM5"
 pulsed = false
+

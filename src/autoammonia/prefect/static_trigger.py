@@ -19,6 +19,7 @@ async def trigger_deployments_async(deployment_list: List[str]):
         )
         print(f"Triggered {deployment} with run ID: {run.id}")
 
+
 def trigger_deployments(deployments: List[str]):
     asyncio.run(trigger_deployments_async(deployments))
     
