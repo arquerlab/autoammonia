@@ -35,7 +35,6 @@ class LampMock(ABC):
 # --- Mock MotorSwitchLamp ---
 class MotorSwitchLampMock(LampMock):
     def __init__(self, arduino: ArduinoMock, on_degrees: int = 50, off_degrees: int = 0):
-        super().__init__(arduino, on_degrees=on_degrees, off_degrees=off_degrees)
         self.arduino = arduino
         self.on_degrees = on_degrees
         self.off_degrees = off_degrees
