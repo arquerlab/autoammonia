@@ -12,7 +12,6 @@ def main():
         try:
             from ..hardware.peristaltic_pumps import run_pump, stop_pump, check_pump
             run_pump(pump=pump, speed=1.0, direction=True)
-            print(f'Pump {pump}, status saved: ', client.get(str(pump)))
             expected_status = float(client.get(str(pump)))
             actual_status = check_pump(pump=pump)
             if actual_status != expected_status:

@@ -72,7 +72,6 @@ def run_pump(
     try:
         run_pump_func.with_options(retries=retries
                                    )(pump=pump, speed=speed, direction=direction)
-        print(f'Pump status saved: ', client.get(str(pump)))
     except Exception as e:
         client.set('safety_operation', 0)
         raise RuntimeError(f"Failed to run pump '{pump}' after {retries} retries.") from e
