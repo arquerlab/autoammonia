@@ -2,7 +2,7 @@ from prefect.deployments import run_deployment
 import asyncio
 from typing import List
 
-deployments = [
+deployments_to_trigger = [
     {
         "flow_name": "process_experiment_queue",
         "name": "process-experiment-queue-deployment"
@@ -28,3 +28,11 @@ async def trigger_deployments_async(deployment_list: List[dict]):
 
 def trigger_deployments(deployments: List[dict]):
     asyncio.run(trigger_deployments_async(deployments))
+    
+def main():
+    """
+    Main function to trigger all deployments defined in the list.
+    """
+    print("Starting deployment triggers...")
+    trigger_deployments(deployments_to_trigger)
+    print("All deployments triggered.")
