@@ -14,7 +14,8 @@ async def trigger_deployments_async(deployment_list: List[str]):
         # Full name format: <flow_function_name>/<deployment_name>
         run = await run_deployment(
             name=f"{deployment}",
-            timeout=0
+            timeout=0,
+            kwargs={},
         )
         print(f"Triggered {deployment} with run ID: {run.id}")
 
