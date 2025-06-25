@@ -3,7 +3,7 @@ from prefect.client.orchestration import get_client
 from prefect.client.schemas.filters import FlowRunFilter, FlowRunFilterState, WorkPoolFilter, WorkPoolFilterName
 from prefect.states import Cancelled
 
-from .project_deploy import flows_to_deploy
+from .dynamic_deploy import flows_to_deploy
 
 async def cancel_flows_in_workpool(pool_name: str):
     print(f"🔍 Looking for active flows in work pool: '{pool_name}'")

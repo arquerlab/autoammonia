@@ -121,7 +121,6 @@ def process_experiment_queue(delete_previous_queue: Optional[bool] = None,
         else:
             logger.info("Flow stopped.")
 
-
 def reaction_module_deploy():
     process_experiment_queue.from_source(
         source=Path(__file__).parent,
@@ -130,11 +129,3 @@ def reaction_module_deploy():
         name="reaction_module_flow",
         work_pool_name="reaction_module_pool",
     )
-
-if __name__ == '__main__':
-    """process_experiment_queue(delete_previous_queue=True,
-                             electrodeposition_time=600, reaction_time=10, electrodisolution_time=10,
-                             electrodeposition_current=-0.004, reaction_current=+0.004,
-                             wash_flow_cell_repeats=1, wash_flow_cell_wash_comp_volume=2.5,
-    )"""
-    pass

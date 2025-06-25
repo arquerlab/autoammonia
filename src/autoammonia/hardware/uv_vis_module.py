@@ -4,13 +4,14 @@ import pandas as pd
 from ..utils.decorators import run_on_component_with_lock
 
 @task
-@run_on_component_with_lock
+@run_on_component_with_lock()
 def lamp_switch(lamp: str, on: bool=True) -> None:
     """
     Switches on/off the lamp used for UV-Vis measurements.
     
     Args:
         lamp (str): The lamp to switch on or off.
+        on (bool): If True, the lamp is turned on; if False, it is turned off.
     """
     if on:
         lamp.start()
@@ -18,7 +19,7 @@ def lamp_switch(lamp: str, on: bool=True) -> None:
         lamp.stop()
 
 @flow
-@run_on_component_with_lock
+@run_on_component_with_lock()
 def acquire_spectrum(
         spectrometer: str,
         lamp: str,
