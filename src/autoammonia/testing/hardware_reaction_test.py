@@ -17,7 +17,7 @@ def main():
             expected_status = float(client.get(str(pump)))
             print(f"Expected status for pump {pump}: {expected_status}")
             actual_status = check_pump(pump=pump)
-            if actual_status != 1.0:
+            if actual_status != expected_status:
                 print(
                     f"Pump {pump} status mismatch: expected {expected_status}, got {actual_status}"
                 )
