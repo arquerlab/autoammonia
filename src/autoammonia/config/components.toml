@@ -48,6 +48,5 @@ class = "matterlab_spectrometers.HamamatsuMiniSpectrometer"
 [lamp01]
 class = "autoammonia.hardware.uv_vis_lamp.MotorSwitchLamp"
 device_class = "autoammonia.hardware.uv_vis_lamp.Arduino"
-pulsed = false
 device_kwargs = { port = "COM5"}
 
