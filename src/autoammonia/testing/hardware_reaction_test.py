@@ -12,6 +12,7 @@ def main():
         try:
             from ..hardware.peristaltic_pumps import run_pump, stop_pump, check_pump
             run_pump(pump=pump, speed=1.0, direction=True)
+            print(f"Running peristaltic pump {pump} at speed 1.0 in forward direction.")
             expected_status = float(client.get(str(pump)))
             actual_status = check_pump(pump=pump)
             if actual_status != 1.0:
@@ -21,6 +22,7 @@ def main():
             else:
                 print(f"Pump {pump} is running as expected.")
             stop_pump(pump = pump)
+            print(f"Stopped peristaltic pump {pump}.")
         except Exception as e:
              print(f"Error checking peristaltic pump {pump}: {e}")
     
