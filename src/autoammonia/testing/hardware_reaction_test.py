@@ -14,7 +14,7 @@ def main():
             run_pump(pump=pump, speed=1.0, direction=True)
             expected_status = float(client.get(str(pump)))
             actual_status = check_pump(pump=pump)
-            if actual_status != expected_status:
+            if actual_status != 1.0:
                 print(
                     f"Pump {pump} status mismatch: expected {expected_status}, got {actual_status}"
                 )
