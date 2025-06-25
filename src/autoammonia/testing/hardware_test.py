@@ -12,6 +12,7 @@ def main():
         try:
             from ..hardware.peristaltic_pumps import run_pump, stop_pump, check_pump
             run_pump(pump=pump, speed=1.0, direction=True)
+            print(f'Pump {pump}, status saved: ', client.get(str(pump)))
             expected_status = float(client.get(str(pump)))
             actual_status = check_pump(pump=pump)
             if actual_status != expected_status:
@@ -20,8 +21,9 @@ def main():
                 )
             else:
                 print(f"Pump {pump} is running as expected.")
-        finally:
-            stop_pump(pump=pump)
+            stop_pump(pump = pump)
+        except Exception as e:
+             print(f"Error checking peristaltic pump {pump}: {e}")
     
             
     #Checking syringe pumps
@@ -29,7 +31,7 @@ def main():
         try:
             from ..hardware.syringe_pumps import syringe_draw, syringe_dispense
             syringe_draw(syringe_pump=pump, volume=0.05, valve_port='waste', speed=DEFAULT_CONFIG['syringe_wash_speed'])
-            syringe_dispense(syringe_pump=pump, volume=0.25, valve_port='waste', speed=DEFAULT_CONFIG['syringe_wash_speed'])
+            syringe_dispense(syringe_pump=pump, volume=0.05, valve_port='waste', speed=DEFAULT_CONFIG['syringe_wash_speed'])
             print(f"Syringe pump {pump} checked successfully.")
         except Exception as e:
             print(f"Error checking syringe pump {pump}: {e}")
@@ -38,9 +40,8 @@ def main():
     for valve in ['valveRX01', 'valveAZ01']:
         try:
             from ..hardware.selection_valves import switch_port_valve
-            switch_port_valve(valve=valve, port=2)
-            switch_port_valve(valve=valve, port=1)
-            print(f"Valve {valve} switched to port 2 and back to port 1 successfully.")
+            switch_port_valve(valve=valve, port="waste")
+            print(f"Valve {valve} switched to port <waste> successfully.")
         except Exception as e:
             print(f"Error switching valve {valve}: {e}")
         

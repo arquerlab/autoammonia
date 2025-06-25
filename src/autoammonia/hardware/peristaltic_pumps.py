@@ -67,12 +67,12 @@ def run_pump(
         pump.set_pump(rpm=speed, on=True, direction=direction)
         direction_sign = +1 if direction else -1
         client.set(str(pump), speed * direction_sign)
-        print(f'Pump {pump}, status saved: ', client.get(str(pump)))
 
     # Execute the wrapped function with retries
     try:
         run_pump_func.with_options(retries=retries
                                    )(pump=pump, speed=speed, direction=direction)
+        print(f'Pump status saved: ', client.get(str(pump)))
     except Exception as e:
         client.set('safety_operation', 0)
         raise RuntimeError(f"Failed to run pump '{pump}' after {retries} retries.") from e
