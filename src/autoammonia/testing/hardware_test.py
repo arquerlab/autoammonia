@@ -1,4 +1,5 @@
 from ..utils.redis_client import client
+from ..config.config import DEFAULT_CONFIG
 
 def main():
     """
@@ -11,7 +12,7 @@ def main():
         try:
             from ..hardware.peristaltic_pumps import run_pump, stop_pump, check_pump
             run_pump(pump=pump, speed=1.0, direction=True)
-            expected_status = float(client.get(pump))
+            expected_status = float(client.get(str(pump)))
             actual_status = check_pump(pump=pump)
             if actual_status != expected_status:
                 print(

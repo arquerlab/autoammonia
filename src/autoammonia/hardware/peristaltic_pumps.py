@@ -67,6 +67,7 @@ def run_pump(
         pump.set_pump(rpm=speed, on=True, direction=direction)
         direction_sign = +1 if direction else -1
         client.set(str(pump), speed * direction_sign)
+        print(f'Pump {pump}, status saved: ', client.get(str(pump)))
 
     # Execute the wrapped function with retries
     try:
