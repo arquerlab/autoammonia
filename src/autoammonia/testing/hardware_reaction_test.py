@@ -26,7 +26,7 @@ def main():
     
             
     #Checking syringe pumps
-    for pump in ['tecanAZ01', 'tecanRX01']:
+    for pump in ['tecanRX01',]:
         try:
             from ..hardware.syringe_pumps import syringe_draw, syringe_dispense
             syringe_draw(syringe_pump=pump, volume=0.05, valve_port='waste', speed=DEFAULT_CONFIG['syringe_wash_speed'])
@@ -36,7 +36,7 @@ def main():
             print(f"Error checking syringe pump {pump}: {e}")
     
     #Checking valves
-    for valve in ['valveRX01', 'valveAZ01']:
+    for valve in ['valveRX01',]:
         try:
             from ..hardware.selection_valves import switch_port_valve
             switch_port_valve(valve=valve, port="waste")
