@@ -3,30 +3,22 @@ import asyncio
 from typing import List
 
 deployments_to_trigger = [
-    {
-        "flow_name": "process_experiment_queue",
-        "name": "process-experiment-queue-deployment"
-    },
-    {
-        "flow_name": "track_safety",
-        "name": "track-safety-deployment"
-    },
-    {
-        "flow_name": "track_reaction",
-        "name": "track-reaction-deployment"
-    }
+    "process-experiment-queue/process_experiment_queue_deployment",
+    "track-safety/track_safety_deployment",
+    "track-reaction/track_reaction_deployment",
 ]
 
-async def trigger_deployments_async(deployment_list: List[dict]):
+async def trigger_deployments_async(deployment_list: List[str]):
     for deployment in deployment_list:
+        print(f"🔄 Triggering deployment: {deployment})")
         # Full name format: <flow_function_name>/<deployment_name>
         run = await run_deployment(
-            name=f"{deployment['flow_name']}/{deployment['name']}",
+            name=f"{deployment}",
             timeout=0
         )
-        print(f"Triggered {deployment['name']} with run ID: {run.id}")
+        print(f"Triggered {deployment} with run ID: {run.id}")
 
-def trigger_deployments(deployments: List[dict]):
+def trigger_deployments(deployments: List[str]):
     asyncio.run(trigger_deployments_async(deployments))
     
 def main():
