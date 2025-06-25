@@ -4,8 +4,8 @@ from abc import ABC, abstractmethod
 import threading
 
 class Arduino:
-    def __init__(self, port: str, baudrate: int = 9600, timeout: float = 2.0):
-        self.ser = serial.Serial(port, baudrate, timeout=timeout)
+    def __init__(self, com_port: str, baudrate: int = 9600, timeout: float = 2.0):
+        self.ser = serial.Serial(com_port, baudrate, timeout=timeout)
         time.sleep(1)  # Wait for Arduino reset
 
     def rotate_motor(self, angle: int):
