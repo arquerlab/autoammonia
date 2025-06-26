@@ -68,7 +68,6 @@ def process_experiment_queue(delete_previous_queue: Optional[bool] = None,
         The flow can be stopped manually (Ctrl + C) or by setting the `stop_signal` key in Redis.
     """
     config = {**DEFAULT_CONFIG, **kwargs}
-    config['delete_previous_queue'] = True if config['delete_previous_queue'].lower() == "true" else False
     delete_previous_queue = delete_previous_queue if delete_previous_queue is not None else config[
         'delete_previous_queue']
     parallel_cells = parallel_cells if parallel_cells is not None else config['parallel_cells']

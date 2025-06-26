@@ -4,6 +4,9 @@ from pathlib import Path
 # Load default configuration
 DEFAULT_CONFIG_PATH = Path(__file__).parent / "default_config.toml"
 DEFAULT_CONFIG = toml.load(DEFAULT_CONFIG_PATH)
+if DEFAULT_CONFIG.get("simulation", False):
+    DEFAULT_CONFIG_PATH = Path(__file__).parent / "default_config_mock.toml"
+    DEFAULT_CONFIG = toml.load(DEFAULT_CONFIG_PATH)
 
 # Load connections info and setups
 CONNECTIONS_INFO_PATH = Path(__file__).parent / "connections_info.toml"
