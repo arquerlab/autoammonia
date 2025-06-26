@@ -50,6 +50,7 @@ aliquot_volume = 0.02
 detection_reagent_1_volume = 0.2
 detection_reagent_2_volume = 0.1
 detection_reagent_3_volume = 0.02
+detection_dark_time = 60 
 aliquot_filling_speed = 0.1
 vial_full_volume = 0.8
 

@@ -82,6 +82,7 @@ def take_aliquots(
     config = {**DEFAULT_CONFIG, **kwargs}
     
     parallel_cells = config['parallel_cells']
+    dark_time = config['dark_time']
     
     logger = get_run_logger()
     
@@ -103,11 +104,12 @@ def take_aliquots(
         fill_vial_detection_mix(vial, aliquot_filling_speed=config['aliquot_filling_speed']
                                 , **kwargs)
         aliquot_time = (aliquot_time + time.time()) / 2
-        measure_time = datetime.now() + timedelta(minutes=30)
+        measure_time = datetime.now() + timedelta(seconds=dark_time)
         time_rxn = aliquot_time - initial_reaction_time
         measure_vial.submit(task_name=f'Measurment of {vial} from {WEvial}',
                             run_at=measure_time
                             )(vial=vial, time_rxn=time_rxn, exp_id=exp_id, **kwargs)
+        logger.info(f'Programmed measurement of {vial} from {WEvial} at {measure_time}')
         
 
 @flow
@@ -133,7 +135,9 @@ def measure_vial(
         syringe_pump='tecanAZ01', volume=0.5, draw_valve_port=vial, dispense_valve_port='uv-vis',
         speed=filling_speed, **kwargs
     )
+    logger.info(f'Sample {vial} sent to UV-VIS for measurement')
     df = acquire_spectrum(spectrometer='UVVIS01', lamp='lamp01',integration_time= uv_vis_integration_time)
+    logger.info(f'Sample {vial} measured at UV-VIS')
     folder = get_default_folder('UVVIS')
     filepath = folder / f'ID{exp_id}_RXT{time_rxn}_VIAL{vial}.csv'
     df.to_csv(filepath, index=False)
@@ -155,8 +159,7 @@ def measure_vial(
         syringe_pump='tecanAZ01', volume=uv_vis_wash_volume, draw_valve_port=vial, dispense_valve_port='uv-vis',
         speed=filling_speed, **kwargs
     )
-        
-    logger.info(f'Sample {vial} sent to UV-VIS')
+    logger.info(f'UV-VIS flow cell washed with {uv_vis_wash_volume} mL of water')
 
     compartment_wash(syringe_pump='tecanAZ01', compartment=vial, repeats=wash_vial_repeats,
                      wash_vol=wash_vial_volume, speed=wash_vial_speed, speed_last_empty=wash_vial_last_empty,
@@ -190,7 +193,7 @@ def fill_vial_detection_mix(
         **kwargs (Any): Additional keyword arguments to override the default configuration.
     """
     config = {**DEFAULT_CONFIG, **kwargs}
-
+    logger = get_run_logger()
     # Use provided arguments or fall back to default config
     aliquot_volume = aliquot_volume if aliquot_volume is not None else config['aliquot_volume']
     d1_volume = d1_volume if d1_volume is not None else config['detection_reagent_1_volume']
@@ -208,6 +211,8 @@ def fill_vial_detection_mix(
                               speed=aliquot_filling_speed, **kwargs)
     syringe_transfer_and_wash('tecanAZ01', d3_volume, 'd3', vial,
                               speed=aliquot_filling_speed, **kwargs)
+    logger.info(f'Detection mix filled in vial {vial} with volumes: '
+                f'aliquot={aliquot_volume}, d1={d1_volume}, d2={d2_volume}, d3={d3_volume}')
 
 def analysis_module_deploy():
     track_reaction.from_source(

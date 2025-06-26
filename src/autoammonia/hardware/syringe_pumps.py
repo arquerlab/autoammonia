@@ -467,7 +467,7 @@ def compartment_wash(
         **kwargs (Any): Additional keyword arguments to override the default configuration.
     """
     config = {**DEFAULT_CONFIG, **kwargs}
-
+    logger = get_run_logger()
     repeats = repeats if repeats is not None else config['wash_compartment_repeats']
     wash_vol = wash_vol if wash_vol is not None else config['wash_compartment_volume']
     speed = speed if speed is not None else config['wash_compartment_speed']
@@ -491,6 +491,7 @@ def compartment_wash(
     syringe_transfer_unlocked(syringe_pump=syringe_pump, volume=wash_vol, draw_valve_port=compartment,
                               dispense_valve_port='waste',
                               speed=speed_last_empty, **kwargs)
+    logger.info(f"Compartment '{compartment}' washed {repeats} times with {wash_vol} mL at {speed} mL/s. ")
 
 
 @flow
@@ -513,9 +514,11 @@ def compartment_fill(
         speed (float): The speed at which the liquid is transferred (in mL/s).
         **kwargs (Any): Additional keyword arguments to override the default configuration.
     """
+    logger = get_run_logger()
     syringe_transfer_and_wash(
         syringe_pump=syringe_pump, volume=volume, draw_valve_port=source,
         dispense_valve_port=destination, speed=speed, **kwargs
     )
     client.set(f"{destination}_volume", volume)
+    logger.info(f"Transferred {volume} mL from {source} to {destination} at {speed} mL/s.")
     # client.set(f"{source}_volume", float(client.get(f"{source}_volume"))-volume)
