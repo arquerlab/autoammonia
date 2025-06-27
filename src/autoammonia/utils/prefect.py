@@ -37,7 +37,7 @@ async def trigger_deployments_async(
         if parameters:
             parameters = {'kwargs': {}}
         else:
-            if 'kwargs' not in parameters:
+            if 'kwargs' not in parameters.keys():
                 parameters = {'kwargs': {}}
         run = await run_deployment(
             name=f"{deployment}",
