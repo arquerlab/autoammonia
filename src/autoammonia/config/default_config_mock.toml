@@ -24,7 +24,7 @@ elyte_mix_filling_speed = 0.2
 elyte_mix_mixing_speed = 0.4
 
 electrodeposition_current = 2.82743339
-electrodeposition_time = 30  # 6*60
+electrodeposition_time = 3  # 6*60
 electrodeposition_deposition_volume = 10
 electrodeposition_anolyte_volume = 10
 electrodeposition_pump_speed = 10
@@ -37,25 +37,25 @@ reaction_anolyte_volume = 20
 reaction_pump_speed = 10
 reaction_filling_speed = 0.2
 
-electrodisolution_time = 30
+electrodisolution_time = 3
 electrodisolution_catholyte_volume = 10
 electrodisolution_anolyte_volume = 10
 electrodisolution_pump_speed = 10
 electrodisolution_filling_speed = 0.2
 
-uv_vis_integration_time = 10
+uv_vis_integration_time = 2
 uv_vis_wash_volume = 0.5
 aliquot_number = 3
 aliquot_volume = 0.02
 detection_reagent_1_volume = 0.2
 detection_reagent_2_volume = 0.1
 detection_reagent_3_volume = 0.02
-detection_dark_time = 60 
+detection_dark_time = 20 
 aliquot_filling_speed = 0.1
 vial_full_volume = 0.8
 
 wash_flow_cell_volume = 10
-wash_flow_cell_time = 120
+wash_flow_cell_time = 2
 wash_flow_cell_speed = 16
 wash_flow_cell_repeats = 1
 wash_flow_cell_filling_speed = 0.5

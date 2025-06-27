@@ -7,10 +7,12 @@ from datetime import datetime, timedelta
 from prefect import flow, get_run_logger
 import pandas as pd
 
+from dummy_tests.testing_file import deployments
 from .config.config import DEFAULT_CONFIG
 from .db.db_functions import add_results_to_db
 from .hardware.uv_vis_module import acquire_spectrum
 from .utils.decorators import with_lock
+from .utils.prefect import trigger_deployments
 from .utils.redis_client import client
 from .hardware.syringe_pumps import syringe_transfer_and_wash, syringe_transfer_unlocked, compartment_wash, compartment_fill
 from .utils.files import get_default_folder, transfer_file_scp
@@ -115,9 +117,9 @@ def take_aliquots(
         aliquot_time = (aliquot_time + time.time()) / 2
         measure_time = datetime.now() + timedelta(seconds=dark_time)
         time_rxn = aliquot_time - initial_reaction_time
-        measure_vial.submit(task_name=f'Measurment of {vial} from {WEvial}',
-                            run_at=measure_time
-                            )(vial=vial, time_rxn=time_rxn, exp_id=exp_id, **kwargs)
+        trigger_deployments(deployments=['measure_vial/measure_vial_uv_vis_flow',],
+                            scheduled_time=measure_time, 
+                            parameters={'vial': vial, 'time_rxn': time_rxn, 'exp_id': exp_id, **kwargs})
         logger.info(f'Programmed measurement of {vial} from {WEvial} at {measure_time}')
         
 
@@ -145,7 +147,7 @@ def measure_vial(
         speed=filling_speed, **kwargs
     )
     logger.info(f'Sample {vial} sent to UV-VIS for measurement')
-    df = acquire_spectrum(spectrometer='UVVIS01', lamp='lamp01',integration_time= uv_vis_integration_time)
+    df = acquire_spectrum(spectrometer='UVVIS01', lamp='lamp01', integration_time= uv_vis_integration_time)
     logger.info(f'Sample {vial} measured at UV-VIS')
     folder = get_default_folder('UVVIS')
     filepath = folder / f'ID{exp_id}_RXT{time_rxn}_VIAL{vial}.csv'
