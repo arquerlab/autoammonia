@@ -49,7 +49,7 @@ async def trigger_deployments_async(
         print(f"Triggered {deployment} with run ID: {run.id}")
 
 
-def trigger_deployments(
+def trigger_deployments_parallel(
         deployments: List[str], 
         scheduled_time: datetime | None = None, 
         parameters: dict | None = None
@@ -57,3 +57,28 @@ def trigger_deployments(
     asyncio.run(trigger_deployments_async(deployment_list=deployments, scheduled_time= scheduled_time, 
                                           parameters= parameters))
     
+def trigger_deployment(
+        deployment: str,
+        scheduled_time: datetime | None = None,
+        parameters: dict | None = None,
+) -> None:
+    """
+    Trigger a single deployment with optional parameters.
+    
+    Args:
+        deployment (str): The name of the deployment to trigger.
+        scheduled_time (datetime | None): Optional scheduled time for the deployment.
+        parameters (dict | None): Optional parameters to pass to the deployment.
+    """
+    if isinstance(parameters, dict):
+        if 'kwargs' not in parameters.keys():
+            parameters = {'kwargs': {}}
+    else:
+        parameters = {'kwargs': {}}
+    run = run_deployment(
+        name=f"{deployment}",
+        timeout=0,
+        parameters=parameters,
+        scheduled_time=scheduled_time,
+    )
+    print(f"Triggered {deployment} with run ID: {run.id}")
