@@ -2,7 +2,11 @@ import asyncio
 from prefect.client.orchestration import get_client
 from prefect.client.schemas.filters import DeploymentFilter, DeploymentFilterId
 
-from ..prefect.dynamic_deploy import flows_to_deploy
+flows_to_deploy = [
+        ("track_reaction", "analysis_module_flow", "analysis_module_pool",),
+        ("process_experiment_queue", "reaction_module_flow", "reaction_module_pool",),
+        ("track_safety", "safety_module_flow", "reaction_module_pool",),
+    ]
 
 async def trigger_workflow(flow_name, parameters):
     async with get_client() as client:
