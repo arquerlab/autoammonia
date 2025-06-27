@@ -32,7 +32,7 @@ async def trigger_deployments_async(
         parameters: dict | None = None
 ) -> None:
     for deployment in deployment_list:
-        print(f"🔄 Triggering deployment: {deployment})")
+        print(f"--> Triggering deployment: {deployment})")
         # Full name format: <flow_function_name>/<deployment_name>
         if isinstance(parameters, dict):
             if 'kwargs' not in parameters.keys():
