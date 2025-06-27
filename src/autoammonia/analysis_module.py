@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 from prefect import flow, get_run_logger
 import pandas as pd
 
-from dummy_tests.testing_file import deployments
 from .config.config import DEFAULT_CONFIG
 from .db.db_functions import add_results_to_db
 from .hardware.uv_vis_module import acquire_spectrum
