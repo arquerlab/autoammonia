@@ -35,7 +35,7 @@ async def trigger_deployments_async(
         print(f"🔄 Triggering deployment: {deployment})")
         # Full name format: <flow_function_name>/<deployment_name>
         if parameters:
-            parameters = {'kwargs': {]}
+            parameters = {'kwargs': {}}
         else:
             if 'kwargs' not in parameters:
                 parameters = {'kwargs': {}}
