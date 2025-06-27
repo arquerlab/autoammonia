@@ -20,10 +20,10 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [project.scripts]
-autoammonia_flow_off_dynamic = "autoammonia.prefect.dynamic_flows_shutdown:main"
-autoammonia_deploy_reaction = "autoammonia.prefect.deploy_reaction:main"
-autoammonia_deploy_analysis = "autoammonia.prefect.deploy_analysis:main"
-autoammonia_run = "autoammonia.prefect.trigger_deploys:main"
+autoammonia_flow_off_dynamic = "autoammonia.prefect_deploy.dynamic_flows_shutdown:main"
+autoammonia_deploy_reaction = "autoammonia.prefect_deploy.deploy_reaction:main"
+autoammonia_deploy_analysis = "autoammonia.prefect_deploy.deploy_analysis:main"
+autoammonia_run = "autoammonia.prefect_deploy.trigger_deploys:main"
 autoammonia_rx_test = "autoammonia.testing.rx_module_test:main"
 autoammonia_hardware_test_rx = "autoammonia.testing.hardware_reaction_test:main"
 autoammonia_hardware_test_az = "autoammonia.testing.hardware_analysis_test:main"
