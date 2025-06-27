@@ -82,7 +82,7 @@ def take_aliquots(
     config = {**DEFAULT_CONFIG, **kwargs}
     
     parallel_cells = config['parallel_cells']
-    dark_time = config['dark_time']
+    dark_time = config['detection_dark_time']
     
     logger = get_run_logger()
     
