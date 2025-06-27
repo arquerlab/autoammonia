@@ -3,9 +3,9 @@ import asyncio
 from typing import List
 
 deployments_to_trigger = [
-    "process-experiment-queue/process_experiment_queue_flow",
-    "track-safety/track_safety_flow",
-    "track-reaction/track_reaction_flow",
+    "process-experiment-queue/reacton_module_flow",
+    "track-safety/safety_module_flow",
+    "track-reaction/analysis_module_flow",
 ]
 
 
