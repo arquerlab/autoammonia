@@ -116,7 +116,7 @@ def take_aliquots(
         aliquot_time = (aliquot_time + time.time()) / 2
         measure_time = datetime.now() + timedelta(seconds=dark_time)
         time_rxn = aliquot_time - initial_reaction_time
-        trigger_deployments(deployments=['measure_vial/measure_vial_uv_vis_flow',],
+        trigger_deployments(deployments=['measure-vial/measure_vial_uv_vis_flow',],
                             scheduled_time=measure_time, 
                             parameters={'vial': vial, 'time_rxn': time_rxn, 'exp_id': exp_id, 'kwargs': kwargs})
         logger.info(f'Programmed measurement of {vial} from {WEvial} at {measure_time}')
