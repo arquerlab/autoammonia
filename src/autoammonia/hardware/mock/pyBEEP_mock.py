@@ -68,7 +68,7 @@ class PotentiostatControllerMock:
         waveform = waveform_func(**params)
 
         print(f"[MOCK] Generated waveform: {waveform}")
-        sleep.sleep(params['duration'] if 'duration' in params else 60)
+        sleep(params['duration'] if 'duration' in params else 60)
         self.last_plot_path = f"{folder or 'mock_folder'}/{filename or f'mock_{mode}.csv'}"
     
     
