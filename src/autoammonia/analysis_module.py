@@ -95,7 +95,7 @@ def take_aliquots(
     
     logger = get_run_logger()
     
-    for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells)]:
+    for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells+1)]:
         WEvial = f'WEvial{cell_str}'
         exp_id = client.get(f'WEvial{cell_str}_EXP_ID')
         while True:
