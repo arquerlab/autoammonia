@@ -34,11 +34,12 @@ async def trigger_deployments_async(
     for deployment in deployment_list:
         print(f"🔄 Triggering deployment: {deployment})")
         # Full name format: <flow_function_name>/<deployment_name>
-        if parameters:
-            parameters = {'kwargs': {}}
-        else:
+        if isinstance(parameters, dict):
             if 'kwargs' not in parameters.keys():
                 parameters = {'kwargs': {}}
+        else:
+            parameters = {'kwargs': {}}
+            
         run = await run_deployment(
             name=f"{deployment}",
             timeout=0,
