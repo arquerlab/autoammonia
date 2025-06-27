@@ -72,6 +72,14 @@ def track_reaction(
                     period_timing += aliquote_interval
                     
                 time.sleep(2.5)
+            # Wait unitl reaction is finished
+            while True:
+                reaction_status = client.get('reaction_status')
+                if reaction_status == "waiting":
+                    logger.info('Reaction finished, all aliquots taken')
+                    break
+                else:
+                    time.sleep(5)
 
 @flow
 def take_aliquots(
@@ -100,6 +108,7 @@ def take_aliquots(
             'tecanAZ01', volume=volume, draw_valve_port=WEvial,
             dispense_valve_port=vial, speed=config['aliquot_filling_speed'], **kwargs
         )
+        logger.info(f'Aliquot of {volume} mL taken from {WEvial} to {vial}')
         aliquot_time = time.time()
         fill_vial_detection_mix(vial, aliquot_filling_speed=config['aliquot_filling_speed']
                                 , **kwargs)
