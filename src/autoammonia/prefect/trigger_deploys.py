@@ -1,46 +1,34 @@
+from prefect.deployments import run_deployment
 import asyncio
-from prefect.client.orchestration import get_client
-from prefect.client.schemas.filters import DeploymentFilter, DeploymentFilterId
+from typing import List
 
-flows_to_deploy = [
-        ("track_reaction", "analysis_module_flow", "analysis_module_pool",),
-        ("process_experiment_queue", "reaction_module_flow", "reaction_module_pool",),
-        ("track_safety", "safety_module_flow", "reaction_module_pool",),
-    ]
+deployments_to_trigger = [
+    "process-experiment-queue/process_experiment_queue_deployment",
+    "track-safety/track_safety_deployment",
+    "track-reaction/track_reaction_deployment",
+]
 
-async def trigger_workflow(flow_name, parameters):
-    async with get_client() as client:
-        print(f"🚀 Checking for active runs of '{flow_name}'...")
 
-        deployment = await client.read_deployment_by_name(flow_name)
-        if not deployment:
-            print(f"❌ Deployment '{flow_name}' not found!")
-            return
-
-        # Check if there is an active run
-        deployment_filter = DeploymentFilter(
-            id=DeploymentFilterId(any_=[deployment.id])
+async def trigger_deployments_async(deployment_list: List[str]):
+    for deployment in deployment_list:
+        print(f"🔄 Triggering deployment: {deployment})")
+        # Full name format: <flow_function_name>/<deployment_name>
+        run = await run_deployment(
+            name=f"{deployment}",
+            timeout=0,
+            parameters={'kwargs': {}},
         )
-        flow_runs = await client.read_flow_runs(deployment_filter=deployment_filter)
-        running = any(fr.state.is_running() for fr in flow_runs)
+        print(f"Triggered {deployment} with run ID: {run.id}")
 
-        if running:
-            print(f"⚠️  Workflow '{flow_name}' already has a running flow run. Skipping...")
-            return
 
-        print(f"🚀 Triggering workflow '{flow_name}'...")
-        run = await client.create_flow_run_from_deployment(
-            deployment_id=deployment.id,
-            parameters=parameters,
-        )
-        print(f"✅ Workflow '{flow_name}' triggered! Run ID: {run.id}")
+def trigger_deployments(deployments: List[str]):
+    asyncio.run(trigger_deployments_async(deployments))
 
-async def gather_workflows():
-    tasks = [trigger_workflow(f"{func.replace('_', '-')}/{flow}", {"kwargs":{}}) for func, flow, pool in flows_to_deploy]
-    await asyncio.gather(*tasks)
-    
+
 def main():
     """
-    Main function to trigger all workflows defined in the project.
+    Main function to trigger all deployments defined in the list.
     """
-    asyncio.run(gather_workflows())
+    print("Starting deployment triggers...")
+    trigger_deployments(deployments_to_trigger)
+    print("All deployments triggered.")
