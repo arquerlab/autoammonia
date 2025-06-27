@@ -37,7 +37,7 @@ async def trigger_deployments_async(
         run = await run_deployment(
             name=f"{deployment}",
             timeout=0,
-            parameters={parameters},
+            parameters=parameters,
             scheduled_time = scheduled_time,
         )
         print(f"Triggered {deployment} with run ID: {run.id}")
