@@ -142,7 +142,7 @@ def measure_vial(
     logger = get_run_logger()
 
     compartment_fill(
-        syringe_pump='tecanAZ01', volume=0.5, draw_valve_port=vial, dispense_valve_port='uv-vis',
+        syringe_pump='tecanAZ01', source=vial, destination='uv-vis',volume=0.5,
         speed=filling_speed, **kwargs
     )
     logger.info(f'Sample {vial} sent to UV-VIS for measurement')
