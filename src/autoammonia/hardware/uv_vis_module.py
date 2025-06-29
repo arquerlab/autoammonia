@@ -23,7 +23,7 @@ def lamp_switch(lamp: str, on: bool=True) -> None:
 def acquire_spectrum(
         spectrometer: str,
         lamp: str,
-        integration_time: float,
+        integration_time: float | int,
 ) -> pd.DataFrame:
     lamp_switch(lamp=lamp, on=True)
     wavelength = spectrometer.wavelength

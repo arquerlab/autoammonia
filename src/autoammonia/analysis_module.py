@@ -154,7 +154,7 @@ def measure_vial(
     hostname = socket.gethostname()
     if hostname != client.get('main_hostname'):
         filepath_db = transfer_file_scp(local_file=filepath, remote_folder=client.get('data_path_uvvis'),
-                          username='poten', hostname=client.get('main_hostname'))
+                          remote_user='poten', remote_host=client.get('main_hostname'), remote_password="potato12")
     else:
         filepath_db = filepath
     
