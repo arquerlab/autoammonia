@@ -142,7 +142,7 @@ def measure_vial(
     logger = get_run_logger()
 
     compartment_fill(
-        syringe_pump='tecanAZ01', source=vial, destination='uv-vis',volume=0.5,
+        syringe_pump='tecanAZ01', source=vial, destination='uv_vis',volume=0.5,
         speed=filling_speed, **kwargs
     )
     logger.info(f'Sample {vial} sent to UV-VIS for measurement')
@@ -166,7 +166,7 @@ def measure_vial(
     
     # UV-VIS washing of flow cell
     compartment_fill(
-        syringe_pump='tecanAZ01', volume=uv_vis_wash_volume, draw_valve_port=vial, dispense_valve_port='uv-vis',
+        syringe_pump='tecanAZ01', volume=uv_vis_wash_volume, draw_valve_port=vial, dispense_valve_port='uv_vis',
         speed=filling_speed, **kwargs
     )
     logger.info(f'UV-VIS flow cell washed with {uv_vis_wash_volume} mL of water')
