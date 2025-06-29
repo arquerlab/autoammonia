@@ -166,7 +166,7 @@ def measure_vial(
     
     # UV-VIS washing of flow cell
     compartment_fill(
-        syringe_pump='tecanAZ01', volume=uv_vis_wash_volume, draw_valve_port=vial, dispense_valve_port='uv_vis',
+        syringe_pump='tecanAZ01', volume=uv_vis_wash_volume, source=vial, destination='uv_vis',
         speed=filling_speed, **kwargs
     )
     logger.info(f'UV-VIS flow cell washed with {uv_vis_wash_volume} mL of water')
