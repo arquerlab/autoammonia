@@ -194,13 +194,19 @@ def get_connected_port(
     """
     if port in connection_info[syringe_pump]:
         return port, None
+    valve = None
     for syringe_port in connection_info[syringe_pump]:
         if 'valve' in syringe_port:
+            valve = syringe_port
             if port in connection_info[syringe_port]:
                 return syringe_port, port
     logger = get_run_logger()
     logger.error(f"Port {port} not found in syringe pump {syringe_pump} connections.")
-    logger.error("Available ports: {list(connection_info[syringe_pump].keys())}")
+    logger.error(f"Available ports in syringe: {list(connection_info[syringe_pump].keys())}")
+    if valve is not None:
+        logger.error(f"Available ports in valve {valve}: {list(connection_info[valve].keys())}")
+    else:
+        logger.error("No valve found in syringe pump connections.")
     raise ValueError('Port not found in syringe pump connections. Please check the configuration.')
 
 def get_air_volume(
