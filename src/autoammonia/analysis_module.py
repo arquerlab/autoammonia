@@ -159,7 +159,7 @@ def measure_vial(
         filepath_db = filepath
     
     add_results_to_db(
-        exp_id=exp_id, result_type='UVVIS', result_role='raw_data', file_path=str(filepath_db),
+        experiment_id=exp_id, result_type='UVVIS', result_role='raw_data', file_path=str(filepath_db),
         metadata={'original_path': filepath if hostname != client.get('main_hostname') else str(filepath_db),
                   'vial': vial, 'time_rxn': time_rxn, 'integration_time': uv_vis_integration_time}
     )
