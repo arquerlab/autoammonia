@@ -128,11 +128,11 @@ def add_results_to_db(
         # Create and add a new Result record
         result = Result(
             experiment_id=experiment_id,
-            type=result_type,
-            role=result_role,
+            result_type=result_type,
+            result_role=result_role,
             file_path=file_path,
             description=description,
-            metadata=metadata or {}
+            results_metadata=metadata or {}
         )
         session.add(result)
         session.commit()
