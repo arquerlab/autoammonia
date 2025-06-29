@@ -1,6 +1,7 @@
 import asyncio
 import time
 import json
+import socket
 from typing import Optional, List, Any, Tuple, Union
 from prefect import flow
 from pathlib import Path
@@ -447,6 +448,8 @@ def execute_experiment(
     
     parallel_cells = config['parallel_cells']
     measurement_types = ['electrodeposition', 'electrosynthesis', 'electrodissolution', 'uvvis']
+    client.set("main_hostname", socket.gethostname())
+    
     paths = [get_default_folder(step) for step in measurement_types]
     for path, exp_type in zip(paths, measurement_types):
         client.set(f'data_path_{exp_type}', str(path))
