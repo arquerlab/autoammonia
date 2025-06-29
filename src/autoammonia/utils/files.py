@@ -2,7 +2,7 @@ from pathlib import Path
 import socket
 from typing import Any
 import paramiko
-from prefect import task
+from prefect import task, get_run_logger
 
 from ..config.config import DEFAULT_CONFIG
 from .redis_client import client
@@ -50,7 +50,7 @@ def transfer_file_scp(
     remote_user = remote_user if remote_user is not None else config["scp_user"]
     remote_host = remote_host if remote_host is not None else client.get('main_hostname')
 
-
+    logger = get_run_logger()
     try:
         ssh.connect(remote_host, port=remote_port, username=remote_user, password=remote_password)
 
@@ -60,10 +60,10 @@ def transfer_file_scp(
         sftp.put(local_file, str(remote_path))
         sftp.close()
 
-        print(f"File {local_file} successfully transferred to {remote_user}@{remote_host}:{remote_path}")
+        logger.info(f"File {local_file} successfully transferred to {remote_user}@{remote_host}:{remote_path}")
         return remote_path
     except Exception as e:
-        print(f"Error during SCP transfer: {e}")
+        logger.error(f"Error during SCP transfer to {remote_host}:{remote_folder} with password {remote_password}: {e}")
         raise
     finally:
         ssh.close()
