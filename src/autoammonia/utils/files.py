@@ -3,6 +3,7 @@ import socket
 from typing import Any
 import paramiko
 from prefect import task, get_run_logger
+from pathlib import PurePosixPath, PureWindowsPath
 
 from ..config.config import DEFAULT_CONFIG
 from .redis_client import client
@@ -34,7 +35,7 @@ def get_default_folder(
 @task
 def transfer_file_scp(
         local_file: Path,
-        remote_folder: Path,
+        remote_folder: str,
         remote_user: str | None,
         remote_password: str | None,
         remote_host: str | None,
@@ -53,11 +54,13 @@ def transfer_file_scp(
     logger = get_run_logger()
     try:
         ssh.connect(remote_host, port=remote_port, username=remote_user, password=remote_password)
-
-        # SCP transfer
         sftp = ssh.open_sftp()
-        remote_path = Path(remote_folder) / local_file.name
-        sftp.put(local_file, str(remote_path))
+        
+        main_os = client.get("main_os") or "Linux"  # fallback default
+        RemotePath = PureWindowsPath if main_os == "Windows" else PurePosixPath
+        remote_path = RemotePath(remote_folder) / Path(local_file).name
+
+        sftp.put(str(local_file), str(remote_path))
         sftp.close()
 
         logger.info(f"File {local_file} successfully transferred to {remote_user}@{remote_host}:{remote_path}")

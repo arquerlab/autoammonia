@@ -1,10 +1,12 @@
 import asyncio
+import platform
 import time
 import json
 import socket
 from typing import Optional, List, Any, Tuple, Union
 from prefect import flow
 from pathlib import Path
+import platform
 
 from autoammonia.db.db_functions import add_experiment_to_db
 from autoammonia.utils.files import get_default_folder
@@ -449,6 +451,7 @@ def execute_experiment(
     parallel_cells = config['parallel_cells']
     measurement_types = ['electrodeposition', 'electrosynthesis', 'electrodissolution', 'uvvis']
     client.set("main_hostname", socket.gethostname())
+    client.set("main_os", platform.system())
     
     paths = [get_default_folder(step) for step in measurement_types]
     for path, exp_type in zip(paths, measurement_types):
