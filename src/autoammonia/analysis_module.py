@@ -226,7 +226,7 @@ def fill_vial_detection_mix(
                               dispense_valve_port=vial, speed=aliquot_filling_speed, **kwargs)
     syringe_wash_unlocked(syringe_pump=syringe_pump, repeats=config['syringe_wash_repeats'], 
                           wash_vol=config["syringe_wash_volume_AZ"], speed=config["syringe_wash_speed"], 
-                          wash_valves='valveAZ01', **kwargs)
+                          wash_valves=['valveAZ01',], **kwargs)
     logger.info(f'Detection mix filled in vial {vial} with volumes: '
                 f'aliquot={aliquot_volume}, d1={d1_volume}, d2={d2_volume}, d3={d3_volume}')
 
