@@ -1,6 +1,8 @@
 from typing import Optional, ParamSpec, Callable, Concatenate
 from functools import wraps
 import time
+
+from prefect import get_run_logger
 from redis.exceptions import LockError
 import redis.lock
 
@@ -13,18 +15,24 @@ _component_instances = {}
 
 P = ParamSpec("P")
 
-def acquire_lock(component_name:str, function_timeout: int, acquisition_timeout: int) -> redis.lock:
+def acquire_lock(component_name:str, function_timeout: int, acquisition_timeout: int, function: Callable) -> redis.lock:
     lock_name = f'{component_name}_lock'
     ini_time = time.time()
+    logger = get_run_logger()
+    logger.info(f"[{component_name}] {function.__name__} is trying to acquire lock. Acq timeout: {acquisition_timeout}")
     lock = client.lock(lock_name, timeout=acquisition_timeout)
     if lock.acquire(blocking=True):
         acquisition_time = time.time() - ini_time
-        lock.extend(additional_time=function_timeout - acquisition_time)
+        logger.info(f"[{component_name}] {function.__name__} acquired the lock after waiting for {acquisition_time}s")
+        lock.extend(additional_time=function_timeout + acquisition_time)
+        logger.info(f"[{component_name}] {function.__name__} lock extended for function to execute: {function_timeout + acquisition_time}s")
         return lock
     else:
+        logger.error(f"[{component_name}] {function.__name__} was not able to acquire the lock")
         raise LockError(f"Could not acquire lock for {component_name}. Another process is blocking it.")
 
 def get_or_create_component_instance(component_name: str):
+    logger = get_run_logger()
     if component_name not in _component_instances:
         all_configs = get_config_components()
         component_info = all_configs[component_name].copy()
@@ -37,6 +45,7 @@ def get_or_create_component_instance(component_name: str):
             _component_instances[component_name] = component_class(device, **component_info)
         else:
             _component_instances[component_name] = component_class(**component_info)
+        logger.info(f"[{component_name}] class instantiated and added to component instances list")
 
     return _component_instances[component_name]
 
@@ -98,11 +107,13 @@ def with_lock(
     def decorator(func: Callable[Concatenate[str, P], None]) -> Callable[Concatenate[str, P], None]:
         @wraps(func)
         def wrapper(component_name: str, *args: P.args, **kwargs: P.kwargs) -> None:
-            lock = acquire_lock(component_name, function_timeout, acquisition_timeout)
+            logger = get_run_logger()
+            lock = acquire_lock(component_name, function_timeout, acquisition_timeout, func)
             try:
                 return func(component_name, *args, **kwargs)  # Execute the original function
             except Exception as e:
-                raise RuntimeError(f"An error occurred while executing {func.__name__}.") from e
+                logger.error(f"An error occurred while executing {func.__name__}.: {e}")
+                raise 
             finally:
                 # Release the lock after the function completes
                 if lock.owned():
@@ -227,7 +238,7 @@ def run_on_component_with_lock(
         @wraps(func)
         def wrapper(component_name: str, *args: P.args, **kwargs: P.kwargs) -> None:
             component = get_or_create_component_instance(component_name)
-            lock = acquire_lock(component_name, function_timeout, acquisition_timeout)
+            lock = acquire_lock(component_name, function_timeout, acquisition_timeout, func)
             try:
                 return func(component, *args, **kwargs)  # Execute the original function
             except Exception as e:
