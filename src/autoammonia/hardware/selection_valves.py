@@ -1,9 +1,10 @@
 from typing import Optional, Any
-from prefect import task
+from prefect import task, get_run_logger
 
 from ..utils.redis_client import client
 from ..utils.decorators import run_on_component
-from ..config.config import DEFAULT_CONFIG
+from ..config.config import DEFAULT_CONFIG, CONNECTIONS_INFO
+
 
 @task
 def switch_port_valve(
@@ -33,6 +34,7 @@ def switch_port_valve(
     """
     config = {**DEFAULT_CONFIG, **kwargs}
     retries = retries if retries is not None else config['valve_retries']
+    logger = get_run_logger()
 
     @task
     @run_on_component()
@@ -53,4 +55,6 @@ def switch_port_valve(
         switch_port_func.with_options(retries=retries)(valve, port)
     except Exception as e:
         client.set('safety_operation',0)
-        raise RuntimeError(f"Failed to switch valve '{valve}' to port '{port}' after {retries} retries.") from e
+        logger.error((f"Failed to switch valve '{valve}' to port '{port}' after {retries} retries."))
+        logger.error(f"Available ports in {valve}: {CONNECTIONS_INFO[valve]}")
+        raise RuntimeError from e
