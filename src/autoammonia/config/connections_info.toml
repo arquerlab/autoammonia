@@ -1,6 +1,7 @@
 [tecanAZ01]
-waste      = { port = 9, volume = 1 }
-valveAZ01  = { port = 8, volume = 0.09 }
+waste      = { port = 10, volume = 1 }
+valveAZ01  = { port = 9, volume = 0.09 }
+air        = { port = 8, volume = 0,     usage = "stock"}
 WEvial02   = { port = 7, volume = 0.18 }
 WEvial01   = { port = 6, volume = 0.18 }
 uv_vis     = { port = 5, volume = 8 }
