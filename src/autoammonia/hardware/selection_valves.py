@@ -57,4 +57,4 @@ def switch_port_valve(
         client.set('safety_operation',0)
         logger.error((f"Failed to switch valve '{valve}' to port '{port}' after {retries} retries."))
         logger.error(f"Available ports in {valve}: {CONNECTIONS_INFO[valve]}")
-        raise RuntimeError from e
+        raise
