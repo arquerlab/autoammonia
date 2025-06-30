@@ -17,8 +17,8 @@ longer_retries_delay_emergency_stop = 5
 valve_retries = 3
 
 draw_and_dispense_retries = 3
-function_timeout = 600
-acquisition_timeout = 300
+function_timeout = 1200
+acquisition_timeout = 600
 
 syringe_fail_retrials = 5
 
