@@ -111,7 +111,7 @@ def take_aliquots(
         )
         logger.info(f'Aliquot of {volume} mL taken from {WEvial} to {vial}')
         aliquot_time = time.time()
-        fill_vial_detection_mix(vial, aliquot_filling_speed=config['aliquot_filling_speed']
+        fill_vial_detection_mix(syringe_pump='tecanAZ01', vial=vial, aliquot_filling_speed=config['aliquot_filling_speed']
                                 , **kwargs)
         aliquot_time = (aliquot_time + time.time()) / 2
         measure_time = datetime.now() + timedelta(seconds=dark_time)
@@ -195,6 +195,7 @@ def fill_vial_detection_mix(
     Prepares a detection reagent mix in the specified vial for the indophenol blue method.
 
     Args:
+        syringe_pump (str): Syringe pump to use for the operation
         vial (str): Vial identifier for the mix preparation.
         aliquot_volume (Optional[float]): Volume of aliquot to be added.
         d1_volume (Optional[float]): Volume of detection reagent 1.
