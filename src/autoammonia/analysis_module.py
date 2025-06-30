@@ -159,7 +159,7 @@ def measure_vial(
         filepath_db = filepath
     
     add_results_to_db(
-        experiment_id=exp_id, result_type='UVVIS', result_role='raw_data', file_path=str(filepath_db),
+        experiment_id=int(exp_id), result_type='UVVIS', result_role='raw_data', file_path=str(filepath_db),
         metadata={'original_path': str(filepath) if hostname != client.get('main_hostname') else str(filepath_db),
                   'vial': vial, 'time_rxn': time_rxn, 'integration_time': uv_vis_integration_time}
     )
@@ -182,6 +182,7 @@ def measure_vial(
 @flow
 @with_lock()
 def fill_vial_detection_mix(
+        syringe_pump: str,
         vial: str,
         aliquot_volume: Optional[float] = None,
         d1_volume: Optional[float] = None,
@@ -213,14 +214,14 @@ def fill_vial_detection_mix(
         'aliquot_filling_speed']
 
     syringe_transfer_unlocked(
-        'tecanAZ01', volume=0.2 - aliquot_volume, draw_valve_port='water',
+        syringe_pump=syringe_pump, volume=0.2 - aliquot_volume, draw_valve_port='water',
         dispense_valve_port=vial, speed=aliquot_filling_speed, **kwargs)
-    syringe_transfer_and_wash('tecanAZ01', d1_volume, 'd1', vial,
-                              speed=aliquot_filling_speed, **kwargs)
-    syringe_transfer_and_wash('tecanAZ01', d2_volume, 'd2', vial,
-                              speed=aliquot_filling_speed, **kwargs)
-    syringe_transfer_and_wash('tecanAZ01', d3_volume, 'd3', vial,
-                              speed=aliquot_filling_speed, **kwargs)
+    syringe_transfer_and_wash(syringe_pump=syringe_pump, volume=d1_volume, draw_valve_port='d1', 
+                              dispense_valve_port=vial, speed=aliquot_filling_speed, **kwargs)
+    syringe_transfer_and_wash(syringe_pump=syringe_pump, volume=d2_volume, draw_valve_port='d2', 
+                              dispense_valve_port=vial, speed=aliquot_filling_speed, **kwargs)
+    syringe_transfer_and_wash(syringe_pump=syringe_pump, volume=d3_volume, draw_valve_port='d3', 
+                              dispense_valve_port=vial, speed=aliquot_filling_speed, **kwargs)
     logger.info(f'Detection mix filled in vial {vial} with volumes: '
                 f'aliquot={aliquot_volume}, d1={d1_volume}, d2={d2_volume}, d3={d3_volume}')
 
