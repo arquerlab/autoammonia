@@ -15,8 +15,8 @@ longer_retries_delay_emergency_stop = 5
 valve_retries = 3
 
 draw_and_dispense_retries = 3
-function_timeout = 600
-acquisition_timeout = 300
+function_timeout = 1500
+acquisition_timeout = 900
 
 syringe_fail_retrials = 5
 
@@ -50,7 +50,7 @@ aliquot_volume = 0.02
 detection_reagent_1_volume = 0.2
 detection_reagent_2_volume = 0.1
 detection_reagent_3_volume = 0.02
-detection_dark_time = 20 
+detection_dark_time = 20
 aliquot_filling_speed = 0.1
 vial_full_volume = 0.8
 
