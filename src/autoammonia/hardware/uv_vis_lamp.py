@@ -6,16 +6,20 @@ import threading
 class Arduino:
     def __init__(self, port: str, baudrate: int = 9600, timeout: float = 2.0):
         self.ser = serial.Serial(port, baudrate, timeout=timeout)
-        time.sleep(1)  # Wait for Arduino reset
+        time.sleep(2)  # Wait for Arduino reset
 
     def rotate_motor(self, angle: int):
         """Rotate the motor by the specified degrees (0-180)."""
         self.ser.write(f"{angle}\n".encode())
+        self.ser.flush()
+        time.sleep(0.2)
 
     def send_pulse(self):
         """Send a pulse command to the Arduino (implement as needed)."""
         self.ser.write(b'P')  # Assuming 'P' triggers a pulse in your firmware
-
+        self.ser.flush()
+        time.sleep(0.2)
+        
     def close(self):
         self.ser.close()
 
@@ -36,6 +40,7 @@ class MotorSwitchLamp(Lamp):
 
     def start(self):
         self.arduino.rotate_motor(self.on_degrees)
+        time.sleep(3)
         self.arduino.rotate_motor(self.off_degrees)
 
     def stop(self):
