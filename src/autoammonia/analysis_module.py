@@ -13,7 +13,8 @@ from .hardware.uv_vis_module import acquire_spectrum
 from .utils.decorators import with_lock
 from .utils.prefect import trigger_deployment
 from .utils.redis_client import client
-from .hardware.syringe_pumps import syringe_transfer_and_wash, syringe_transfer_unlocked, compartment_wash, compartment_fill
+from .hardware.syringe_pumps import (syringe_transfer_and_wash, syringe_transfer_unlocked, compartment_wash, 
+                                     compartment_fill, syringe_wash_unlocked)
 from .utils.files import get_default_folder, transfer_file_scp
 
 
@@ -217,12 +218,15 @@ def fill_vial_detection_mix(
     syringe_transfer_unlocked(
         syringe_pump=syringe_pump, volume=0.2 - aliquot_volume, draw_valve_port='water',
         dispense_valve_port=vial, speed=aliquot_filling_speed, **kwargs)
-    syringe_transfer_and_wash(syringe_pump=syringe_pump, volume=d1_volume, draw_valve_port='d1', 
+    syringe_transfer_unlocked(syringe_pump=syringe_pump, volume=d1_volume, draw_valve_port='d1', 
                               dispense_valve_port=vial, speed=aliquot_filling_speed, **kwargs)
-    syringe_transfer_and_wash(syringe_pump=syringe_pump, volume=d2_volume, draw_valve_port='d2', 
+    syringe_transfer_unlocked(syringe_pump=syringe_pump, volume=d2_volume, draw_valve_port='d2', 
                               dispense_valve_port=vial, speed=aliquot_filling_speed, **kwargs)
-    syringe_transfer_and_wash(syringe_pump=syringe_pump, volume=d3_volume, draw_valve_port='d3', 
+    syringe_transfer_unlocked(syringe_pump=syringe_pump, volume=d3_volume, draw_valve_port='d3', 
                               dispense_valve_port=vial, speed=aliquot_filling_speed, **kwargs)
+    syringe_wash_unlocked(syringe_pump=syringe_pump, repeats=config['syringe_wash_repeats'], 
+                          wash_vol=config["syringe_wash_volume_AZ"], speed=config["syringe_wash_speed"], 
+                          wash_valves='valveAZ01', **kwargs)
     logger.info(f'Detection mix filled in vial {vial} with volumes: '
                 f'aliquot={aliquot_volume}, d1={d1_volume}, d2={d2_volume}, d3={d3_volume}')
 
