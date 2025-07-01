@@ -242,10 +242,3 @@ def analysis_module_deploy():
         name="analysis_module_flow",
         work_pool_name="analysis_module_pool",
     )
-    track_reaction.from_source(
-        source=Path(__file__).parent,
-        entrypoint="analysis_module.py:measure_vial",
-    ).deploy(
-        name="measure_vial_uv_vis_flow",
-        work_pool_name="analysis_module_pool",
-    )
