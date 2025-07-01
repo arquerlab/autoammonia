@@ -44,6 +44,7 @@ electrodisolution_pump_speed = 10
 electrodisolution_filling_speed = 0.2
 
 uv_vis_integration_time = 2
+uv_vis_retries = 5
 uv_vis_wash_volume = 0.5
 aliquot_number = 3
 aliquot_volume = 0.02
