@@ -59,7 +59,7 @@ async def take_aliquots(
         
         
 @flow
-async def track_reaction_async(
+async def track_reaction(
         num_aliquots: Optional[int] = None,
         volume: Optional[float] = None,
         **kwargs: Any,
@@ -116,14 +116,6 @@ async def track_reaction_async(
             logger.info("All aliquots taken. Waiting for measurement tasks to complete...")
             await asyncio.gather(*tasks)
             logger.info(f"All aliquots from prior experiment were measured.")
-        
-@flow
-def track_reaction(
-        num_aliquots: Optional[int] = None,
-        volume: Optional[float] = None,
-        **kwargs: Any,
-) -> None:
-    asyncio.run(track_reaction_async(num_aliquots=num_aliquots, volume=volume, **kwargs))
 
 @flow
 def measure_vial(
