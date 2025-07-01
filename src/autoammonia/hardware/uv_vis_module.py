@@ -25,7 +25,7 @@ def lamp_switch(lamp: str, on: bool=True) -> None:
 def spec_acquire(
         spectrometer: str,
         integration_time: float | int,
-        retries: int | None, 
+        retries: int | None = None, 
         **kwargs: Any,
 ) -> pd.DataFrame:
     config = {**DEFAULT_CONFIG, **kwargs}
