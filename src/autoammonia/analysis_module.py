@@ -3,15 +3,13 @@ import socket
 from pathlib import Path
 import time
 from typing import Optional, Any
-from datetime import datetime, timedelta
+import asyncio
 from prefect import flow, get_run_logger
-import pandas as pd
 
 from .config.config import DEFAULT_CONFIG
 from .db.db_functions import add_results_to_db
 from .hardware.uv_vis_module import acquire_spectrum
 from .utils.decorators import with_lock
-from .utils.prefect import trigger_deployment
 from .utils.redis_client import client
 from .hardware.syringe_pumps import (syringe_transfer_and_wash, syringe_transfer_unlocked, compartment_wash, 
                                      compartment_fill, syringe_wash_unlocked)
@@ -20,9 +18,48 @@ from .utils.files import get_default_folder, transfer_file_scp
 
 #main_hostname = client.get('main_hostname')
 
-
 @flow
-def track_reaction(
+async def take_aliquots(
+        initial_reaction_time: float,
+        volume: float,
+        **kwargs,
+) -> None:
+    config = {**DEFAULT_CONFIG, **kwargs}
+
+    parallel_cells = config['parallel_cells']
+    dark_time = config['detection_dark_time']
+
+    logger = get_run_logger()
+
+    for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
+        WEvial = f'WEvial{cell_str}'
+        exp_id = client.get(f'WEvial{cell_str}_EXP_ID')
+        while True:
+            vial = client.lpop('empty_vials')
+            if vial:
+                break
+            else:
+                logger.warning('Warning! There are no empty vials, waiting for one to get free')
+                await asyncio.sleep(5)
+        syringe_transfer_and_wash(
+            'tecanAZ01', volume=volume, draw_valve_port=WEvial,
+            dispense_valve_port=vial, speed=config['aliquot_filling_speed'], **kwargs
+        )
+        logger.info(f'Aliquot of {volume} mL taken from {WEvial} to {vial}')
+        aliquot_time = time.time()
+        fill_vial_detection_mix(syringe_pump='tecanAZ01', vial=vial,
+                                aliquot_filling_speed=config['aliquot_filling_speed']
+                                , **kwargs)
+        aliquot_time = (aliquot_time + time.time()) / 2
+        measure_time = time.time() + dark_time
+        time_rxn = aliquot_time - initial_reaction_time
+        logger.info(f'Programmed measurement of {vial} from {WEvial} at {measure_time}')
+        await asyncio.sleep(measure_time - time.time())
+        measure_vial(vial=vial, time_rxn=time_rxn, exp_id=exp_id, **kwargs)
+        
+        
+@flow
+async def track_reaction_async(
         num_aliquots: Optional[int] = None,
         volume: Optional[float] = None,
         **kwargs: Any,
@@ -45,83 +82,48 @@ def track_reaction(
     """
 
     config = {**DEFAULT_CONFIG, **kwargs}
-    
     num_aliquots = num_aliquots if num_aliquots is not None else config['aliquot_number']
     volume = volume if volume is not None else config['aliquot_volume']
-    
     logger = get_run_logger()
 
     while True:
         reaction_status = client.get('reaction_status')
         if reaction_status == "waiting":
-            time.sleep(20)
+            await asyncio.sleep(20)
         elif reaction_status == "0":
-            time.sleep(0.1)
+            await asyncio.sleep(0.1)
         else:
             logger.info('Reaction started, aliquotes tracking initiated')
             initial_time = time.time()
             aliquotes_sent = 0
             aliquote_interval = (float(reaction_status) - 60) / num_aliquots
-            period_timing = time.time() + aliquote_interval - 30
-
+            next_aliquot_time = time.time() + aliquote_interval - 30
+            
+            tasks = []
             while aliquotes_sent < num_aliquots:
                 current_time = time.time()
-
-                if period_timing <= current_time:
-                    take_aliquots(initial_reaction_time=initial_time, volume=volume)
+                if next_aliquot_time <= current_time:
+                    task = asyncio.create_task(
+                                    take_aliquots(initial_reaction_time=initial_time, volume=volume)
+                                    )
+                    tasks.append(task)
                     aliquotes_sent += 1
                     logger.info(f'Aliquot {aliquotes_sent} taken at {current_time - initial_time:.2f} seconds')
-                    period_timing += aliquote_interval
+                    next_aliquot_time += aliquote_interval
                     
-                time.sleep(2.5)
-            # Wait unitl reaction is finished
-            while True:
-                reaction_status = client.get('reaction_status')
-                if reaction_status == "waiting":
-                    logger.info('Reaction finished, all aliquots taken')
-                    break
-                else:
-                    time.sleep(5)
-
-@flow
-def take_aliquots(
-        initial_reaction_time: float,
-        volume: float,
-        **kwargs,
-)->None:
-    config = {**DEFAULT_CONFIG, **kwargs}
-    
-    parallel_cells = config['parallel_cells']
-    dark_time = config['detection_dark_time']
-    
-    logger = get_run_logger()
-    
-    for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells+1)]:
-        WEvial = f'WEvial{cell_str}'
-        exp_id = client.get(f'WEvial{cell_str}_EXP_ID')
-        while True:
-            vial = client.lpop('empty_vials')
-            if vial:
-                break
-            else:
-                logger.warning('Warning! There are no empty vials, waiting for one to get free')
-                time.sleep(5)
-        syringe_transfer_and_wash(
-            'tecanAZ01', volume=volume, draw_valve_port=WEvial,
-            dispense_valve_port=vial, speed=config['aliquot_filling_speed'], **kwargs
-        )
-        logger.info(f'Aliquot of {volume} mL taken from {WEvial} to {vial}')
-        aliquot_time = time.time()
-        fill_vial_detection_mix(syringe_pump='tecanAZ01', vial=vial, aliquot_filling_speed=config['aliquot_filling_speed']
-                                , **kwargs)
-        aliquot_time = (aliquot_time + time.time()) / 2
-        measure_time = datetime.now() + timedelta(seconds=dark_time)
-        time_rxn = aliquot_time - initial_reaction_time
-        trigger_deployment(deployment='measure-vial/measure_vial_uv_vis_flow',
-                                     scheduled_time=measure_time,
-                                     parameters={'vial': vial, 'time_rxn': time_rxn, 'exp_id': exp_id, 'kwargs': kwargs})
-        logger.info(f'Programmed measurement of {vial} from {WEvial} at {measure_time}')
+                await asyncio.sleep(2.5)
+            # Wait until are aliquots taken are measured
+            logger.info("All aliquots taken. Waiting for measurement tasks to complete...")
+            await asyncio.gather(*tasks)
+            logger.info(f"All aliquots from prior experiment were measured.")
         
+@flow
+def track_reaction(
+        num_aliquots: Optional[int] = None,
+        volume: Optional[float] = None,
+        **kwargs: Any,
+) -> None:
+    asyncio.run(track_reaction_async(num_aliquots=num_aliquots, volume=volume, **kwargs))
 
 @flow
 def measure_vial(
@@ -229,6 +231,8 @@ def fill_vial_detection_mix(
                           wash_valves=['valveAZ01',], **kwargs)
     logger.info(f'Detection mix filled in vial {vial} with volumes: '
                 f'aliquot={aliquot_volume}, d1={d1_volume}, d2={d2_volume}, d3={d3_volume}')
+
+
 
 def analysis_module_deploy():
     track_reaction.from_source(
