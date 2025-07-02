@@ -43,15 +43,17 @@ def syringe_draw(
     config = {**DEFAULT_CONFIG, **kwargs}
     fail_retries = fail_retries if fail_retries is not None else config['syringe_fail_retrials']
     
+    logger = get_run_logger()
     try:
         syringe_pump.draw(volume=volume, valve_port=valve_port, speed=speed)
     except Exception as draw_error:
         for trial in range(1,fail_retries+1):
             try:
                 syringe_pump.dispense_all(valve_port='waste', speed=speed)
-                raise RuntimeError(f'Syringe content dispensed successfully to waste') from draw_error
+                logger.warning(f'[{syringe_pump}] Syringe content dispensed successfully to waste')
+                raise RuntimeError(f'[{syringe_pump}] Syringe content dispensed successfully to waste') from draw_error
             except Exception as dispense_error:
-                print(f"Attempt {trial} to dispense syringe to waste failed: {dispense_error}")
+                logger.warning(f"[{syringe_pump}] Attempt {trial} to dispense syringe to waste failed: {dispense_error}")
         raise RuntimeError(
             f"Unable to draw volume from valve port '{valve_port}' or empty the syringe to waste "
             f"after {fail_retries} retries."
@@ -89,15 +91,17 @@ def syringe_dispense(
     config = {**DEFAULT_CONFIG, **kwargs}
     fail_retries = fail_retries if fail_retries is not None else config['syringe_fail_retrials']
     
+    logger = get_run_logger()
     try:
         syringe_pump.dispense(volume=volume, valve_port=valve_port, speed=speed)
     except Exception as dispense_error:
         for trial in range(1, fail_retries + 1):
             try:
                 syringe_pump.dispense_all(valve_port='waste', speed=speed)
+                logger.warning(f'[{syringe_pump}] Syringe content dispensed successfully to waste')
                 raise RuntimeError(f'Syringe content dispensed successfully to waste') from dispense_error
             except Exception as waste_error:
-                print(f"Attempt {trial} to dispense syringe to waste failed: {waste_error}")
+                logger.warning(f"[{syringe_pump}] Attempt {trial} to dispense syringe to waste failed: {waste_error}")
         raise RuntimeError(
             f"Unable to dispense volume to valve port '{valve_port}' or empty the syringe to waste "
             f"after {fail_retries} retries."
@@ -179,7 +183,7 @@ def syringe_draw_and_dispense_volume(
             retries=retries,
         )(syringe_pump=syringe_pump, volume=volume_per_iteration, draw_valve_port=draw_valve_port,
           dispense_valve_port=dispense_valve_port, speed=speed, wait=wait, **kwargs)
-    print(f'Volume {volume} mL succesfully dispensed from {draw_valve_port} to {dispense_valve_port}')
+    print(f'[{syringe_pump}] Draw and dispensed {volume} mL successfully from {draw_valve_port} to {dispense_valve_port}')
 
 def get_connected_port(
     syringe_pump: str,
@@ -316,6 +320,7 @@ def syringe_transfer_unlocked(
     air_flush_factor = air_flush_factor if air_flush_factor is not None else config["air_flush_factor"]
     air_flush_speed = air_flush_speed if air_flush_speed is not None else config["air_flush_speed"]
     
+    logger = get_run_logger()
     #Look for where the draw_port and dispense ports are, if either in the pump or in any of the valves connected to it, 
     # and switch valves accordingly.
     syringe_port_input, valve_port_input = get_connected_port(syringe_pump, draw_valve_port, CONNECTIONS_INFO)
@@ -341,7 +346,8 @@ def syringe_transfer_unlocked(
     if input_air_volume > 0:  # If the drawing port does not come from a stock solution, we want to leave it empty
         syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=air_flush_volume, draw_valve_port='air',
                                          dispense_valve_port=syringe_port_input, wait=wait, speed=air_flush_speed, **kwargs)
-
+    logger.info(f"[{syringe_pump}] Full transfer completed: {volume} mL from {draw_valve_port} to {dispense_valve_port} ports")
+    
 @flow
 def syringe_wash_unlocked(
         syringe_pump: str,
@@ -373,12 +379,14 @@ def syringe_wash_unlocked(
     config = {**DEFAULT_CONFIG, **kwargs}
     air_flush_factor = air_flush_factor if air_flush_factor is not None else config['air_flush_factor']
     air_flush_speed = air_flush_speed if air_flush_speed is not None else config["air_flush_speed"]
-
+    
+    logger = get_run_logger()
     # Syringe washing
     for _ in range(repeats):
         syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=wash_vol, draw_valve_port='water',
                                          dispense_valve_port='waste', speed=speed, **kwargs)
-
+    logger.info(f"[{syringe_pump}] Syringe washed with {wash_vol} mL of water {repeats} times")
+    
     # Valve washing
     if len(wash_valves)>0:
         for syringe_valve in wash_valves:
@@ -389,7 +397,7 @@ def syringe_wash_unlocked(
                                              dispense_valve_port=syringe_valve, speed=speed, **kwargs)
             syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=air_flush_volume, draw_valve_port='air',
                                              dispense_valve_port=syringe_valve, speed=air_flush_speed, **kwargs)
-
+            logger.info(f"[{syringe_pump}] Valve {syringe_valve} washed with {wash_vol} of water")
 
 @flow
 @with_lock()
@@ -473,12 +481,12 @@ def compartment_wash(
         **kwargs (Any): Additional keyword arguments to override the default configuration.
     """
     config = {**DEFAULT_CONFIG, **kwargs}
-    logger = get_run_logger()
     repeats = repeats if repeats is not None else config['wash_compartment_repeats']
     wash_vol = wash_vol if wash_vol is not None else config['wash_compartment_volume']
     speed = speed if speed is not None else config['wash_compartment_speed']
     speed_last_empty = speed_last_empty if speed_last_empty is not None else config['wash_compartment_speed_last_empty']
-
+    
+    logger = get_run_logger()
     if 'RX' in syringe_pump:  # Take volume in the compartment
         volume = float(client.get(f"{compartment}_volume"))
     else:  # If it's a vial, just take the full volume inside vial
@@ -497,7 +505,7 @@ def compartment_wash(
     syringe_transfer_unlocked(syringe_pump=syringe_pump, volume=wash_vol, draw_valve_port=compartment,
                               dispense_valve_port='waste',
                               speed=speed_last_empty, **kwargs)
-    logger.info(f"Compartment '{compartment}' washed {repeats} times with {wash_vol} mL at {speed} mL/s. ")
+    logger.info(f"[{syringe_pump}] Compartment '{compartment}' washed {repeats} times with {wash_vol} mL at {speed} mL/s. ")
 
 
 @flow
@@ -526,5 +534,5 @@ def compartment_fill(
         dispense_valve_port=destination, speed=speed, **kwargs
     )
     client.set(f"{destination}_volume", volume)
-    logger.info(f"Transferred {volume} mL from {source} to {destination} at {speed} mL/s.")
+    logger.info(f"[{syringe_pump}] Transferred {volume} mL from {source} to {destination} at {speed} mL/s.")
     # client.set(f"{source}_volume", float(client.get(f"{source}_volume"))-volume)

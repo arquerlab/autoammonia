@@ -49,10 +49,10 @@ def spec_acquire(
     
     try:
         output = spec_acquire_func.with_options(retries=retries)(spectrometer, integration_time)
-        logger.info(f"Adsoption spectra acquired succesfully")
+        logger.info(f"[{spectrometer}] Adsoption spectra acquired succesfully")
         return output
     except Exception as e:
-        logger.error(f"Failed to acquire absorption spectrum after {retries} retries: {e}")
+        logger.error(f"[{spectrometer}] Failed to acquire absorption spectrum after {retries} retries: {e}")
         raise
     
     
