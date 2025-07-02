@@ -20,9 +20,11 @@ from .utils.files import get_default_folder, transfer_file_scp
 @flow
 async def take_aliquots(
         initial_reaction_time: float,
+        delay: float,
         volume: float,
         **kwargs,
 ) -> None:
+    await asyncio.sleep(delay)
     config = {**DEFAULT_CONFIG, **kwargs}
 
     parallel_cells = config['parallel_cells']
@@ -99,13 +101,9 @@ async def track_reaction(
             tasks = []
             for i, t in enumerate(aliquot_times, 1):
                 delay = initial_time + t - time.time()
-                if delay > 0:
-                    await asyncio.sleep(delay)
-                task = asyncio.create_task(take_aliquots(initial_reaction_time=initial_time, volume=volume, **kwargs))
+                task = asyncio.create_task(take_aliquots(initial_reaction_time=initial_time, delay= delay, volume=volume, **kwargs))
                 tasks.append(task)
-                logger.info(f'Aliquot {i} taken at {time.time() - initial_time:.2f} seconds')
-
-            logger.info("All aliquots taken. Waiting for measurement tasks to complete...")
+            logger.info("All take aliquot tasks created and programmed. Waiting for measurement tasks to complete...")
             await asyncio.gather(*tasks)
             logger.info(f"All aliquots from prior experiment were measured.")
 
