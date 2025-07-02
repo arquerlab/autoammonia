@@ -1,10 +1,11 @@
+import asyncio
 import json
 import socket
 from pathlib import Path
 import time
 from typing import Optional, Any
-import asyncio
 from prefect import flow, get_run_logger
+import numpy as np
 
 from .config.config import DEFAULT_CONFIG
 from .db.db_functions import add_results_to_db
@@ -15,8 +16,6 @@ from .hardware.syringe_pumps import (syringe_transfer_and_wash, syringe_transfer
                                      compartment_fill, syringe_wash_unlocked)
 from .utils.files import get_default_folder, transfer_file_scp
 
-
-#main_hostname = client.get('main_hostname')
 
 @flow
 async def take_aliquots(
@@ -95,24 +94,17 @@ async def track_reaction(
         else:
             logger.info('Reaction started, aliquotes tracking initiated')
             initial_time = time.time()
-            aliquotes_sent = 0
-            aliquote_interval = (float(reaction_status) - 60) / num_aliquots
-            next_aliquot_time = time.time() + aliquote_interval - 30
-            
+            aliquot_times = list(np.linspace(0, float(reaction_status) - 60, num_aliquots + 1)[1:])
+
             tasks = []
-            while aliquotes_sent < num_aliquots:
-                current_time = time.time()
-                if next_aliquot_time <= current_time:
-                    task = asyncio.create_task(
-                                    take_aliquots(initial_reaction_time=initial_time, volume=volume)
-                                    )
-                    tasks.append(task)
-                    aliquotes_sent += 1
-                    logger.info(f'Aliquot {aliquotes_sent} taken at {current_time - initial_time:.2f} seconds')
-                    next_aliquot_time += aliquote_interval
-                    
-                await asyncio.sleep(2.5)
-            # Wait until are aliquots taken are measured
+            for i, t in enumerate(aliquot_times, 1):
+                delay = initial_time + t - time.time()
+                if delay > 0:
+                    await asyncio.sleep(delay)
+                task = asyncio.create_task(take_aliquots(initial_reaction_time=initial_time, volume=volume, **kwargs))
+                tasks.append(task)
+                logger.info(f'Aliquot {i} taken at {time.time() - initial_time:.2f} seconds')
+
             logger.info("All aliquots taken. Waiting for measurement tasks to complete...")
             await asyncio.gather(*tasks)
             logger.info(f"All aliquots from prior experiment were measured.")
