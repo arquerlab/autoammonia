@@ -1,8 +1,8 @@
-simulation = true
+simulation = false
 
 data_path = "~/data"
 parallel_cells = 1
-delete_previous_queue = false
+delete_previous_queue = true
 
 emergency_stop_retries = 10
 emergency_stop_retries_delay = 5
@@ -33,7 +33,7 @@ electrodeposition_pump_speed = 10
 electrodeposition_filling_speed = 0.2
 
 reaction_current = 28.2743339
-reaction_time = 900  # 15*60
+reaction_time = 960  # 16*60
 reaction_catholyte_volume = 20
 reaction_anolyte_volume = 20
 reaction_pump_speed = 10
@@ -52,7 +52,7 @@ aliquot_number = 3
 aliquot_volume = 0.02
 detection_reagent_1_volume = 0.2
 detection_reagent_2_volume = 0.1
-detection_reagent_3_volume = 0.02
+detection_reagent_3_volume = 0.1
 detection_dark_time = 1800 # 30 minutes
 aliquot_filling_speed = 0.1
 vial_full_volume = 0.8
