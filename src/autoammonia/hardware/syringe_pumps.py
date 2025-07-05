@@ -177,7 +177,7 @@ def syringe_draw_and_dispense_volume(
     retries = retries if retries is not None else config['draw_and_dispense_retries']
     
     logger = get_run_logger()
-    if dispense_valve_port != draw_valve_port:
+    if (dispense_valve_port != draw_valve_port) and (draw_valve_port != 'air'):
         draw_valve_port_info = Variable.get(str(draw_valve_port).lower())
         dispense_valve_port_info = Variable.get(str(dispense_valve_port).lower())
         if draw_valve_port_info['volume'] < volume:
@@ -199,7 +199,8 @@ def syringe_draw_and_dispense_volume(
         )(syringe_pump=syringe_pump, volume=volume_per_iteration, draw_valve_port=draw_valve_port,
           dispense_valve_port=dispense_valve_port, speed=speed, wait=wait, **kwargs)
     logger.info(f'[{syringe_pump}] Draw and dispensed {volume} mL successfully from {draw_valve_port} to {dispense_valve_port}')
-    if dispense_valve_port != draw_valve_port:
+    
+    if (dispense_valve_port != draw_valve_port) and (draw_valve_port != 'air'):
         draw_valve_port_info['volume'] -= volume
         dispense_valve_port_info['volume'] += volume
         Variable.set(str(draw_valve_port).lower(), draw_valve_port_info, overwrite=True)
