@@ -169,9 +169,20 @@ def wash_flow_cell(
     wash_comp_speed = wash_comp_speed if wash_comp_speed is not None else config['wash_flow_cell_wash_comp_speed']
     wash_comp_speed_last_empty = wash_comp_speed_last_empty if wash_comp_speed_last_empty is not None else config['wash_flow_cell_wash_comp_speed_last_empty']
     parallel_cells = config['parallel_cells']
-
+    
+    #Empty flow cell
     empty_and_stop_pumps(wash_time=wash_time, pump_speed=pump_speed, **kwargs)
-
+    
+    #Empty and wash WE and CE vials
+    for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
+        compartment_wash(syringe_pump='tecanRX01', compartment=f'WEvial{cell_str}', repeats=wash_comp_repeats,
+                         wash_vol=wash_comp_volume, pump_speed=wash_comp_speed,
+                         pump_speed_last_empty=wash_comp_speed_last_empty, **kwargs)
+        compartment_wash(syringe_pump='tecanRX01', compartment=f'CEvial{cell_str}', repeats=wash_comp_repeats,
+                         wash_vol=wash_comp_volume, pump_speed=wash_comp_speed,
+                         pump_speed_last_empty=wash_comp_speed_last_empty, **kwargs)
+    
+    #Clean flow cell
     for _ in range(repeats):
         for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
             compartment_fill(syringe_pump='tecanRX01', source='water', destination=f'WEvial{cell_str}', volume=wash_comp_volume, speed=filling_speed, **kwargs)

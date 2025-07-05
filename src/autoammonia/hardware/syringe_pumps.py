@@ -509,10 +509,8 @@ def compartment_wash(
     speed_last_empty = speed_last_empty if speed_last_empty is not None else config['wash_compartment_speed_last_empty']
     
     logger = get_run_logger()
-    if 'RX' in syringe_pump:  # Take volume in the compartment
-        volume = float(client.get(f"{compartment}_volume"))
-    else:  # If it's a vial, just take the full volume inside vial
-        volume = config['vial_full_volume']
+    compartment_info = Variable.get(str(compartment).lower())
+    volume = compartment_info['volume']
 
     syringe_transfer_unlocked(syringe_pump=syringe_pump, volume=volume, draw_valve_port=compartment,
                               dispense_valve_port='waste', speed=speed, **kwargs)
