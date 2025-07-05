@@ -179,13 +179,13 @@ def syringe_draw_and_dispense_volume(
     logger = get_run_logger()
     draw_valve_port_info = Variable.get(str(draw_valve_port).lower())
     dispense_valve_port_info = Variable.get(str(dispense_valve_port).lower())
-    if draw_valve_port_info['vol'] < volume:
+    if draw_valve_port_info['volume'] < volume:
         logger.critical(f"[{syringe_pump}] Not enough volume in {draw_valve_port}")
-        logger.error(f"[{draw_valve_port}] Current vol: {draw_valve_port_info['vol']}, trying to subtract: {volume}")
+        logger.error(f"[{draw_valve_port}] Current vol: {draw_valve_port_info['volume']}, trying to subtract: {volume}")
         raise ValueError(f"Not enough volume in {draw_valve_port} to perform draw_and_dispense_volume operation")
-    if dispense_valve_port_info['max_vol'] > (volume + dispense_valve_port_info['vol']):
+    if dispense_valve_port_info['max_vol'] > (volume + dispense_valve_port_info['volume']):
         logger.critical(f"[{syringe_pump}] Not enough volume in {draw_valve_port}")
-        logger.error(f"[{draw_valve_port}] Current vol: {draw_valve_port_info['vol']}, trying to subtract: {volume}")
+        logger.error(f"[{draw_valve_port}] Current vol: {draw_valve_port_info['volume']}, trying to subtract: {volume}")
         raise ValueError(f"Not enough volume in {draw_valve_port} to perform draw_and_dispense_volume operation")
 
     dispense_iterations = ceil(volume / (1e3 * CONFIG_COMPONENTS[syringe_pump]["syringe_volume"]))
@@ -197,8 +197,8 @@ def syringe_draw_and_dispense_volume(
         )(syringe_pump=syringe_pump, volume=volume_per_iteration, draw_valve_port=draw_valve_port,
           dispense_valve_port=dispense_valve_port, speed=speed, wait=wait, **kwargs)
     logger.info(f'[{syringe_pump}] Draw and dispensed {volume} mL successfully from {draw_valve_port} to {dispense_valve_port}')
-    draw_valve_port_info['vol'] -= volume
-    dispense_valve_port_info['vol'] += volume
+    draw_valve_port_info['volume'] -= volume
+    dispense_valve_port_info['volume'] += volume
     Variable.set(str(draw_valve_port).lower(), draw_valve_port_info, overwrite=True)
     Variable.set(str(dispense_valve_port).lower(), dispense_valve_port_info, overwrite=True)
 
