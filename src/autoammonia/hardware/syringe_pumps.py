@@ -189,7 +189,8 @@ def syringe_draw_and_dispense_volume(
         raise ValueError(f"Not enough volume in {draw_valve_port} to perform draw_and_dispense_volume operation")
     if (dispense_valve_port_info['volume'] + volume) > dispense_valve_port_info['max_vol']:
         logger.critical(f"[{syringe_pump}] Not enough volume in {draw_valve_port}")
-        logger.error(f"[{draw_valve_port}] Current vol: {draw_valve_port_info['volume']}, trying to subtract: {volume}")
+        logger.error(f"[{dispense_valve_port}] Current vol: {dispense_valve_port_info['volume']}, "
+                     f"max. volume: {dispense_valve_port_info['max_vol']}, trying to add: {volume}")
         raise ValueError(f"Not enough capacity in {dispense_valve_port} to receive volume")
 
     dispense_iterations = ceil(volume / (1e3 * CONFIG_COMPONENTS[syringe_pump]["syringe_volume"]))
