@@ -1,7 +1,7 @@
 from prefect.variables import Variable
 from ..config.config import CONNECTIONS_INFO
 
-def initialize_prefect_variables() -> None:
+def initialize_prefect_variables(overwrite: bool = False) -> None:
     simplified = {
         port: {
             'volume': port_dict['volume'],
@@ -12,4 +12,4 @@ def initialize_prefect_variables() -> None:
         if port != 'air' and 'valve' not in port
     }
     for key, value in simplified.items():
-        Variable.set(key.lower(), value)
+        Variable.set(key.lower(), value, overwrite=overwrite)
