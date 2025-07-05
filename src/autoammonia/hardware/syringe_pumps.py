@@ -199,8 +199,8 @@ def syringe_draw_and_dispense_volume(
     logger.info(f'[{syringe_pump}] Draw and dispensed {volume} mL successfully from {draw_valve_port} to {dispense_valve_port}')
     draw_valve_port_info['vol'] -= volume
     dispense_valve_port_info['vol'] += volume
-    Variable.set(str(draw_valve_port), draw_valve_port_info, overwrite=True)
-    Variable.set(str(dispense_valve_port), dispense_valve_port_info, overwrite=True)
+    Variable.set(str(draw_valve_port).lower(), draw_valve_port_info, overwrite=True)
+    Variable.set(str(dispense_valve_port).lower(), dispense_valve_port_info, overwrite=True)
 
 def get_connected_port(
     syringe_pump: str,

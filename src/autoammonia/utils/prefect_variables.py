@@ -12,4 +12,4 @@ def initialize_prefect_variables() -> None:
         if port != 'air' and 'valve' not in port
     }
     for key, value in simplified.items():
-        Variable.set(key, value)
+        Variable.set(key.lower(), value)
