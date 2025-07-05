@@ -12,4 +12,7 @@ def initialize_prefect_variables(overwrite: bool = False) -> None:
         if port != 'air' and 'valve' not in port
     }
     for key, value in simplified.items():
-        Variable.set(key.lower(), value, overwrite=overwrite)
+        try:
+            Variable.set(key.lower(), value, overwrite=overwrite)
+        except ValueError:
+            pass
