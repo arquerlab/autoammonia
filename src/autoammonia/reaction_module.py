@@ -4,13 +4,13 @@ import time
 from typing import Dict, Optional, Any
 from pathlib import Path
 
-from autoammonia.db.db_functions import add_valid_electrolytes_and_metals_to_db
+from .db.db_functions import add_valid_electrolytes_and_metals_to_db
 from .utils.decorators import with_lock
 from .config.config import DEFAULT_CONFIG, CONNECTIONS_INFO
+from .config.components_config import simulation
 from .utils.prefect_variables import initialize_prefect_variables
 from .utils.redis_client import client, client_initialization
 from .reaction_steps import initialize_pump, restore_pump, execute_experiment
-
 
 @task
 @with_lock(acquisition_timeout=5,function_timeout=5)
@@ -76,7 +76,7 @@ def process_experiment_queue(delete_previous_queue: Optional[bool] = None,
     if delete_previous_queue:
         client.delete("experiment_queue")
     client_initialization(**kwargs)
-    overwrite = True if DEFAULT_CONFIG.get("simulation", False) else False
+    overwrite = True if simulation else False
     initialize_prefect_variables(overwrite)
     
     syringe_pumps = []
