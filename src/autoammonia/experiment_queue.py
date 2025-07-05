@@ -1,6 +1,7 @@
 import json
 import ast
 from typing import List, Dict, Tuple
+from prefect import task, flow
 
 from .utils.redis_client import client
 from .utils.decorators import with_lock
@@ -9,6 +10,7 @@ from .utils.elytes_precursors import reset_cache, get_valid_precursors, get_vali
 _valid_compounds: List[str] = []
 _valid_electrolytes: List[str] = []
 
+@task
 def convert_and_validate_input(input_str: str, is_compositions: bool = True) -> List[List[Tuple[str, float]]]:
     """
     Converts and validates a user input string into a controlled list of (name, value) tuples for compositions or electrolytes.
@@ -65,7 +67,7 @@ def convert_and_validate_input(input_str: str, is_compositions: bool = True) -> 
 
     return output_data
 
-
+@task
 def generate_experiments(compositions: List[List[Tuple[str, float]]],
                          electrolytes: List[List[Tuple[str, float]]]) -> List[Dict[str, List[Tuple[str,float]]]]:
     """
@@ -82,15 +84,19 @@ def generate_experiments(compositions: List[List[Tuple[str, float]]],
             - 'composition': A dictionary mapping valid compound names (e.g., from `_valid_compounds`) to their quantities.
             - 'electrolyte': A dictionary mapping valid electrolyte names (e.g., from `_valid_electrolytes`) to their quantities.
     """
-    experiments = []
-    for composition_set in compositions:
-        for electrolyte_set in electrolytes:
-            experiments.append({
-                'composition': composition_set,
-                'electrolyte': electrolyte_set
-            })
-    return experiments
+    try:
+        experiments = []
+        for composition_set in compositions:
+            for electrolyte_set in electrolytes:
+                experiments.append({
+                    'composition': composition_set,
+                    'electrolyte': electrolyte_set
+                })
+        return experiments
+    except Exception as e:
+        print(f"Error generating the experiments: {e}")
 
+@task
 @with_lock(acquisition_timeout=5,function_timeout=5)
 def enqueue_experiment(list_name: str, data: dict) -> None:
     """
@@ -105,6 +111,7 @@ def enqueue_experiment(list_name: str, data: dict) -> None:
     """
     try:
         task = json.dumps(data)
+        print("Json dumped")
         client.lpush(list_name, task)
         print("Experiment data enqueued successfully.\n", task)
     except Exception as e:
@@ -112,7 +119,7 @@ def enqueue_experiment(list_name: str, data: dict) -> None:
     print("Current queue state:")
     print(client.lrange(list_name, 0, -1))
 
-
+@flow
 def request_experiments() -> None:
     """
     Main function to interact with the user, gather input for compositions and electrolytes,
@@ -148,10 +155,12 @@ def request_experiments() -> None:
 
         try:
             experiments = generate_experiments(compositions, electrolytes)
+            print(f"Experiments generated: {experiments}")
             for experiment in experiments:
                 enqueue_experiment("experiment_queue",experiment)
+            print("Experiment enqueued")
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Error adding experiments to queue: {e}")
 
 
 if __name__ == "__main__":

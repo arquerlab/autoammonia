@@ -7,6 +7,7 @@ from pathlib import Path
 from autoammonia.db.db_functions import add_valid_electrolytes_and_metals_to_db
 from .utils.decorators import with_lock
 from .config.config import DEFAULT_CONFIG, CONNECTIONS_INFO
+from .utils.prefect_variables import initialize_prefect_variables
 from .utils.redis_client import client, client_initialization
 from .reaction_steps import initialize_pump, restore_pump, execute_experiment
 
@@ -75,6 +76,7 @@ def process_experiment_queue(delete_previous_queue: Optional[bool] = None,
     if delete_previous_queue:
         client.delete("experiment_queue")
     client_initialization(**kwargs)
+    initialize_prefect_variables()
     
     syringe_pumps = []
     for pump in CONNECTIONS_INFO:

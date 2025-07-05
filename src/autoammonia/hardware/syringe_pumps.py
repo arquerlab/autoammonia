@@ -3,6 +3,7 @@ from math import ceil
 from typing import Union, Optional, Any, List, Tuple
 
 from prefect import task, flow, get_run_logger
+from prefect.variables import Variable
 
 from ..utils.redis_client import client
 from ..utils.decorators import run_on_component, with_lock
@@ -174,6 +175,18 @@ def syringe_draw_and_dispense_volume(
     """
     config = {**DEFAULT_CONFIG, **kwargs}
     retries = retries if retries is not None else config['draw_and_dispense_retries']
+    
+    logger = get_run_logger()
+    draw_valve_port_info = Variable.get(str(draw_valve_port))
+    dispense_valve_port_info = Variable.get(str(dispense_valve_port))
+    if draw_valve_port_info['vol'] < volume:
+        logger.critical(f"[{syringe_pump}] Not enough volume in {draw_valve_port}")
+        logger.error(f"[{draw_valve_port}] Current vol: {draw_valve_port_info['vol']}, trying to subtract: {volume}")
+        raise ValueError(f"Not enough volume in {draw_valve_port} to perform draw_and_dispense_volume operation")
+    if dispense_valve_port_info['max_vol'] > (volume + dispense_valve_port_info['vol']):
+        logger.critical(f"[{syringe_pump}] Not enough volume in {draw_valve_port}")
+        logger.error(f"[{draw_valve_port}] Current vol: {draw_valve_port_info['vol']}, trying to subtract: {volume}")
+        raise ValueError(f"Not enough volume in {draw_valve_port} to perform draw_and_dispense_volume operation")
 
     dispense_iterations = ceil(volume / (1e3 * CONFIG_COMPONENTS[syringe_pump]["syringe_volume"]))
     volume_per_iteration = volume / dispense_iterations
@@ -183,7 +196,11 @@ def syringe_draw_and_dispense_volume(
             retries=retries,
         )(syringe_pump=syringe_pump, volume=volume_per_iteration, draw_valve_port=draw_valve_port,
           dispense_valve_port=dispense_valve_port, speed=speed, wait=wait, **kwargs)
-    print(f'[{syringe_pump}] Draw and dispensed {volume} mL successfully from {draw_valve_port} to {dispense_valve_port}')
+    logger.info(f'[{syringe_pump}] Draw and dispensed {volume} mL successfully from {draw_valve_port} to {dispense_valve_port}')
+    draw_valve_port_info['vol'] -= volume
+    dispense_valve_port_info['vol'] += volume
+    Variable.set(str(draw_valve_port), draw_valve_port_info, overwrite=True)
+    Variable.set(str(dispense_valve_port), dispense_valve_port_info, overwrite=True)
 
 def get_connected_port(
     syringe_pump: str,
@@ -238,14 +255,14 @@ def get_air_volume(
         float: The calculated air volume to be drawn, or 0 if the port is connected to a stock solution.
     """
     if valve_port is not None:
-        air_volume = connections_info[syringe_pump][syringe_port]['volume']
+        air_volume = connections_info[syringe_pump][syringe_port]['con_vol']
         if str(connections_info[syringe_port][valve_port]['usage']).lower() != 'stock':  
             # If it's not a stock solution, also need to drawn volume valve-compartment
-            air_volume += connections_info[syringe_port][valve_port]['volume']
+            air_volume += connections_info[syringe_port][valve_port]['con_vol']
         air_volume += air_compensation_volume
     else:
         if str(connections_info[syringe_pump][syringe_port]['usage']).lower() != 'stock':
-            air_volume = connections_info[syringe_pump][syringe_port]['volume']
+            air_volume = connections_info[syringe_pump][syringe_port]['con_vol']
         else:
             return 0.
     return air_volume
