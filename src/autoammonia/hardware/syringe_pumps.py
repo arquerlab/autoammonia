@@ -185,8 +185,6 @@ def syringe_draw_and_dispense_volume(
         logger.critical(f"[{dispense_valve_port}] Variable was not able to be subtracted")
     if draw_valve_port_info['volume'] < volume:
         logger.critical(f"[{syringe_pump}] Not enough volume in {draw_valve_port}")
-        logger.info(f"[{draw_valve_port}] Current volume: {draw_valve_port_info['volume']}, type: {type(draw_valve_port_info['volume'])}")
-        logger.info(f"[{syringe_pump}] Trying to dispense: {volume}, type: {type(volume)}")
         logger.error(f"[{draw_valve_port}] Current vol: {draw_valve_port_info['volume']}, trying to subtract: {volume}")
         raise ValueError(f"Not enough volume in {draw_valve_port} to perform draw_and_dispense_volume operation")
     if (dispense_valve_port_info['volume'] + volume) > dispense_valve_port_info['max_vol']:

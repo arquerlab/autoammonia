@@ -11,6 +11,7 @@ def initialize_prefect_variables(overwrite: bool = False) -> None:
         for port, port_dict in device_dict.items()
         if port != 'air' and 'valve' not in port
     }
+    simplified['air'] = {'volume':1e9, 'max_vol':1e9}
     for key, value in simplified.items():
         try:
             Variable.set(key.lower(), value, overwrite=overwrite)
