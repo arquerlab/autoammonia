@@ -177,8 +177,8 @@ def syringe_draw_and_dispense_volume(
     retries = retries if retries is not None else config['draw_and_dispense_retries']
     
     logger = get_run_logger()
-    draw_valve_port_info = Variable.get(str(draw_valve_port))
-    dispense_valve_port_info = Variable.get(str(dispense_valve_port))
+    draw_valve_port_info = Variable.get(str(draw_valve_port).lower())
+    dispense_valve_port_info = Variable.get(str(dispense_valve_port).lower())
     if draw_valve_port_info['vol'] < volume:
         logger.critical(f"[{syringe_pump}] Not enough volume in {draw_valve_port}")
         logger.error(f"[{draw_valve_port}] Current vol: {draw_valve_port_info['vol']}, trying to subtract: {volume}")
