@@ -376,10 +376,12 @@ def syringe_transfer_unlocked(
         logger.info(f"[syringe_transfer_unlocked] Recovered {input_air_volume} mL of dead volume to {syringe_port_input}.")
     logger.info(f"[syringe_transfer_unlocked] Full transfer completed with {syringe_pump}: {volume} mL from {draw_valve_port} to {dispense_valve_port} ports")
     if (dispense_valve_port != draw_valve_port) and (draw_valve_port != 'air'):
-        draw_valve_port_info['volume'] -= volume
+        draw_valve_port_info['volume'] = max(draw_valve_port_info['volume'] - volume, 0)
         dispense_valve_port_info['volume'] += volume
         Variable.set(str(draw_valve_port).lower(), draw_valve_port_info, overwrite=True)
+        logger.info(f"[syringe_transfer_unlocked] Updated info on {draw_valve_port}: {draw_valve_port_info}")
         Variable.set(str(dispense_valve_port).lower(), dispense_valve_port_info, overwrite=True)
+        logger.info(f"[syringe_transfer_unlocked] Updated info on {dispense_valve_port}: {dispense_valve_port_info}")
     
 @flow
 def syringe_wash_unlocked(
