@@ -266,6 +266,7 @@ def syringe_transfer_unlocked(
         air_compensation_volume: Optional[float] = None,
         air_flush_factor: Optional[int] = None,
         air_flush_speed: Optional[float] = None,
+        safety_empty: Optional[bool] = False,
         **kwargs: Any,
 ) -> None:
     """
@@ -328,7 +329,7 @@ def syringe_transfer_unlocked(
     if (dispense_valve_port != draw_valve_port) and (draw_valve_port != 'air'):
         draw_valve_port_info = Variable.get(str(draw_valve_port).lower())
         dispense_valve_port_info = Variable.get(str(dispense_valve_port).lower())
-        if draw_valve_port_info['volume'] < volume:
+        if draw_valve_port_info['volume'] < volume and not safety_empty:
             logger.critical(f"[{syringe_pump}] Not enough volume in {draw_valve_port}")
             logger.error(f"[{draw_valve_port}] Current vol: {draw_valve_port_info['volume']}, trying to subtract: {volume}")
             raise ValueError(f"Not enough volume in {draw_valve_port} to perform draw_and_dispense_volume operation")
@@ -342,8 +343,13 @@ def syringe_transfer_unlocked(
     # and switch valves accordingly.
     syringe_port_input, valve_port_input = get_connected_port(syringe_pump, draw_valve_port, CONNECTIONS_INFO)
     syringe_port_output, valve_port_output = get_connected_port(syringe_pump, dispense_valve_port, CONNECTIONS_INFO)
-    if valve_port_input: switch_port_valve(valve=syringe_port_input, port=valve_port_input, **kwargs)
-    if valve_port_output: switch_port_valve(valve=syringe_port_output, port=valve_port_output, **kwargs)
+    if valve_port_input: 
+        switch_port_valve(valve=syringe_port_input, port=valve_port_input, **kwargs)
+        logger.info(f"[syringe_transfer_unlocked] Draw port in {syringe_port_input}, valved switched to {valve_port_input}")
+    if valve_port_output: 
+        switch_port_valve(valve=syringe_port_output, port=valve_port_output, **kwargs)
+        logger.info(
+            f"[syringe_transfer_unlocked] Dispense port in {syringe_port_output}, valved switched to {valve_port_output}")
     
 
     # Draw and dispense the required air from the input tube if needed
@@ -353,17 +359,22 @@ def syringe_transfer_unlocked(
         syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=input_air_volume,
                                          draw_valve_port=syringe_port_input, dispense_valve_port='waste', 
                                          speed=air_flush_speed, **kwargs)
+        logger.info(f"[syringe_transfer_unlocked] Subtracted {input_air_volume} mL of dead volume from {syringe_port_input}.")
 
     # Draw/Dispense liquid + air
     air_flush_volume = air_flush_factor * CONFIG_COMPONENTS[syringe_pump]['syringe_volume'] * 1000
     syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=volume, draw_valve_port=syringe_port_input,
                                      dispense_valve_port=syringe_port_output, wait=wait, speed=speed, **kwargs)
+    logger.info(f"[syringe_transfer_unlocked] Transferred {volume} mL from {syringe_port_input} to {syringe_port_output}")
     syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=air_flush_volume, draw_valve_port='air',
                                      dispense_valve_port=syringe_port_output, wait=wait, speed=air_flush_speed, **kwargs)
+    logger.info(
+        f"[syringe_transfer_unlocked] Transferred completed, {volume} mL of air transferred to {syringe_port_output}")
     if input_air_volume > 0:  # If the drawing port does not come from a stock solution, we want to leave it empty
         syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=air_flush_volume, draw_valve_port='air',
                                          dispense_valve_port=syringe_port_input, wait=wait, speed=air_flush_speed, **kwargs)
-    logger.info(f"[{syringe_pump}] Full transfer completed: {volume} mL from {draw_valve_port} to {dispense_valve_port} ports")
+        logger.info(f"[syringe_transfer_unlocked] Recovered {input_air_volume} mL of dead volume to {syringe_port_input}.")
+    logger.info(f"[syringe_transfer_unlocked] Full transfer completed with {syringe_pump}: {volume} mL from {draw_valve_port} to {dispense_valve_port} ports")
     if (dispense_valve_port != draw_valve_port) and (draw_valve_port != 'air'):
         draw_valve_port_info['volume'] -= volume
         dispense_valve_port_info['volume'] += volume
@@ -407,7 +418,7 @@ def syringe_wash_unlocked(
     for _ in range(repeats):
         syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=wash_vol, draw_valve_port='water',
                                          dispense_valve_port='waste', speed=speed, **kwargs)
-    logger.info(f"[{syringe_pump}] Syringe washed with {wash_vol} mL of water {repeats} times")
+    logger.info(f"[syringe_wash_unlocked] Syringe {syringe_pump} washed with {wash_vol} mL of water {repeats} times")
     
     # Valve washing
     if len(wash_valves)>0:
@@ -419,7 +430,7 @@ def syringe_wash_unlocked(
                                              dispense_valve_port=syringe_valve, speed=speed, **kwargs)
             syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=air_flush_volume, draw_valve_port='air',
                                              dispense_valve_port=syringe_valve, speed=air_flush_speed, **kwargs)
-            logger.info(f"[{syringe_pump}] Valve {syringe_valve} washed with {wash_vol} of water")
+            logger.info(f"[syringe_wash_unlocked] Valve {syringe_valve} washed with {wash_vol} of water")
 
 @flow
 @with_lock()
@@ -453,6 +464,7 @@ def syringe_transfer_and_wash(
     """
 
     config = {**DEFAULT_CONFIG, **kwargs}
+    logger = get_run_logger()
 
     # Use provided arguments or fall back to default config
     wash_repeats = wash_repeats if wash_repeats is not None else config['syringe_wash_repeats']
@@ -466,6 +478,7 @@ def syringe_transfer_and_wash(
         syringe_pump=syringe_pump, volume=volume, draw_valve_port=draw_valve_port,
         dispense_valve_port=dispense_valve_port, speed=speed, wait=wait, **kwargs,
     )
+    logger.info(f"[Syringe_transfer_and_wash] Transferred {volume} mL from {draw_valve_port} to {dispense_valve_port}.")
     
     #Check if valves were used in draw or dispense
     wash_valves = []
@@ -476,6 +489,7 @@ def syringe_transfer_and_wash(
                     
     syringe_wash_unlocked(syringe_pump=syringe_pump, repeats=wash_repeats, wash_vol=wash_vol, speed=wash_speed,
                           wash_valves=wash_valves, **kwargs)
+    logger.info(f"[Syringe_transfer_and_wash] Valves washed: {wash_valves}")
 
 
 
@@ -514,17 +528,18 @@ def compartment_wash(
 
     syringe_transfer_unlocked(syringe_pump=syringe_pump, volume=volume, draw_valve_port=compartment,
                               dispense_valve_port='waste', speed=speed, **kwargs)
+    logger.info(f"[Compartment_wash] Compartment {compartment} emptied")
     client.set(compartment + '_volume', 0)
 
     for _ in range(repeats):
         syringe_transfer_unlocked(syringe_pump=syringe_pump, volume=wash_vol, draw_valve_port='water',
                                   dispense_valve_port=compartment, speed=speed, **kwargs)
+        logger.info(f"[Compartment_wash] Compartment {compartment} filled with water. Repeat: {_}")
         syringe_transfer_unlocked(syringe_pump=syringe_pump, volume=wash_vol, draw_valve_port=compartment,
                                   dispense_valve_port='waste', speed=speed, **kwargs)
-
+        logger.info(f"[Compartment_wash] Compartment {compartment} emptied. Repeat: {_}")
     syringe_transfer_unlocked(syringe_pump=syringe_pump, volume=wash_vol, draw_valve_port=compartment,
-                              dispense_valve_port='waste',
-                              speed=speed_last_empty, **kwargs)
+                              dispense_valve_port='waste', speed=speed_last_empty, safety_empty=True, **kwargs)
     logger.info(f"[{syringe_pump}] Compartment '{compartment}' washed {repeats} times with {wash_vol} mL at {speed} mL/s. ")
 
 
@@ -554,5 +569,5 @@ def compartment_fill(
         dispense_valve_port=destination, speed=speed, **kwargs
     )
     client.set(f"{destination}_volume", volume)
-    logger.info(f"[{syringe_pump}] Transferred {volume} mL from {source} to {destination} at {speed} mL/s.")
+    logger.info(f"[compartment_fill] Transferred {volume} mL from {source} to {destination}.")
     # client.set(f"{source}_volume", float(client.get(f"{source}_volume"))-volume)
