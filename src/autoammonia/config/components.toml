@@ -1,5 +1,5 @@
 [global]
-simulation = true
+simulation = false
 
 [longerWE01]
 class = "matterlab_pumps.LongerPeristalticPump"
