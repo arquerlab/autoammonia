@@ -1,4 +1,4 @@
-simulation = false
+simulation = true
 
 data_path = "~/data"
 parallel_cells = 1
