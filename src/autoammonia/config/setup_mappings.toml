@@ -1,0 +1,11 @@
+# Hostname to setup mapping configuration
+# This file maps hostnames (or hostname patterns) to setup names.
+# The system will check hostnames in order and return the first match.
+
+[toronto]
+# Hostnames that should map to Toronto setup
+hostnames = ["adrastea",]
+
+[barcelona]
+# Hostnames that should map to Barcelona setup
+hostnames = ["pc1836",]

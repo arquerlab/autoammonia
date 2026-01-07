@@ -1,0 +1,226 @@
+---
+alwaysApply: true
+---
+
+# Docstring Style Guide
+
+This project uses **Google-style docstrings** for all Python code. Follow these conventions consistently.
+
+## Format
+
+- Use triple double quotes: `"""`
+- Start docstring immediately after the opening quotes on the same line
+- End docstring with closing quotes on a separate line
+
+## Structure
+
+### Basic Structure
+
+```python
+def function_name(param1: type, param2: type) -> return_type:
+    """
+    Brief one-line summary of what the function does.
+
+    Optional detailed description spanning multiple lines if needed.
+    This can explain the function's purpose, behavior, or important
+    implementation details in more depth.
+
+    Args:
+        param1 (type): Description of param1.
+        param2 (type): Description of param2 with more details
+            that can span multiple lines with proper indentation.
+
+    Returns:
+        return_type: Description of what is returned.
+
+    Raises:
+        ValueError: Description of when this exception is raised.
+        RuntimeError: Description of when this exception is raised.
+    """
+```
+
+### Class Docstrings
+
+```python
+class MyClass:
+    """
+    Brief description of the class.
+
+    Optional detailed description explaining the class purpose,
+    its role in the system, or important design decisions.
+
+    Attributes:
+        attr1 (type): Description of attr1.
+        attr2 (type): Description of attr2.
+        attr3 (list[RelatedClass]): Description of relationship.
+    """
+```
+
+## Sections
+
+### Required Sections (when applicable)
+
+1. **Brief Summary** (always required)
+   - First line after opening quotes
+   - One line describing what the function/class does
+   - No period at the end (optional, but be consistent)
+   - Capitalize first letter
+
+2. **Args** (required if function has parameters)
+   - Format: `parameter_name (type): Description`
+   - For optional parameters: `parameter_name (Optional[type], optional): Description. Defaults to value.`
+   - Multi-line descriptions should be indented to align with the description start
+   - Include units or constraints when relevant (e.g., "in rpm", "in seconds")
+
+3. **Returns** (required if function returns something)
+   - Format: `type: Description`
+   - For functions returning None: `None` or `None: Description`
+   - Use `List[Type]`, `Dict[str, Type]`, `Tuple[str, float]` for complex types
+
+4. **Raises** (required if function raises exceptions)
+   - List each exception type with description
+   - Can use bullet points for multiple conditions:
+     ```python
+     Raises:
+         ValueError: If:
+             - Condition 1 description.
+             - Condition 2 description.
+     ```
+
+### Optional Sections (use when needed)
+
+5. **Behavior** (for complex functions/decorators)
+   - Explain side effects, state changes, or important behavioral details
+
+6. **Example** (for complex functions)
+   - Show usage examples with code blocks
+
+7. **Notes** (for important implementation details)
+   - Additional context, warnings, or important considerations
+
+8. **Attributes** (for classes)
+   - List all class attributes with types and descriptions
+   - Include relationships: `attr_name (list[RelatedClass]): Description`
+
+## Type Annotations
+
+- Use Python type hints in function signatures: `param: type`
+- In docstrings, match the type hints exactly
+- Use `Optional[type]` for nullable types
+- Use `str | None` or `Optional[str]` (be consistent)
+- Use `list[Type]`, `dict[str, Type]`, `tuple[str, float]` (Python 3.9+ style)
+- For complex return types: `Callable[[str, ...], None]` or `Callable[[Callable[...]], Callable[...]]`
+
+## Examples
+
+### Simple Function
+
+```python
+def should_stop() -> bool:
+    """
+    Check a Redis key to determine if the flow should stop.
+
+    Returns:
+        bool: True if the stop signal is present, False otherwise.
+    """
+```
+
+### Function with Parameters and Exceptions
+
+```python
+def convert_and_validate_input(input_str: str, is_compositions: bool = True) -> List[List[Tuple[str, float]]]:
+    """
+    Converts and validates a user input string into a controlled list of (name, value) tuples.
+
+    Args:
+        input_str (str): The input string provided by the user. It can represent a single experiment
+                         or multiple experiments.
+        is_compositions (bool): Flag indicating whether the input is for compositions (True) or electrolytes (False).
+
+    Returns:
+        List[List[Tuple[str, float]]]: A nested list of tuples where each tuple contains a valid compound
+                                        name and its corresponding value.
+
+    Raises:
+        ValueError: If:
+            - The input string cannot be parsed.
+            - The input format is invalid.
+            - At least one value in a sublist is not a number.
+    """
+```
+
+### Complex Decorator
+
+```python
+def with_lock(
+        function_timeout: Optional[int] = None,
+        acquisition_timeout: Optional[int] = None
+) -> Callable[[Callable[Concatenate[str, P], None]], Callable[Concatenate[str, P], None]]:
+    """
+    Decorator that ensures exclusive execution of a function by using Redis-based locking.
+
+    Args:
+        function_timeout (Optional[int]): The maximum time in seconds to hold the lock after acquiring it.
+            Defaults to config["function_timeout"].
+        acquisition_timeout (Optional[int]): The maximum time in seconds to wait to acquire the lock.
+            Defaults to config["acquisition_timeout"].
+
+    Returns:
+        Callable[[Callable[[str, ...], None]], Callable[[str, ...], None]]: A decorator function that uses
+        Redis to lock the function execution.
+
+    Raises:
+        LockError: If the lock cannot be acquired within the `acquisition_timeout` period.
+
+    Behavior:
+        - When invoked, attempts to acquire a Redis lock specific to the `component_name`.
+        - If the function completes normally or encounters an error, the lock is released immediately.
+
+    Example:
+        @with_lock(function_timeout=600, acquisition_timeout=300)
+        def process_component(component_name, data):
+            pass
+
+    Notes:
+        - `function_timeout` should be chosen carefully to match the expected maximum duration.
+        - This decorator helps ensure exclusive access to resources in a distributed environment.
+    """
+```
+
+### Class with Attributes
+
+```python
+class Experiment(Base):
+    """
+    Database model for storing experiment data and metadata.
+
+    Represents a single experimental run. Stores only an ID, a timestamp,
+    optional notes, and arbitrary metadata as JSON.
+
+    Attributes:
+        id (int): Primary key.
+        date (datetime): Timestamp for when the experiment took place.
+        notes (str): Freeform notes about the experiment.
+        metadata (dict): JSON object storing arbitrary experiment parameters.
+        catalyst_compositions (list[CatalystComposition]): List of catalyst composition objects.
+        results (list[Result]): List of result objects (output files).
+    """
+```
+
+## Guidelines
+
+1. **Be descriptive**: Explain what the function does, not just what it's named
+2. **Be consistent**: Use the same style throughout the codebase
+3. **Include defaults**: Always mention default values for optional parameters
+4. **Document exceptions**: List all exceptions that can be raised
+5. **Use proper indentation**: Multi-line descriptions should align properly
+6. **Match type hints**: Docstring types should match function signature types
+7. **English only**: All docstrings, comments, and code must be in English (even if user speaks Spanish)
+8. **Units and constraints**: Include units (e.g., "in seconds", "in rpm") and constraints when relevant
+
+## Common Patterns
+
+- For Prefect tasks/flows: Document retry behavior, timeout behavior, and Redis interactions
+- For database functions: Document transaction handling and error behavior
+- For hardware functions: Document units, retry logic, and safety mechanisms
+- For decorators: Document transformation behavior and side effects

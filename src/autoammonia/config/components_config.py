@@ -1,6 +1,6 @@
 import toml
 from pathlib import Path
-from .config import CONNECTIONS_INFO
+from .config import CONNECTIONS_INFO, ACTIVE_SETUP, DEFAULT_CONFIG
 
 MOCK_OVERRIDES = {
     "matterlab_pumps.LongerPeristalticPump": "autoammonia.hardware.mock.longer_mock.LongerPeristalticPumpMock",
@@ -14,20 +14,24 @@ MOCK_OVERRIDES = {
     "autoammonia.hardware.uv_vis_lamp.PulsedLamp": "autoammonia.hardware.mock.lamp_mock.PulsedLampMock",
 }
 
-_config_components = toml.load(Path(__file__).parent / "components.toml")
-simulation = _config_components.pop('global', {}).get('simulation', False)
+# Load setup-specific components file
+_config_components_full = toml.load(Path(__file__).parent / f"components_{ACTIVE_SETUP}.toml")
+simulation = _config_components_full.get('global', {}).get('simulation', False)
+
+# Extract components (excluding global section)
+_config_components = {
+    name: cfg for name, cfg in _config_components_full.items() if name != "global"
+}
 
 def get_config_components() -> dict[str, dict]:
     """
     Return the raw component configs with class names optionally replaced by mocks.
     Classes are NOT resolved/imported yet.
     Adds dynamic 'ports' info from CONNECTIONS_INFO if present.
+    Only returns components for the active setup.
     """
     result = {}
     for name, cfg in _config_components.items():
-        if name == "global":
-            continue
-
         cfg = cfg.copy()
 
         # Replace class/device_class with mock version if in simulation mode

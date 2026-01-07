@@ -1,0 +1,64 @@
+---
+alwaysApply: true
+---
+
+# Project Context and Architecture
+
+## Overview
+
+This project is designed for **controlling experimental setups** used in automated chemistry/electrochemistry experiments. The system manages hardware components, orchestrates experiments, and stores results.
+
+## Key Architecture Principles
+
+### 1. **Hardware Agnostic Design**
+- Functions are written to be hardware-agnostic
+- Hardware abstraction allows switching between real hardware and mocks
+- Components are configured through configuration files, not hardcoded
+
+### 2. **Function-Oriented Programming**
+- Code is primarily organized around functions rather than classes
+- Functions are the main building blocks of the system
+- Classes are used mainly for hardware device abstractions and database models
+
+### 3. **Distributed and Modular**
+- The project is modularized so that each module can run on a different computer
+- Modules communicate through Redis for coordination and state management
+- Prefect is used for orchestration across distributed components
+
+### 4. **Multi-Setup Support**
+- The system supports **2 replicates of the setup** in different locations
+- Configuration allows managing multiple physical setups
+- Hardware components are identified by names/IDs to support multiple instances
+
+## Technology Stack
+
+- **Orchestration**: Prefect (workflow orchestration)
+- **State Management**: Redis (queues, locks, shared state)
+- **Database**: PostgreSQL with SQLAlchemy ORM
+- **Hardware Control**: Various hardware libraries (device-specific)
+- **Configuration**: TOML files for component configuration
+
+## Module Organization
+
+- **Hardware modules**: Control physical devices (pumps, valves, potentiostats, UV-VIS, etc.)
+- **Database modules**: Store experiments, results, and configurations
+- **Reaction modules**: Orchestrate experimental workflows
+- **Analysis modules**: Process and analyze experimental results
+- **Utility modules**: Shared functionality (decorators, Redis client, etc.)
+
+## Important Patterns
+
+1. **Locking**: Use Redis locks for exclusive hardware access (decorators like `@with_lock`)
+2. **Component Instantiation**: Components are lazily instantiated and cached (`@run_on_component`)
+3. **Retry Logic**: Hardware operations include retry mechanisms with configurable timeouts
+4. **Safety**: Safety flags in Redis trigger emergency stops on errors
+5. **Configuration**: Default configs can be overridden via kwargs in most functions
+
+## When Writing Code
+
+- Keep functions hardware-agnostic when possible
+- Use configuration-driven approach rather than hardcoding
+- Consider distributed execution (use Redis for coordination)
+- Include proper error handling and retry logic for hardware operations
+- Document timeout values, units, and default behaviors
+- Support multiple setup instances through configuration

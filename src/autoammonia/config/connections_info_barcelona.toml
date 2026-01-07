@@ -48,7 +48,6 @@ elyte3   = { port = 3, con_vol = 0.37, usage = "stock", composition = "NaCl", co
 elyte2   = { port = 2, con_vol = 0.37, usage = "stock", composition = "NaBr", concentration = 0.1, volume = 0, max_vol = 100 }
 elyte1   = { port = 1, con_vol = 0.37, usage = "stock", composition = "KNO3", concentration = 0.1, volume = 100, max_vol = 100 }
 
-
-
 [setup]
-config_setup_1 = ["potentiostat01", "valve01", "tecanAZ01", "tecanRX01", "longerCE01", "longerWE01"]
+components = ["potentiostat01", "valveRX01", "valveAZ01", "tecanAZ01", "tecanRX01", "longerCE01", "longerWE01"]
+

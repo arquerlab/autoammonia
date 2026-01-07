@@ -1,0 +1,53 @@
+[tecanAZ01]
+waste      = { port = 10, con_vol = 1, volume = 0, max_vol = 5000 }
+valveAZ01  = { port = 9, con_vol = 0.09, volume = 0, max_vol = 1.5 }
+air        = { port = 8, con_vol = 0, volume = 1e9, max_vol = 1e9 }
+WEvial02   = { port = 7, con_vol = 0.18, volume = 0, max_vol = 22 }
+WEvial01   = { port = 6, con_vol = 0.18, volume = 0, max_vol = 22 }
+uv_vis     = { port = 5, con_vol = 8, volume = 0, max_vol = 100 }
+d3         = { port = 4, con_vol = 0.115, usage = "stock", volume = 40, max_vol = 40 }
+d2         = { port = 3, con_vol = 0.1, usage = "stock", volume = 40, max_vol = 40 }
+d1         = { port = 2, con_vol = 0.1, usage = "stock", volume = 40, max_vol = 40 }
+water      = { port = 1, con_vol = 0.47, usage = "stock", volume = 5000, max_vol = 5000 }
+
+[valveAZ01]
+waste  = { port = 10, con_vol = 1, volume = 0, max_vol = 5000 }
+vial9  = { port = 9, con_vol = 0.26, volume = 0, max_vol = 1.5 }
+vial8  = { port = 8, con_vol = 0.26, volume = 0, max_vol = 1.5 }
+vial7  = { port = 7, con_vol = 0.27, volume = 0, max_vol = 1.5 }
+vial6  = { port = 6, con_vol = 0.285, volume = 0, max_vol = 1.5 }
+vial5  = { port = 5, con_vol = 0.275, volume = 0, max_vol = 1.5 }
+vial4  = { port = 4, con_vol = 0.28, volume = 0, max_vol = 1.5 }
+vial3  = { port = 3, con_vol = 0.28, volume = 0, max_vol = 1.5 }
+vial2  = { port = 2, con_vol = 0.285, volume = 0, max_vol = 1.5 }
+vial1  = { port = 1, con_vol = 0.26, volume = 0, max_vol = 1.5 }
+
+[tecanRX01]
+waste      = { port = 12, con_vol = 2.5, volume = 0, max_vol = 5000 }
+WEvial02   = { port = 11, con_vol = 0.2, volume = 0, max_vol = 22 }
+CEvial02   = { port = 10, con_vol = 0.175, volume = 0, max_vol = 22 }
+WEvial01   = { port = 9, con_vol = 0.18, volume = 0, max_vol = 22 }
+CEvial01   = { port = 8, con_vol = 0.17, volume = 0, max_vol = 22 }
+valveRX01  = { port = 7, con_vol = 0.09, volume = 0, max_vol = 1.5 }
+acid       = { port = 6, con_vol = 0.37, usage = "stock", volume = 500, max_vol = 500 }
+air        = { port = 5, con_vol = 0.55, usage = "stock", volume = 1e9, max_vol = 1e9 }
+Cu         = { port = 4, con_vol = 0.4, usage = "stock", composition = "Cu", concentration = 0.1, volume = 100, max_vol = 100 }
+Ni         = { port = 3, con_vol = 0.4, usage = "stock", composition = "Ni", concentration = 0.1, volume = 0, max_vol = 100 }
+Co         = { port = 2, con_vol = 0.32, usage = "stock", composition = "Co", concentration = 0.1, volume = 0, max_vol = 100 }
+water      = { port = 1, con_vol = 0.64, usage = "stock", volume = 5000, max_vol = 5000 }
+
+[valveRX01]
+waste    = { port = 10, con_vol = 2.5, volume = 0, max_vol = 5000 }
+anolyte  = { port = 9, con_vol = 0.42, usage = "stock", volume = 1500, max_vol = 1500 }
+elyte8   = { port = 8, con_vol = 0.42, usage = "stock", composition = "NaNO3", concentration = 0.1, volume = 0, max_vol = 100 }
+elyte7   = { port = 7, con_vol = 0.42, usage = "stock", composition = "NaI", concentration = 0.1, volume = 0, max_vol = 100 }
+elyte6   = { port = 6, con_vol = 0.39, usage = "stock", composition = "LiNO3", concentration = 0.1, volume = 0, max_vol = 100 }
+elyte5   = { port = 5, con_vol = 0.39, usage = "stock", composition = "Ca(NO3)2", concentration = 0.1, volume = 0, max_vol = 100 }
+elyte4   = { port = 4, con_vol = 0.39, usage = "stock", composition = "Mg(NO3)2", concentration = 0.1, volume = 0, max_vol = 100 }
+elyte3   = { port = 3, con_vol = 0.37, usage = "stock", composition = "NaCl", concentration = 0.1, volume = 0, max_vol = 100 }
+elyte2   = { port = 2, con_vol = 0.37, usage = "stock", composition = "NaBr", concentration = 0.1, volume = 0, max_vol = 100 }
+elyte1   = { port = 1, con_vol = 0.37, usage = "stock", composition = "KNO3", concentration = 0.1, volume = 100, max_vol = 100 }
+
+[setup]
+components = ["potentiostat01", "valveRX01", "valveAZ01", "tecanAZ01", "tecanRX01", "longerCE01", "longerWE01"]
+
