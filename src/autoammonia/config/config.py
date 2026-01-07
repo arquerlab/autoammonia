@@ -45,14 +45,18 @@ def detect_setup() -> str:
 # Detect active setup
 ACTIVE_SETUP = detect_setup()
 
-# Load default configuration using setup-specific file
-DEFAULT_CONFIG_PATH = Path(__file__).parent / f"default_config_{ACTIVE_SETUP}.toml"
-DEFAULT_CONFIG = toml.load(DEFAULT_CONFIG_PATH)
+# Check environment variables for simulation and mock config control
+IS_SIMULATION = os.getenv("AUTOAMMONIA_SIMULATION", "false").lower() == "true"
+USE_MOCK_CONFIG = os.getenv("AUTOAMMONIA_MOCK_CONFIG", "false").lower() == "true"
 
-# Check if simulation mode is enabled
-if DEFAULT_CONFIG.get("simulation", False):
-    DEFAULT_CONFIG_MOCK_PATH = Path(__file__).parent / f"default_config_mock_{ACTIVE_SETUP}.toml"
-    DEFAULT_CONFIG = toml.load(DEFAULT_CONFIG_MOCK_PATH)
+# Load default configuration using setup-specific file
+# Use mock config if USE_MOCK_CONFIG is true, otherwise use standard config
+if USE_MOCK_CONFIG:
+    DEFAULT_CONFIG_PATH = Path(__file__).parent / f"default_config_mock_{ACTIVE_SETUP}.toml"
+else:
+    DEFAULT_CONFIG_PATH = Path(__file__).parent / f"default_config_{ACTIVE_SETUP}.toml"
+
+DEFAULT_CONFIG = toml.load(DEFAULT_CONFIG_PATH)
 
 # Load connections info and setups - use setup-specific file
 CONNECTIONS_INFO_PATH = Path(__file__).parent / f"connections_info_{ACTIVE_SETUP}.toml"

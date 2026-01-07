@@ -1,6 +1,6 @@
 import toml
 from pathlib import Path
-from .config import CONNECTIONS_INFO, ACTIVE_SETUP, DEFAULT_CONFIG
+from .config import CONNECTIONS_INFO, ACTIVE_SETUP, DEFAULT_CONFIG, IS_SIMULATION
 
 MOCK_OVERRIDES = {
     "matterlab_pumps.LongerPeristalticPump": "autoammonia.hardware.mock.longer_mock.LongerPeristalticPumpMock",
@@ -16,7 +16,6 @@ MOCK_OVERRIDES = {
 
 # Load setup-specific components file
 _config_components_full = toml.load(Path(__file__).parent / f"components_{ACTIVE_SETUP}.toml")
-simulation = _config_components_full.get('global', {}).get('simulation', False)
 
 # Extract components (excluding global section)
 _config_components = {
@@ -38,7 +37,7 @@ def get_config_components() -> dict[str, dict]:
         for key in ("class", "device_class"):
             if key in cfg:
                 target = cfg[key]
-                if simulation and target in MOCK_OVERRIDES:
+                if IS_SIMULATION and target in MOCK_OVERRIDES:
                     cfg[key] = MOCK_OVERRIDES[target]
 
         # Add 'ports' info if available
