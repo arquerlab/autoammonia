@@ -1,6 +1,3 @@
-[global]
-simulation = false
-
 [longerWE01]
 class = "matterlab_pumps.LongerPeristalticPump"
 com_port = "/dev/longer_pumps"

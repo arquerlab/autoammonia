@@ -82,6 +82,53 @@ hostnames = ["pc1836"]
 
 **To modify hostname mappings:** Edit `setup_mappings.toml` and add hostnames to the appropriate section.
 
+---
+
+## Simulation Mode
+
+The system supports two independent simulation controls via environment variables:
+
+### Environment Variables
+
+1. **`AUTOAMMONIA_SIMULATION`** (Hardware Mocking)
+   - Controls whether hardware classes are replaced with mocks
+   - `true` = Use mock hardware classes (from `autoammonia.hardware.mock`)
+   - `false` = Use real hardware classes
+   - Default: `false`
+
+2. **`AUTOAMMONIA_MOCK_CONFIG`** (Config File Selection)
+   - Controls which config file is loaded
+   - `true` = Load `default_config_mock_{setup}.toml` (fast timings for testing)
+   - `false` = Load `default_config_{setup}.toml` (production timings)
+   - Default: `false`
+
+### Usage Examples
+
+**Pure Logic Testing (No Hardware, Fast Timings):**
+```bash
+export AUTOAMMONIA_SIMULATION=true
+export AUTOAMMONIA_MOCK_CONFIG=true
+pytest tests/unit tests/integration
+```
+
+**Fast Hardware Test (Real Hardware, Fast Timings):**
+```bash
+export AUTOAMMONIA_SIMULATION=false
+export AUTOAMMONIA_MOCK_CONFIG=true
+pytest tests/hardware -m hardware
+```
+
+**Production Mode (Real Hardware, Production Timings):**
+```bash
+export AUTOAMMONIA_SIMULATION=false
+export AUTOAMMONIA_MOCK_CONFIG=false
+# Run actual experiments
+```
+
+**Note:** These environment variables are automatically set by pytest fixtures for unit/integration tests. Hardware tests can override them using the `hardware_test_mode` fixture.
+
+---
+
 ## Configuration Files
 
 ### 1. `setup_mappings.toml`
@@ -122,15 +169,14 @@ hostnames = ["pc1836", "barcelona-lab"]
 
 **Structure:**
 ```toml
-[global]
-simulation = false  # Global simulation mode flag
-
 [component_name]
 class = "module.ClassName"
 com_port = "/dev/device"  # or "COM4" on Windows
 address = 1
 # ... other component-specific parameters
 ```
+
+**Note:** The `[global].simulation` flag has been removed. Simulation mode is now controlled via environment variables (see [Simulation Mode](#simulation-mode) section below).
 
 **Example - Adding a new pump:**
 ```toml
@@ -191,8 +237,6 @@ water = { port = 1, con_vol = 0.64, usage = "stock", volume = 5000, max_vol = 50
 
 **Structure:**
 ```toml
-simulation = true  # Whether to use simulation mode
-
 # Timeouts
 function_timeout = 1500
 acquisition_timeout = 900
@@ -202,6 +246,8 @@ reaction_time = 960
 reaction_current = 28.2743339
 # ... many more parameters
 ```
+
+**Note:** The `simulation` flag has been removed. Mock config selection is now controlled via environment variables (see [Simulation Mode](#simulation-mode) section below).
 
 **Example - Changing reaction time:**
 ```toml
@@ -223,7 +269,7 @@ reaction_time = 1200  # Changed from 960 to 1200 seconds
 - Changing mock experiment durations
 - Modifying test timeout values
 
-**Note:** These files are automatically loaded when `simulation = true` in the corresponding `default_config_{setup}.toml` file.
+**Note:** These files are automatically loaded when `AUTOAMMONIA_MOCK_CONFIG=true` environment variable is set (see [Simulation Mode](#simulation-mode) section below).
 
 ---
 
@@ -282,18 +328,32 @@ hostnames = ["pc1836", "pc1837"]  # Added new computer
 
 #### 5. Enable/Disable Simulation Mode
 
-**File:** `components_{setup}.toml` (for component-level simulation)
+**Environment Variables** (recommended method):
 
-```toml
-[global]
-simulation = true  # Enable simulation
+Simulation mode is now controlled via environment variables, not TOML flags:
+
+```bash
+# Enable hardware mocking (uses mock classes instead of real hardware)
+export AUTOAMMONIA_SIMULATION=true
+
+# Enable mock config (uses default_config_mock_*.toml with fast timings)
+export AUTOAMMONIA_MOCK_CONFIG=true
+
+# Both can be used together or independently
 ```
 
-**File:** `default_config_{setup}.toml` (for experiment simulation)
-
-```toml
-simulation = true  # Enable simulation mode
+**Windows PowerShell:**
+```powershell
+$env:AUTOAMMONIA_SIMULATION="true"
+$env:AUTOAMMONIA_MOCK_CONFIG="true"
 ```
+
+**Common Combinations:**
+- **Pure logic testing**: `SIMULATION=true`, `MOCK_CONFIG=true` (mocked hardware + fast timings)
+- **Fast hardware test**: `SIMULATION=false`, `MOCK_CONFIG=true` (real hardware + fast timings)
+- **Production**: `SIMULATION=false`, `MOCK_CONFIG=false` (real hardware + production timings)
+
+**Note:** The old TOML-based `simulation` flags have been removed. Use environment variables instead.
 
 ---
 
@@ -313,13 +373,12 @@ hostnames = ["london-pc", "uk-lab"]
 
 Create `components_london.toml`:
 ```toml
-[global]
-simulation = false
-
 [component1]
 class = "..."
 # ... component definitions
 ```
+
+**Note:** No `[global].simulation` section needed - simulation is controlled via environment variables.
 
 ### Step 3: Create Connections Info
 
@@ -336,8 +395,8 @@ components = ["component1", ...]
 
 Create `default_config_london.toml`:
 ```toml
-simulation = false
 # ... all default parameters
+# No simulation flag needed - controlled via AUTOAMMONIA_MOCK_CONFIG env var
 ```
 
 ### Step 5: Create Mock Config (Optional)
@@ -358,9 +417,11 @@ Create `default_config_mock_london.toml`:
 
 2. **Setup Names:** Use lowercase, no spaces (e.g., `toronto`, `barcelona`, `london`)
 
-3. **Simulation Mode:** There are two simulation flags:
-   - `components_{setup}.toml` → `[global].simulation` (affects component mock classes)
-   - `default_config_{setup}.toml` → `simulation` (affects which config file is loaded)
+3. **Simulation Mode:** Controlled via environment variables (not TOML flags):
+   - `AUTOAMMONIA_SIMULATION=true` → Uses mock hardware classes instead of real hardware
+   - `AUTOAMMONIA_MOCK_CONFIG=true` → Loads `default_config_mock_{setup}.toml` instead of `default_config_{setup}.toml`
+   - These can be used independently or together
+   - See [Simulation Mode](#5-enabledisable-simulation-mode) section for details
 
 4. **Environment Variable Override:** You can override setup detection by setting:
    ```bash

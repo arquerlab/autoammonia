@@ -10,6 +10,8 @@ from unittest.mock import MagicMock
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 
+from autoammonia.db.models import Precursor, Electrolyte
+
 # Try to import fakeredis for better Redis mocking, fallback to manual mock
 try:
     import fakeredis
@@ -230,4 +232,60 @@ def hardware_test_mode(monkeypatch):
     yield
     
     # Cleanup: config will be reloaded by next test's fixtures
+
+
+@pytest.fixture(autouse=True)
+def mock_prefect_logger():
+    """
+    Mock Prefect logger for tests that use Prefect tasks/flows.
+    
+    This fixture patches get_run_logger to return a mock logger that
+    has info, warning, and error methods that do nothing.
+    
+    Uses autouse=True so it's automatically applied to all tests.
+    """
+    from unittest.mock import patch
+    
+    # Create mock logger
+    mock_logger = MagicMock()
+    mock_logger.info = lambda x: None
+    mock_logger.warning = lambda x: None
+    mock_logger.error = lambda x: None
+    
+    # Patch get_run_logger in prefect module (this will affect all imports)
+    with patch('prefect.get_run_logger', return_value=mock_logger):
+        yield mock_logger
+
+
+@pytest.fixture
+def test_precursors_and_electrolytes(temp_db):
+    """
+    Create standard test precursors and electrolytes in the database.
+    
+    Creates Cu, Ni precursors and KOH, NaOH electrolytes that are
+    commonly used across multiple tests.
+    
+    Yields:
+        dict: Dictionary with 'precursors' and 'electrolytes' lists
+    """
+    session = temp_db()
+    
+    precursors = [
+        Precursor(name="Cu"),
+        Precursor(name="Ni"),
+    ]
+    electrolytes = [
+        Electrolyte(name="KOH"),
+        Electrolyte(name="NaOH"),
+    ]
+    
+    session.add_all(precursors + electrolytes)
+    session.commit()
+    
+    yield {
+        "precursors": precursors,
+        "electrolytes": electrolytes,
+    }
+    
+    session.close()
 

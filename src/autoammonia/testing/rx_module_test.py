@@ -1,6 +1,10 @@
 from ..reaction_module import process_experiment_queue
 
 """
+DEPRECATED: This script is deprecated in favor of pytest tests.
+
+For testing, use: pytest tests/integration/test_reaction_workflow.py
+
 This script is designed to run the reaction module flow, processing tasks from the experiment queue.
 It can be executed directly to start the flow.
 """

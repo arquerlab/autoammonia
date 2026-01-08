@@ -1,11 +1,20 @@
 from ..utils.redis_client import client
 from ..config.config import DEFAULT_CONFIG
 
+"""
+DEPRECATED: This script is deprecated in favor of pytest tests.
+
+For testing, use: pytest tests/hardware/test_uv_vis.py -m hardware
+                  pytest tests/hardware/test_system_integrity.py -m hardware
+"""
+
 def main():
     """
     Main function to run hardware tests.
     This function will check the status of peristaltic pumps, syringe pumps, valves,
     and the spectrometer with lamp.
+    
+    DEPRECATED: Use pytest tests instead.
     """
     # Checking syringe pumps
     for pump in ['tecanAZ01',]:
