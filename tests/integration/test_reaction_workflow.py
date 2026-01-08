@@ -53,8 +53,13 @@ def test_experiment_queue_setup(setup_test_data, mock_redis):
     # Fetch from queue
     fetched = fetch_task_from_redis("experiment_queue")
     assert fetched is not None, "Should be able to fetch experiment"
-    assert fetched["composition"] == experiment_data["composition"]
-    assert fetched["electrolyte"] == experiment_data["electrolyte"]
+
+    # JSON deserialisation converts tuples to lists, so normalise expected data
+    expected_composition = [list(t) for t in experiment_data["composition"]]
+    expected_electrolyte = [list(t) for t in experiment_data["electrolyte"]]
+
+    assert fetched["composition"] == expected_composition
+    assert fetched["electrolyte"] == expected_electrolyte
 
 
 @pytest.mark.integration
@@ -86,8 +91,11 @@ def test_workflow_initialization(setup_test_data, mock_redis):
     # Mock the time.sleep to avoid long waits
     with patch('autoammonia.reaction_module.time.sleep'):
         # Mock execute_experiment to avoid running the full experiment
-        with patch('autoammonia.reaction_module.execute_experiment') as mock_execute:
+        # and mock add_valid_electrolytes_and_metals_to_db to avoid real DB writes
+        with patch('autoammonia.reaction_module.execute_experiment') as mock_execute, \
+             patch('autoammonia.reaction_module.add_valid_electrolytes_and_metals_to_db') as mock_add_valid:
             mock_execute.return_value = None
+            mock_add_valid.return_value = None
             
             # Run workflow - it should exit immediately due to stop signal
             # Use a timeout to prevent hanging
@@ -129,8 +137,11 @@ def test_workflow_with_fast_experiment(setup_test_data, mock_redis):
     client.set("stop_signal", "0")
     
     # Mock execute_experiment to avoid full execution
-    with patch('autoammonia.reaction_module.execute_experiment') as mock_execute:
+    # and mock add_valid_electrolytes_and_metals_to_db to avoid real DB writes
+    with patch('autoammonia.reaction_module.execute_experiment') as mock_execute, \
+         patch('autoammonia.reaction_module.add_valid_electrolytes_and_metals_to_db') as mock_add_valid:
         mock_execute.return_value = None
+        mock_add_valid.return_value = None
         
         # Mock time.sleep to speed up the test
         with patch('autoammonia.reaction_module.time.sleep'):

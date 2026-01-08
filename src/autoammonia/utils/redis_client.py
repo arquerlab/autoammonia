@@ -3,6 +3,9 @@ import socket
 
 from ..config.config import DEFAULT_CONFIG
 
+# Module-level cache for the Redis client (lazy initialization)
+_cached_client = None
+
 def create_redis_client()-> redis.Redis:
         """
         Dynamically creates a Redis client based on the hostname of the machine.
@@ -36,7 +39,29 @@ def create_redis_client()-> redis.Redis:
         redis_client.ping()
         return redis_client
 
-client = create_redis_client()
+
+def get_client()->redis.Redis:
+        """
+        Get Redis client, creating it only when first needed.
+        
+        Returns:
+                redis.Redis: The Redis client.
+        """
+        global _cached_client
+        if _cached_client is None:
+                _cached_client = create_redis_client()
+        return _cached_client
+
+class _ClientProxy:
+        """Proxy class to delegate attribute access to the Redis client."""
+        def __getattr__(self, name):
+                """Delegate attribute access to the Redis client."""
+                real_client = get_client()
+                import sys
+                sys.modules[__name__]._cached_client = real_client
+                return getattr(real_client, name)
+
+client = _ClientProxy()
 
 def client_initialization(**kwargs)->None:
         """Initialization of redis server, resetting all variables to the initial stage"""

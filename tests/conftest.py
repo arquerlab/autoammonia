@@ -5,12 +5,70 @@ Provides mocks for Redis, database, and environment variable configuration
 to enable testing without external dependencies.
 """
 import os
+import sys
+import logging
+
+# Prefect settings to allow ephemeral mode and suppress noisy logs
+os.environ["PREFECT_UNIT_TEST_MODE"] = "True"
+os.environ["PREFECT_SERVER_ALLOW_EPHEMERAL_MODE"] = "True"
+os.environ["PREFECT_LOGGING_LEVEL"] = "CRITICAL"
+os.environ["PREFECT_SERVER_ANALYTICS_ENABLED"] = "False"
+
+# Suppress loggers early
+for logger_name in ["prefect", "prefect.server", "prefect.logging", "prefect.client"]:
+    logging.getLogger(logger_name).setLevel(logging.CRITICAL)
+
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 
 from autoammonia.db.models import Precursor, Electrolyte
+
+@pytest.fixture(scope="session", autouse=True)
+def prefect_test_harness_fixture():
+    """
+    Use Prefect's test harness to provide a clean, isolated environment for all tests.
+    This handles ephemeral server lifecycle correctly.
+    """
+    try:
+        from prefect.testing.utilities import prefect_test_harness
+        with prefect_test_harness():
+            yield
+    except ImportError:
+        # Fallback if harness is not available
+        yield
+
+@pytest.fixture(scope="session", autouse=True)
+def silence_prefect_logging():
+    """
+    Deeply silence Prefect and Rich to avoid "I/O operation on closed file"
+    and other teardown noise.
+    """
+    # Disable rich markup and colors
+    os.environ["PREFECT_LOGGING_MARKUP"] = "False"
+    os.environ["PREFECT_LOGGING_COLORS"] = "False"
+    
+    # Patch subprocess_server_logger if possible
+    try:
+        from prefect.server.api import server
+        server.subprocess_server_logger.disabled = True
+    except (ImportError, AttributeError):
+        pass
+
+    # Suppress all prefect loggers and their handlers
+    all_loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+    all_loggers.append(logging.getLogger("prefect"))
+    
+    for logger in all_loggers:
+        if logger.name.startswith("prefect"):
+            logger.setLevel(logging.CRITICAL)
+            for handler in logger.handlers[:]:
+                logger.removeHandler(handler)
+            logger.addHandler(logging.NullHandler())
+            logger.propagate = False
+
+    yield
 
 # Try to import fakeredis for better Redis mocking, fallback to manual mock
 try:
@@ -244,15 +302,8 @@ def mock_prefect_logger():
     
     Uses autouse=True so it's automatically applied to all tests.
     """
-    from unittest.mock import patch
-    
-    # Create mock logger
-    mock_logger = MagicMock()
-    mock_logger.info = lambda x: None
-    mock_logger.warning = lambda x: None
-    mock_logger.error = lambda x: None
-    
     # Patch get_run_logger in prefect module (this will affect all imports)
+    mock_logger = MagicMock()
     with patch('prefect.get_run_logger', return_value=mock_logger):
         yield mock_logger
 
@@ -288,4 +339,3 @@ def test_precursors_and_electrolytes(temp_db):
     }
     
     session.close()
-
