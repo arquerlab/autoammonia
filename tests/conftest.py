@@ -79,6 +79,20 @@ except ImportError:
 
 
 @pytest.fixture(scope="function", autouse=True)
+def reset_component_instances():
+    """
+    Clear the cached component instances in decorators.py before each test.
+    
+    This ensures that each test creates its own instances based on the
+    active configuration (simulation vs real hardware).
+    """
+    from autoammonia.utils import decorators
+    decorators._component_instances.clear()
+    yield
+    decorators._component_instances.clear()
+
+
+@pytest.fixture(scope="function", autouse=True)
 def simulation_mode(request):
     """
     Automatically enable simulation mode for all tests except hardware tests.
@@ -101,6 +115,12 @@ def simulation_mode(request):
     os.environ["AUTOAMMONIA_SIMULATION"] = "true"
     os.environ["AUTOAMMONIA_MOCK_CONFIG"] = "true"
     
+    # Reload config modules to pick up the new environment variables
+    import importlib
+    from autoammonia import config
+    importlib.reload(config.config)
+    importlib.reload(config.components_config)
+    
     yield
     
     # Restore original values
@@ -113,6 +133,10 @@ def simulation_mode(request):
         os.environ.pop("AUTOAMMONIA_MOCK_CONFIG", None)
     else:
         os.environ["AUTOAMMONIA_MOCK_CONFIG"] = original_mock
+
+    # Reload config again to restore original state for other tests
+    importlib.reload(config.config)
+    importlib.reload(config.components_config)
 
 
 @pytest.fixture
@@ -248,9 +272,10 @@ def temp_db(monkeypatch):
     session_factory = sessionmaker(bind=engine)
     test_session = scoped_session(session_factory)
     
-    # Patch the db module's Session
+    # Patch get_session to return the test session (lazy Session pattern)
     from autoammonia.db import db
-    monkeypatch.setattr(db, "Session", test_session)
+    monkeypatch.setattr(db, "_cached_session", test_session)
+    monkeypatch.setattr(db, "get_session", lambda: test_session)
     
     yield test_session
     

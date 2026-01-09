@@ -2,8 +2,6 @@ import time
 from math import ceil
 from typing import Union, Optional, Dict
 
-from matterlab_pumps import TecanXCPump
-
 class TecanXCPumpMock():
     def __init__(self,
                  com_port: str,

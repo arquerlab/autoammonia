@@ -1,15 +1,22 @@
-from typing import List
+from typing import List, Any, Dict, Optional
 from time import sleep
 
-from pyBEEP.waveform_params import (
+from pyBEEP.measurement_modes.measurement_modes import ModeName, ControlMode, MeasurementMode, MeasurementModeMap
+from pyBEEP.measurement_modes.waveform_params import (
     ConstantWaveformParams, PotentialStepsParams, LinearSweepParams, CyclicVoltammetryParams,
-    SinglePointParams, CurrentStepsParams, LinearGalvanostaticSweepParams, CyclicGalvanostaticParams
+    SinglePointParams, CurrentStepsParams, LinearGalvanostaticSweepParams, CyclicGalvanostaticParams, OCPParams
 )
-from pyBEEP.waveforms_pot import constant_waveform, potential_steps, linear_sweep, cyclic_voltammetry
-from pyBEEP.waveforms_gal import single_point, current_steps, linear_galvanostatic_sweep, cyclic_galvanostatic
+
+# Dummy waveform functions to simulate pyBEEP behavior
+def mock_waveform(*args, **kwargs):
+    return "mock_waveform_data"
+
+constant_waveform = potential_steps = linear_sweep = cyclic_voltammetry = mock_waveform
+single_point = current_steps = linear_galvanostatic_sweep = cyclic_galvanostatic = mock_waveform
 
 
 class PotentiostatDeviceMock:
+    """Mock for the physical potentiostat device."""
     def __init__(self, port: str, address: int, baudrate: int = 1500000, timeout: float = 0.03):
         self.port = port
         self.address = address
@@ -27,12 +34,16 @@ class PotentiostatDeviceMock:
         print(f"[MOCK] read_data(address={address}, count={count})")
         return [0] * count  # return dummy data
     
+
 class PotentiostatControllerMock:
+    """Mock for the pyBEEP PotentiostatController."""
     def __init__(self, device, default_folder: str | None = None):
         self.device = device
         self.default_folder = default_folder
         self.last_plot_path = None
 
+        # Map modes to their respective parameter classes and mock functions
+        # This matches the structure in the real pyBEEP MeasurementModeMap
         self._measurement_modes = {
             "CA": {"pid": False, "waveform_func": constant_waveform, "param_class": ConstantWaveformParams},
             "LSV": {"pid": False, "waveform_func": linear_sweep, "param_class": LinearSweepParams},
@@ -56,19 +67,39 @@ class PotentiostatControllerMock:
         filename: str | None = None,
         folder: str | None = None
     ):
-        print(f"[MOCK] apply_measurement called with:")
-        print(f"       mode={mode}, tia_gain={tia_gain}, filename={filename}, folder={folder}")
-        print(f"       params={params}, reducing_factor={reducing_factor}")
-
+        """
+        Mock implementation of apply_measurement.
+        Validates params against the real pyBEEP parameter classes.
+        """
+        print(f"[MOCK] apply_measurement called with mode={mode}")
+        
         mode_upper = mode.upper()
         if mode_upper not in self._measurement_modes:
             raise ValueError(f"[MOCK] Unknown mode '{mode}'")
 
-        waveform_func = self._measurement_modes[mode_upper]["waveform_func"]
-        waveform = waveform_func(**params)
+        mode_info = self._measurement_modes[mode_upper]
+        param_class = mode_info["param_class"]
+        waveform_func = mode_info["waveform_func"]
 
+        # CRITICAL: This line validates that the params dictionary matches the real pyBEEP requirement
+        # If 'params' is missing a required field or has an extra one, this will raise a TypeError
+        # just like the real library would.
+        try:
+            validated_params = param_class(**params)
+            print(f"[MOCK] Params validated successfully for {mode_upper}")
+        except TypeError as e:
+            print(f"[MOCK] Param validation FAILED for {mode_upper}: {e}")
+            raise
+
+        # Simulate waveform generation
+        waveform = waveform_func(**params)
         print(f"[MOCK] Generated waveform: {waveform}")
-        sleep(params['duration'] if 'duration' in params else 60)
+
+        # Simulate execution time
+        duration = params.get('duration', 1.0) # Default to 1s for mock speed
+        print(f"[MOCK] Simulating measurement for {duration} seconds...")
+        sleep(duration)
+
+        # Set the result path
         self.last_plot_path = f"{folder or 'mock_folder'}/{filename or f'mock_{mode}.csv'}"
-    
-    
+        print(f"[MOCK] Measurement complete. Results saved to {self.last_plot_path}")

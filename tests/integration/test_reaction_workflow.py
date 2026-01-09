@@ -176,3 +176,101 @@ def test_workflow_with_fast_experiment(setup_test_data, mock_redis):
             # The important thing is it didn't crash on initialization
             assert True
 
+@pytest.mark.integration
+def test_workflow_full_execution_end_to_end(setup_test_data, mock_redis, temp_db):
+    """
+    Test the full workflow from queue to experiment execution.
+    Bypasses Prefect orchestration to avoid network/server errors on Windows.
+    Dynamically picks available electrolytes to avoid volume/availability errors.
+    """
+    from autoammonia.db.models import Experiment, CatalystComposition, ElectrolyteComposition
+    from autoammonia.db.db import Session
+    from autoammonia.reaction_module import add_valid_electrolytes_and_metals_to_db, execute_experiment
+    from autoammonia import reaction_steps
+    from autoammonia.config.config import CONNECTIONS_INFO
+    
+    # 1. Dynamically find what's available in the current setup's config
+    # We look for components that have stock volume available
+    # For precursors (usually on tecanRX01)
+    tecan_config = CONNECTIONS_INFO.get('tecanRX01', {})
+    available_precursors = [
+        k for k, v in tecan_config.items() 
+        if isinstance(v, dict) and v.get('usage') == 'stock' and v.get('volume', 0) > 0
+        and k not in ['water', 'air', 'acid']
+    ]
+    
+    # For electrolytes (usually on valveRX01)
+    valve_config = CONNECTIONS_INFO.get('valveRX01', {})
+    available_electrolytes = [
+        v.get('composition') for k, v in valve_config.items() 
+        if isinstance(v, dict) and v.get('usage') == 'stock' and v.get('volume', 0) > 0
+        and v.get('composition')
+    ]
+
+    # Pick first available or use fallbacks if nothing found
+    test_precursor = available_precursors[0] if available_precursors else "Cu"
+    test_electrolyte = available_electrolytes[0] if available_electrolytes else "NaNO3"
+    
+    # 2. Setup Redis data with available names
+    experiment_data = {
+        "composition": [(test_precursor, 1.0)],
+        "electrolyte": [(test_electrolyte, 1.0)],
+    }
+    client.lpush("experiment_queue", json.dumps(experiment_data))
+    client.set("stop_signal", "0")
+    
+    # 3. Run the workflow logic directly using .fn to bypass Prefect orchestration
+    # We mock should_stop to return False once (to process 1 experiment)
+    # and then True (to exit the loop)
+    with patch('autoammonia.reaction_module.should_stop', side_effect=[False, True]), \
+         patch('autoammonia.reaction_module.get_run_logger'), \
+         patch('autoammonia.db.db_functions.get_run_logger'), \
+         patch('autoammonia.reaction_module.time.sleep'), \
+         patch('autoammonia.reaction_steps.time.sleep'), \
+         patch('autoammonia.hardware.syringe_pumps.time.sleep'), \
+         patch('autoammonia.hardware.uv_vis_lamp.time.sleep'):
+        
+        # We also need to make sure internal task/flow calls don't try to use the server
+        # by patching them to use their .fn equivalent
+        with patch('autoammonia.reaction_module.add_valid_electrolytes_and_metals_to_db', 
+                   side_effect=add_valid_electrolytes_and_metals_to_db.fn), \
+             patch('autoammonia.reaction_module.execute_experiment', 
+                   side_effect=execute_experiment.fn), \
+             patch('autoammonia.reaction_steps.electrodeposition', 
+                   side_effect=reaction_steps.electrodeposition.fn), \
+             patch('autoammonia.reaction_steps.electrosynthesis', 
+                   side_effect=reaction_steps.electrosynthesis.fn), \
+             patch('autoammonia.reaction_steps.electrodisolution', 
+                   side_effect=reaction_steps.electrodisolution.fn):
+            
+            # Use .fn to run the top-level logic
+            process_experiment_queue.fn(
+                delete_previous_queue=False,  # Keep our test experiment
+                parallel_cells=1,
+                initialize_pumps=False,
+                restore_pumps=False,
+                # Use very short timings
+                electrodeposition_time=0.1,
+                reaction_time=0.1,
+                electrodisolution_time=0.1,
+            )
+
+    # 4. Verify the database (the logic remains the same)
+    session = Session()
+    try:
+        experiments = session.query(Experiment).all()
+        assert len(experiments) > 0, "Experiment should be created in database"
+        
+        experiment = experiments[0]
+        catalyst_comps = session.query(CatalystComposition).filter_by(experiment_id=experiment.id).all()
+        assert any(comp.precursor.name == test_precursor for comp in catalyst_comps)
+        
+        electrolyte_comps = session.query(ElectrolyteComposition).filter_by(experiment_id=experiment.id).all()
+        assert any(comp.electrolyte.name == test_electrolyte for comp in electrolyte_comps)
+    finally:
+        session.close()
+
+    # 5. Verify Redis keys were set by execute_experiment
+    # This proves execute_experiment actually ran
+    keys = client.keys("ID*_catholyte")
+    assert len(keys) > 0, "execute_experiment should have set Redis keys"
