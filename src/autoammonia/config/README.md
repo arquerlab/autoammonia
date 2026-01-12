@@ -40,8 +40,8 @@ config/
 ├── default_config_toronto.toml      # Toronto default parameters
 ├── default_config_barcelona.toml    # Barcelona default parameters
 │
-├── default_config_mock_toronto.toml     # Toronto mock/test parameters
-└── default_config_mock_barcelona.toml   # Barcelona mock/test parameters
+├── default_config_mock.toml         # Consolidated mock/test parameters (both setups)
+└── default_config_sim.toml          # Simulation parameters (minimal timings)
 ```
 
 ### Legacy Files (No Longer Used)
@@ -50,7 +50,8 @@ These files are kept for reference but are not actively used:
 - `components.toml`
 - `connections_info.toml`
 - `default_config.toml`
-- `default_config_mock.toml`
+- `default_config_mock_toronto.toml`
+- `default_config_mock_barcelona.toml`
 
 ## Setup Detection
 
@@ -84,38 +85,44 @@ hostnames = ["pc1836"]
 
 ---
 
-## Simulation Mode
+## Simulation and Mock Modes
 
-The system supports two independent simulation controls via environment variables:
+The system supports several simulation controls via environment variables:
 
 ### Environment Variables
 
-1. **`AUTOAMMONIA_SIMULATION`** (Hardware Mocking)
-   - Controls whether hardware classes are replaced with mocks
-   - `true` = Use mock hardware classes (from `autoammonia.hardware.mock`)
-   - `false` = Use real hardware classes
+1. **`AUTOAMMONIA_SIMULATION`** (Hardware Mocking & Sim Config)
+   - Controls whether hardware classes are replaced with mocks AND whether `default_config_sim.toml` is loaded.
+   - `true` = Use mock hardware classes AND load `default_config_sim.toml` (minimal timings: 1 repetition, 0.1s delays).
+   - `false` = Use real hardware classes.
    - Default: `false`
 
-2. **`AUTOAMMONIA_MOCK_CONFIG`** (Config File Selection)
-   - Controls which config file is loaded
-   - `true` = Load `default_config_mock_{setup}.toml` (fast timings for testing)
-   - `false` = Load `default_config_{setup}.toml` (production timings)
+2. **`AUTOAMMONIA_MOCK_CONFIG`** (Mock Config Selection)
+   - Controls whether the consolidated mock config file is loaded.
+   - `true` = Load `default_config_mock.toml` (fast timings for testing).
+   - `false` = Load setup-specific config (production timings).
    - Default: `false`
+   - **Note:** `AUTOAMMONIA_SIMULATION=true` takes precedence over this flag for config file selection.
+
+### Configuration Priority
+
+When loading the default configuration, the system follows this priority:
+1. `default_config_sim.toml` (if `AUTOAMMONIA_SIMULATION=true`)
+2. `default_config_mock.toml` (if `AUTOAMMONIA_MOCK_CONFIG=true`)
+3. `default_config_{setup}.toml` (default behavior)
 
 ### Usage Examples
 
-**Pure Logic Testing (No Hardware, Fast Timings):**
+**Simulation Mode (No Hardware, Minimal Timings):**
 ```bash
 export AUTOAMMONIA_SIMULATION=true
-export AUTOAMMONIA_MOCK_CONFIG=true
 pytest tests/unit tests/integration
 ```
 
-**Fast Hardware Test (Real Hardware, Fast Timings):**
+**Mock Config Mode (Real Hardware, Fast Timings):**
 ```bash
-export AUTOAMMONIA_SIMULATION=false
 export AUTOAMMONIA_MOCK_CONFIG=true
-pytest tests/hardware -m hardware
+# Runs with real hardware but uses faster timings from default_config_mock.toml
 ```
 
 **Production Mode (Real Hardware, Production Timings):**
@@ -176,8 +183,6 @@ address = 1
 # ... other component-specific parameters
 ```
 
-**Note:** The `[global].simulation` flag has been removed. Simulation mode is now controlled via environment variables (see [Simulation Mode](#simulation-mode) section below).
-
 **Example - Adding a new pump:**
 ```toml
 [longerWE02]
@@ -223,7 +228,7 @@ water = { port = 1, con_vol = 0.64, usage = "stock", volume = 5000, max_vol = 50
 
 ### 4. `default_config_{setup}.toml`
 
-**Purpose:** Contains default parameters for experiments (timeouts, volumes, speeds, etc.).
+**Purpose:** Contains default parameters for experiments (timeouts, volumes, speeds, etc.) for a specific setup.
 
 **Files:**
 - `default_config_toronto.toml`
@@ -235,20 +240,6 @@ water = { port = 1, con_vol = 0.64, usage = "stock", volume = 5000, max_vol = 50
 - Modifying default volumes or speeds
 - Updating reaction conditions
 
-**Structure:**
-```toml
-# Timeouts
-function_timeout = 1500
-acquisition_timeout = 900
-
-# Experiment parameters
-reaction_time = 960
-reaction_current = 28.2743339
-# ... many more parameters
-```
-
-**Note:** The `simulation` flag has been removed. Mock config selection is now controlled via environment variables (see [Simulation Mode](#simulation-mode) section below).
-
 **Example - Changing reaction time:**
 ```toml
 reaction_time = 1200  # Changed from 960 to 1200 seconds
@@ -256,20 +247,31 @@ reaction_time = 1200  # Changed from 960 to 1200 seconds
 
 ---
 
-### 5. `default_config_mock_{setup}.toml`
+### 5. `default_config_mock.toml`
 
-**Purpose:** Contains mock/test parameters (usually shorter times for testing).
+**Purpose:** Contains consolidated mock/test parameters for both experimental setups.
 
-**Files:**
-- `default_config_mock_toronto.toml`
-- `default_config_mock_barcelona.toml`
+**Location:** `src/autoammonia/config/default_config_mock.toml`
 
 **When to modify:**
-- Adjusting test/simulation parameters
-- Changing mock experiment durations
-- Modifying test timeout values
+- Adjusting shared test/simulation parameters
+- Changing mock experiment durations for either setup
 
-**Note:** These files are automatically loaded when `AUTOAMMONIA_MOCK_CONFIG=true` environment variable is set (see [Simulation Mode](#simulation-mode) section below).
+**Note:** This file is loaded when `AUTOAMMONIA_MOCK_CONFIG=true` is set.
+
+---
+
+### 6. `default_config_sim.toml`
+
+**Purpose:** Contains minimal parameters for simulations (1 repetition, 0.1s timings).
+
+**Location:** `src/autoammonia/config/default_config_sim.toml`
+
+**When to modify:**
+- Changing simulation speed
+- Reducing repetitions for faster unit/integration tests
+
+**Note:** This file is loaded when `AUTOAMMONIA_SIMULATION=true` is set.
 
 ---
 
@@ -330,16 +332,12 @@ hostnames = ["pc1836", "pc1837"]  # Added new computer
 
 **Environment Variables** (recommended method):
 
-Simulation mode is now controlled via environment variables, not TOML flags:
-
 ```bash
-# Enable hardware mocking (uses mock classes instead of real hardware)
+# Enable hardware mocking and simulation timings
 export AUTOAMMONIA_SIMULATION=true
 
-# Enable mock config (uses default_config_mock_*.toml with fast timings)
+# Enable mock config timings
 export AUTOAMMONIA_MOCK_CONFIG=true
-
-# Both can be used together or independently
 ```
 
 **Windows PowerShell:**
@@ -347,13 +345,6 @@ export AUTOAMMONIA_MOCK_CONFIG=true
 $env:AUTOAMMONIA_SIMULATION="true"
 $env:AUTOAMMONIA_MOCK_CONFIG="true"
 ```
-
-**Common Combinations:**
-- **Pure logic testing**: `SIMULATION=true`, `MOCK_CONFIG=true` (mocked hardware + fast timings)
-- **Fast hardware test**: `SIMULATION=false`, `MOCK_CONFIG=true` (real hardware + fast timings)
-- **Production**: `SIMULATION=false`, `MOCK_CONFIG=false` (real hardware + production timings)
-
-**Note:** The old TOML-based `simulation` flags have been removed. Use environment variables instead.
 
 ---
 
@@ -378,8 +369,6 @@ class = "..."
 # ... component definitions
 ```
 
-**Note:** No `[global].simulation` section needed - simulation is controlled via environment variables.
-
 ### Step 3: Create Connections Info
 
 Create `connections_info_london.toml`:
@@ -396,17 +385,9 @@ components = ["component1", ...]
 Create `default_config_london.toml`:
 ```toml
 # ... all default parameters
-# No simulation flag needed - controlled via AUTOAMMONIA_MOCK_CONFIG env var
 ```
 
-### Step 5: Create Mock Config (Optional)
-
-Create `default_config_mock_london.toml`:
-```toml
-# ... mock/test parameters
-```
-
-**That's it!** The system will automatically detect and load the London setup when running on a computer with a matching hostname.
+**That's it!** The system will automatically detect and load the London setup when running on a computer with a matching hostname. Mock and simulation modes will automatically use the consolidated files.
 
 ---
 
@@ -418,18 +399,15 @@ Create `default_config_mock_london.toml`:
 2. **Setup Names:** Use lowercase, no spaces (e.g., `toronto`, `barcelona`, `london`)
 
 3. **Simulation Mode:** Controlled via environment variables (not TOML flags):
-   - `AUTOAMMONIA_SIMULATION=true` → Uses mock hardware classes instead of real hardware
-   - `AUTOAMMONIA_MOCK_CONFIG=true` → Loads `default_config_mock_{setup}.toml` instead of `default_config_{setup}.toml`
+   - `AUTOAMMONIA_SIMULATION=true` → Uses mock hardware classes AND loads `default_config_sim.toml`
+   - `AUTOAMMONIA_MOCK_CONFIG=true` → Loads `default_config_mock.toml`
    - These can be used independently or together
-   - See [Simulation Mode](#5-enabledisable-simulation-mode) section for details
 
 4. **Environment Variable Override:** You can override setup detection by setting:
    ```bash
    export AUTOAMMONIA_SETUP=barcelona  # Linux/Mac
    $env:AUTOAMMONIA_SETUP="barcelona"  # Windows PowerShell
    ```
-
-5. **Backward Compatibility:** The old nested TOML files are no longer used. All configurations should be in setup-specific files.
 
 ---
 
@@ -447,11 +425,6 @@ Create `default_config_mock_london.toml`:
 2. Check that setup name matches exactly (case-sensitive in file names)
 3. Verify TOML syntax is correct (no syntax errors)
 
-### Wrong Components Loading
-
-1. Check `connections_info_{setup}.toml` → `[setup].components` list
-2. Verify component names match between `components_{setup}.toml` and `connections_info_{setup}.toml`
-
 ---
 
 ## Quick Reference
@@ -462,10 +435,10 @@ Create `default_config_mock_london.toml`:
 | Hardware components | `components_{setup}.toml` |
 | Port mappings | `connections_info_{setup}.toml` |
 | Experiment parameters | `default_config_{setup}.toml` |
-| Test/mock parameters | `default_config_mock_{setup}.toml` |
+| Test/mock parameters | `default_config_mock.toml` |
+| Simulation parameters | `default_config_sim.toml` |
 | Override setup detection | Environment variable `AUTOAMMONIA_SETUP` |
 
 ---
 
 For questions or issues, refer to the main project documentation or contact the development team.
-

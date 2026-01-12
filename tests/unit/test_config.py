@@ -104,14 +104,13 @@ class TestSimulationFlags:
         """Test edge cases for simulation environment variable."""
         # Test empty string
         monkeypatch.setenv("AUTOAMMONIA_SIMULATION", "")
-        result = os.getenv("AUTOAMMONIA_SIMULATION", "false").lower() == "true"
+        result = os.getenv("AUTOAMMONIA_SIMULATION", "false").strip().lower() == "true"
         assert result is False
         
-        # Test whitespace (should be falsy)
+        # Test whitespace (should be truthy now that we strip)
         monkeypatch.setenv("AUTOAMMONIA_SIMULATION", " true ")
         result = os.getenv("AUTOAMMONIA_SIMULATION", "false").strip().lower() == "true"
-        # Note: The actual implementation doesn't strip, so this tests the behavior
-        assert result is False  # " true " != "true"
+        assert result is True
 
 
 class TestConfigLoading:
@@ -138,11 +137,13 @@ class TestConfigLoading:
     def test_default_config_path_format(self):
         """Test that DEFAULT_CONFIG_PATH follows expected naming convention."""
         path_str = str(config.DEFAULT_CONFIG_PATH)
-        # Should contain either "default_config_" or "default_config_mock_"
+        # Should contain either "default_config_" or "default_config_mock_" or "default_config_sim"
         assert "default_config" in path_str
         assert path_str.endswith(".toml")
-        # Should contain setup name (barcelona or toronto)
-        assert any(setup in path_str for setup in ["barcelona", "toronto"])
+        
+        # If it's a real config (not simulation or mock), it should contain setup name
+        if not (config.IS_SIMULATION or config.USE_MOCK_CONFIG):
+            assert any(setup in path_str for setup in ["barcelona", "toronto"])
 
     def test_config_file_exists(self):
         """Test that the config file actually exists."""
@@ -170,9 +171,9 @@ class TestConfigLoading:
         """Test that config values have expected types."""
         assert isinstance(config.DEFAULT_CONFIG.get("parallel_cells"), int)
         assert isinstance(config.DEFAULT_CONFIG.get("data_path"), str)
-        # Function timeouts should be integers (seconds)
-        assert isinstance(config.DEFAULT_CONFIG.get("function_timeout"), int)
-        assert isinstance(config.DEFAULT_CONFIG.get("acquisition_timeout"), int)
+        # Function timeouts should be numbers (int or float)
+        assert isinstance(config.DEFAULT_CONFIG.get("function_timeout"), (int, float))
+        assert isinstance(config.DEFAULT_CONFIG.get("acquisition_timeout"), (int, float))
 
     def test_config_positive_values(self):
         """Test that numeric config values are positive."""
@@ -202,24 +203,31 @@ class TestConfigLoading:
             assert isinstance(component, str), f"Component name should be string, got {type(component)}"
             assert len(component) > 0, "Component name should not be empty"
 
-    def test_both_setups_can_be_loaded(self, monkeypatch):
-        """Test that both barcelona and toronto configs can be loaded."""
+    def test_all_config_types_can_be_loaded(self, monkeypatch):
+        """Test that barcelona, toronto, mock, and sim configs can be loaded."""
         config_dir = Path(config.__file__).parent
         
+        # Test setup-specific configs
         for setup in ["barcelona", "toronto"]:
-            # Test standard config
             standard_path = config_dir / f"default_config_{setup}.toml"
             if standard_path.exists():
                 standard_config = toml.load(standard_path)
                 assert isinstance(standard_config, dict)
                 assert len(standard_config) > 0
-            
-            # Test mock config
-            mock_path = config_dir / f"default_config_mock_{setup}.toml"
-            if mock_path.exists():
-                mock_config = toml.load(mock_path)
-                assert isinstance(mock_config, dict)
-                assert len(mock_config) > 0
+        
+        # Test consolidated mock config
+        mock_path = config_dir / "default_config_mock.toml"
+        assert mock_path.exists()
+        mock_config = toml.load(mock_path)
+        assert isinstance(mock_config, dict)
+        assert len(mock_config) > 0
+        
+        # Test simulation config
+        sim_path = config_dir / "default_config_sim.toml"
+        assert sim_path.exists()
+        sim_config = toml.load(sim_path)
+        assert isinstance(sim_config, dict)
+        assert len(sim_config) > 0
 
 
 class TestComponentsConfig:

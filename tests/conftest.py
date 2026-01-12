@@ -25,10 +25,10 @@ from sqlalchemy.orm import sessionmaker, scoped_session
 
 from autoammonia.db.models import Precursor, Electrolyte
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def prefect_test_harness_fixture():
     """
-    Use Prefect's test harness to provide a clean, isolated environment for all tests.
+    Use Prefect's test harness to provide a clean, isolated environment for tests.
     This handles ephemeral server lifecycle correctly.
     """
     try:
@@ -38,6 +38,14 @@ def prefect_test_harness_fixture():
     except ImportError:
         # Fallback if harness is not available
         yield
+
+
+@pytest.fixture
+def prefect_harness(prefect_test_harness_fixture):
+    """
+    Fixture for tests that explicitly need a Prefect server.
+    """
+    return prefect_test_harness_fixture
 
 @pytest.fixture(scope="session", autouse=True)
 def silence_prefect_logging():
@@ -97,46 +105,32 @@ def simulation_mode(request):
     """
     Automatically enable simulation mode for all tests except hardware tests.
     
-    This fixture sets AUTOAMMONIA_SIMULATION=true and AUTOAMMONIA_MOCK_CONFIG=true
-    for unit and integration tests, ensuring they use mocked hardware and fast timings.
-    Hardware tests marked with @pytest.mark.hardware will have this disabled by
-    the hardware_test_mode fixture.
+    This fixture ensures that unit and integration tests use mocked hardware 
+    and fast timings, while hardware tests use real settings.
+    It only performs expensive module reloads if the desired state differs
+    from the current loaded state.
     """
-    # Check if this is a hardware test - if so, don't auto-enable simulation
-    if "hardware" in request.keywords:
-        yield
-        return
-    
-    # Store original values
-    original_sim = os.environ.get("AUTOAMMONIA_SIMULATION")
-    original_mock = os.environ.get("AUTOAMMONIA_MOCK_CONFIG")
-    
-    # Set simulation mode for non-hardware tests
-    os.environ["AUTOAMMONIA_SIMULATION"] = "true"
-    os.environ["AUTOAMMONIA_MOCK_CONFIG"] = "true"
-    
-    # Reload config modules to pick up the new environment variables
+    # Import inside fixture to avoid early import issues
     import importlib
-    from autoammonia import config
-    importlib.reload(config.config)
-    importlib.reload(config.components_config)
+    from autoammonia.config import config
+    from autoammonia import config as config_pkg
+
+    # Determine desired state
+    wants_sim = "hardware" not in request.keywords
+    
+    # Determine current state
+    current_sim = config.IS_SIMULATION
+    
+    # Only reload if state needs to change
+    if wants_sim != current_sim:
+        os.environ["AUTOAMMONIA_SIMULATION"] = "true" if wants_sim else "false"
+        os.environ["AUTOAMMONIA_MOCK_CONFIG"] = "true" if wants_sim else "false"
+        
+        # Reload config modules to pick up the new environment variables
+        importlib.reload(config)
+        importlib.reload(config_pkg.components_config)
     
     yield
-    
-    # Restore original values
-    if original_sim is None:
-        os.environ.pop("AUTOAMMONIA_SIMULATION", None)
-    else:
-        os.environ["AUTOAMMONIA_SIMULATION"] = original_sim
-    
-    if original_mock is None:
-        os.environ.pop("AUTOAMMONIA_MOCK_CONFIG", None)
-    else:
-        os.environ["AUTOAMMONIA_MOCK_CONFIG"] = original_mock
-
-    # Reload config again to restore original state for other tests
-    importlib.reload(config.config)
-    importlib.reload(config.components_config)
 
 
 @pytest.fixture
@@ -317,17 +311,30 @@ def hardware_test_mode(monkeypatch):
     # Cleanup: config will be reloaded by next test's fixtures
 
 
+from prefect.testing.utilities import prefect_test_harness
+
+@pytest.fixture
+def prefect_harness():
+    """
+    Provide an ephemeral Prefect server and database for testing.
+    This allows testing real Prefect orchestration (flows, tasks, variables)
+    without affecting a production server or needing one running.
+    """
+    with prefect_test_harness():
+        yield
+
+
 @pytest.fixture(autouse=True)
-def mock_prefect_logger():
+def mock_prefect_logger(request):
     """
     Mock Prefect logger for tests that use Prefect tasks/flows.
-    
-    This fixture patches get_run_logger to return a mock logger that
-    has info, warning, and error methods that do nothing.
-    
-    Uses autouse=True so it's automatically applied to all tests.
+    Skip if 'no_mock_logger' marker is present.
     """
-    # Patch get_run_logger in prefect module (this will affect all imports)
+    if 'no_mock_logger' in request.keywords:
+        yield None
+        return
+
+    # Patch get_run_logger in prefect module
     mock_logger = MagicMock()
     with patch('prefect.get_run_logger', return_value=mock_logger):
         yield mock_logger

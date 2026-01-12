@@ -1,7 +1,7 @@
 import redis
 import socket
 
-from ..config.config import DEFAULT_CONFIG
+from ..config.config import DEFAULT_CONFIG, HOSTNAME
 
 # Module-level cache for the Redis client (lazy initialization)
 _cached_client = None
@@ -28,8 +28,7 @@ def create_redis_client()-> redis.Redis:
         }
 
         # Dynamically select the configuration based on hostname
-        hostname = socket.gethostname()
-        selected_config = configs["localhost"] if hostname == "adrastea" else configs["adrastea"]
+        selected_config = configs["localhost"] if HOSTNAME == "adrastea" else configs["adrastea"]
         redis_client = redis.StrictRedis(
                 host=selected_config["host"],
                 port=selected_config["port"],

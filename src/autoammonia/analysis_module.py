@@ -7,7 +7,7 @@ from typing import Optional, Any
 from prefect import flow, get_run_logger
 import numpy as np
 
-from .config.config import DEFAULT_CONFIG
+from .config.config import DEFAULT_CONFIG, HOSTNAME
 from .db.db_functions import add_results_to_db
 from .hardware.uv_vis_module import acquire_spectrum
 from .utils.decorators import with_lock
@@ -136,8 +136,7 @@ def measure_vial(
     folder = get_default_folder('UVVIS')
     filepath = folder / f'ID{exp_id}_RXT{time_rxn}_VIAL{vial}.csv'
     df.to_csv(filepath, index=False)
-    hostname = socket.gethostname()
-    if hostname != client.get('main_hostname'):
+    if HOSTNAME != client.get('main_hostname'):
         filepath_db = transfer_file_scp(local_file=filepath, remote_folder=client.get('data_path_uvvis'),
                           remote_user='poten', remote_host=client.get('main_hostname'), remote_password="potato12")
     else:
@@ -145,7 +144,7 @@ def measure_vial(
     
     add_results_to_db(
         experiment_id=int(exp_id), result_type='UVVIS', result_role='raw_data', file_path=str(filepath_db),
-        metadata={'original_path': str(filepath) if hostname != client.get('main_hostname') else str(filepath_db),
+        metadata={'original_path': str(filepath) if HOSTNAME != client.get('main_hostname') else str(filepath_db),
                   'vial': vial, 'time_rxn': time_rxn, 'integration_time': uv_vis_integration_time}
     )
     

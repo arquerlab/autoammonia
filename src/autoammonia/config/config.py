@@ -3,6 +3,15 @@ import socket
 import os
 from pathlib import Path
 
+# Cache hostname in environment to survive module reloads during testing
+# socket.gethostname() can be very slow on some Windows configurations
+_cached_hostname = os.environ.get("_AUTOAMMONIA_CACHED_HOSTNAME")
+if not _cached_hostname:
+    _cached_hostname = socket.gethostname().lower()
+    os.environ["_AUTOAMMONIA_CACHED_HOSTNAME"] = _cached_hostname
+
+HOSTNAME = _cached_hostname
+
 
 def detect_setup() -> str:
     """
@@ -24,9 +33,6 @@ def detect_setup() -> str:
     mappings_path = Path(__file__).parent / "setup_mappings.toml"
     mappings = toml.load(mappings_path)
     
-    # Get current hostname (lowercase for case-insensitive matching)
-    hostname = socket.gethostname().lower()
-    
     # Check each setup's hostname patterns
     for setup_name, setup_config in mappings.items():
         if setup_name == "default":
@@ -34,7 +40,7 @@ def detect_setup() -> str:
         
         hostnames = setup_config.get("hostnames", [])
         for pattern in hostnames:
-            if pattern.lower() in hostname:
+            if pattern.lower() in HOSTNAME:
                 return setup_name
     
     # Return default setup if no match found
@@ -46,13 +52,15 @@ def detect_setup() -> str:
 ACTIVE_SETUP = detect_setup()
 
 # Check environment variables for simulation and mock config control
-IS_SIMULATION = os.getenv("AUTOAMMONIA_SIMULATION", "false").lower() == "true"
-USE_MOCK_CONFIG = os.getenv("AUTOAMMONIA_MOCK_CONFIG", "false").lower() == "true"
+IS_SIMULATION = os.getenv("AUTOAMMONIA_SIMULATION", "false").strip().lower() == "true"
+USE_MOCK_CONFIG = os.getenv("AUTOAMMONIA_MOCK_CONFIG", "false").strip().lower() == "true"
 
-# Load default configuration using setup-specific file
-# Use mock config if USE_MOCK_CONFIG is true, otherwise use standard config
-if USE_MOCK_CONFIG:
-    DEFAULT_CONFIG_PATH = Path(__file__).parent / f"default_config_mock_{ACTIVE_SETUP}.toml"
+# Load default configuration
+# Priority: Simulation config > Mock config > Setup-specific real config
+if IS_SIMULATION:
+    DEFAULT_CONFIG_PATH = Path(__file__).parent / "default_config_sim.toml"
+elif USE_MOCK_CONFIG:
+    DEFAULT_CONFIG_PATH = Path(__file__).parent / "default_config_mock.toml"
 else:
     DEFAULT_CONFIG_PATH = Path(__file__).parent / f"default_config_{ACTIVE_SETUP}.toml"
 

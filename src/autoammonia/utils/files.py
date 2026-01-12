@@ -5,7 +5,7 @@ import paramiko
 from prefect import task, get_run_logger
 from pathlib import PurePosixPath, PureWindowsPath
 
-from ..config.config import DEFAULT_CONFIG
+from ..config.config import DEFAULT_CONFIG, HOSTNAME
 from .redis_client import client
 
 def get_default_folder(
@@ -13,10 +13,9 @@ def get_default_folder(
     **kwargs: Any,
 ) -> Path:
     config = {**DEFAULT_CONFIG, **kwargs}
-    hostname = socket.gethostname()
 
     # Check hostname to determine which path to use
-    if hostname == config.get("main_hostname", ""):
+    if HOSTNAME == config.get("main_hostname", ""):
         chosen_path = config.get("data_path", "").strip()
     else:
         chosen_path = config.get("data_path_non_host", "").strip()
