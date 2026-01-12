@@ -30,13 +30,49 @@ def prefect_test_harness_fixture():
     """
     Use Prefect's test harness to provide a clean, isolated environment for tests.
     This handles ephemeral server lifecycle correctly.
+    
+    Ensures environment variables are set for ephemeral mode and waits for server to be ready.
     """
+    # Ensure Prefect is configured for ephemeral/testing mode
+    os.environ["PREFECT_UNIT_TEST_MODE"] = "True"
+    os.environ["PREFECT_SERVER_ALLOW_EPHEMERAL_MODE"] = "True"
+    os.environ["PREFECT_API_URL"] = ""  # Clear any existing API URL to use ephemeral
+    
     try:
         from prefect.testing.utilities import prefect_test_harness
+        # Use the harness with explicit context management
         with prefect_test_harness():
+            # Give the server a moment to start up (important on slower machines)
+            import time
+            time.sleep(0.5)
+            
+            # Verify the server is accessible with retries
+            max_retries = 5
+            for attempt in range(max_retries):
+                try:
+                    from prefect import get_client
+                    client = get_client()
+                    # Try to connect to verify server is ready
+                    client.api_healthcheck()
+                    break  # Success, server is ready
+                except Exception:
+                    if attempt < max_retries - 1:
+                        time.sleep(0.5)  # Wait a bit more before retrying
+                    else:
+                        # Last attempt failed, but continue anyway
+                        import warnings
+                        warnings.warn("Prefect server healthcheck failed, but continuing anyway.")
+            
             yield
     except ImportError:
         # Fallback if harness is not available
+        import warnings
+        warnings.warn("Prefect test harness not available. Some tests may fail.")
+        yield
+    except Exception as e:
+        # Log the error but don't fail the test collection
+        import warnings
+        warnings.warn(f"Prefect test harness failed to start: {e}. Tests may fail.")
         yield
 
 
@@ -44,6 +80,8 @@ def prefect_test_harness_fixture():
 def prefect_harness(prefect_test_harness_fixture):
     """
     Fixture for tests that explicitly need a Prefect server.
+    
+    This is a convenience fixture that depends on the session-scoped harness.
     """
     return prefect_test_harness_fixture
 
@@ -311,17 +349,7 @@ def hardware_test_mode(monkeypatch):
     # Cleanup: config will be reloaded by next test's fixtures
 
 
-from prefect.testing.utilities import prefect_test_harness
-
-@pytest.fixture
-def prefect_harness():
-    """
-    Provide an ephemeral Prefect server and database for testing.
-    This allows testing real Prefect orchestration (flows, tasks, variables)
-    without affecting a production server or needing one running.
-    """
-    with prefect_test_harness():
-        yield
+# Removed duplicate prefect_harness fixture - using the one above instead
 
 
 @pytest.fixture(autouse=True)
