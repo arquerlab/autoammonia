@@ -31,3 +31,15 @@ autoammonia_exp_requester = "autoammonia.experiment_queue:request_experiments"
 autoammonia_db_create_tables = "autoammonia.db.create_tables:main"
 autoammonia_db_test = "autoammonia.db.test_db_connection:main"
 autoammonia_db_drop_tables = "autoammonia.db.drop_tables:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+norecursedirs = [".venv", ".git", "__pycache__", "src/autoammonia/testing"]
+markers = [
+    "hardware: marks tests as requiring physical hardware (deselect with '-m \"not hardware\"')",
+    "integration: marks tests as integration tests that may take longer",
+    "unit: marks tests as unit tests (fast, no external dependencies)",
+]
