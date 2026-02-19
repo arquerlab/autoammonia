@@ -1,43 +1,45 @@
 [longerWE01]
 class = "matterlab_pumps.LongerPeristalticPump"
-com_port = "/dev/longer_pumps"
+com_port = "COM10"
 address = 1
 baudrate = 1200
 
 [longerCE01]
 class = "matterlab_pumps.LongerPeristalticPump"
-com_port = "/dev/longer_pumps"
+com_port = "COM10"
 address = 2
 baudrate = 1200
 
 [tecanRX01]
-class = "matterlab_pumps.TecanXCPump"
-com_port = "/dev/tecan_pumps"
-address = 2
-syringe_volume = 0.0025
+class = "matterlab_pumps.RunzePump"
+com_port = "COM5"
+address = 3
+syringe_volume = 0.005
 num_valve_port = 12
 
 [tecanAZ01]
-class = "matterlab_pumps.TecanXCPump"
-com_port = "COM4"
+class = "matterlab_pumps.RunzePump"
+com_port = "COM5"
 address = 1
-syringe_volume = 0.001
+syringe_volume = 0.00125
 num_valve_port = 12
 
 [valveRX01]
-class = "matterlab_valves.ValcoSelectionValve"
-com_port = "/dev/valveRX01"
-num_port = 10
+class = "matterlab_valves.RunzeSelectionValve"
+com_port = "COM14"
+address = 2
+num_port = 12
 
 [valveAZ01]
-class = "matterlab_valves.ValcoSelectionValve"
-com_port = "COM5"
-num_port = 10
+class = "matterlab_valves.RunzeSelectionValve"
+com_port = "COM14"
+address = 1
+num_port = 12
 
 [potentiostat01]
 class = "pyBEEP.PotentiostatController"
 device_class = "pyBEEP.PotentiostatDevice"
-device_kwargs = { port = "/dev/potentiostat01", address = 1 }
+device_kwargs = { port = "COM15", address = 1 }
 
 [UVVIS01]
 class = "matterlab_spectrometers.HamamatsuMiniSpectrometer"
@@ -45,5 +47,5 @@ class = "matterlab_spectrometers.HamamatsuMiniSpectrometer"
 [lamp01]
 class = "autoammonia.hardware.uv_vis_lamp.MotorSwitchLamp"
 device_class = "autoammonia.hardware.uv_vis_lamp.Arduino"
-device_kwargs = { port = "COM6"}
+device_kwargs = { port = "COM16"}
 

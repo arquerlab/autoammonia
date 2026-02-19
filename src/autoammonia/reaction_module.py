@@ -75,8 +75,8 @@ def process_experiment_queue(delete_previous_queue: Optional[bool] = None,
     if delete_previous_queue:
         client.delete("experiment_queue")
     client_initialization(**kwargs)
-    overwrite = True if IS_SIMULATION else False
-    initialize_prefect_variables(overwrite)
+    overwrite_prefect_variables = config.get("overwrite_prefect_variables", IS_SIMULATION)
+    initialize_prefect_variables(overwrite=overwrite_prefect_variables)
     
     syringe_pumps = []
     for pump in CONNECTIONS_INFO:

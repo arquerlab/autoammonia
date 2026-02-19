@@ -11,7 +11,7 @@ async def run_echem_method(
         mode: str,
         method_params: Dict[str, Any],
         tia_gain: int,
-        reducing_factor: int | None,
+        sampling_interval: int | float | None,
         filename: str,
         folder: str,    
         acquisition_timeout: Optional[int] = None,
@@ -29,7 +29,7 @@ async def run_echem_method(
         mode (str): Measurement mode key (e.g., 'CA', 'CV', etc.).
         method_params (Dict[str, Any]): Dictionary of parameters for the measurement waveform.
         tia_gain (int): Gain setting for the transimpedance amplifier (typically 0–4).
-        reducing_factor (int): If set, averages every N rows before saving (data reduction).
+        sampling_interval (int | float): Sampling interval in seconds.
         filename (str): Name of the file where data will be stored.
         folder (str): Directory where the data file will be saved.
         acquisition_timeout (Optional[int]): Timeout for acquiring the lock, in seconds. Defaults to config['potentiostat_acq_timeout'].
@@ -42,11 +42,11 @@ async def run_echem_method(
     
     @task
     @run_on_component_with_lock(acquisition_timeout=acquisition_timeout, function_timeout= func_timeout)
-    def run_method(potentiostat: str, mode: str, params: Dict[str, Any], tia_gain: int, reducing_factor: int | None, filename: str, folder: str) -> None:
-        potentiostat.apply_measurement(mode=mode, params=params, tia_gain=tia_gain, reducing_factor=reducing_factor, filename=filename, folder=folder)
+    def run_method(potentiostat: str, mode: str, params: Dict[str, Any], tia_gain: int, sampling_interval: int | float | None, filename: str, folder: str) -> None:
+        potentiostat.apply_measurement(mode=mode, params=params, tia_gain=tia_gain, sampling_interval=sampling_interval, filename=filename, folder=folder)
 
     # Call the wrapped function
-    run_method(potentiostat=potentiostat, mode=mode, params=method_params, tia_gain=tia_gain, reducing_factor=reducing_factor, filename=filename, folder=folder)
+    run_method(potentiostat=potentiostat, mode=mode, params=method_params, tia_gain=tia_gain, sampling_interval=sampling_interval, filename=filename, folder=folder)
 
 @flow
 async def run_method_parallel(parallel_cells: int,
@@ -55,7 +55,7 @@ async def run_method_parallel(parallel_cells: int,
                       mode: str,
                       params: Dict[str, Any],
                       tia_gain: int,
-                      reducing_factor: int | None = None,
+                      sampling_interval: int | float | None = None,
                       **kwargs,
 )->None:
     """
@@ -71,14 +71,14 @@ async def run_method_parallel(parallel_cells: int,
         mode (str): Measurement mode key (e.g., 'CA', 'CV', etc.).
         params (Dict[str, Any]): Dictionary of measurement parameters to use for each cell.
         tia_gain (int): Gain setting for the transimpedance amplifier.
-        reducing_factor (int): If set, averages every N rows before saving (data reduction).
+        sampling_interval (int | float): Sampling interval in seconds.
         **kwargs: Additional configuration options.
     """
     potentiostats = ["potentiostat" + str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]
     filenames = [f'{exp_id}_cell{str(cell).zfill(2)}_method_{mode}.csv' for cell, exp_id in
                  zip(range(1, parallel_cells + 1), experiment_ids)]
     tasks = [asyncio.create_task(run_echem_method(potentiostat=potentiostats[i],mode=mode, method_params=params,
-                                        tia_gain=tia_gain, reducing_factor=reducing_factor, 
+                                        tia_gain=tia_gain, sampling_interval=sampling_interval, 
                                                   filename=filenames[i], folder=folder, **kwargs))
              for i in range(parallel_cells)]
 

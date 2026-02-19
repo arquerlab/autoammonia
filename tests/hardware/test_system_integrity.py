@@ -1,93 +1,93 @@
 """
-System integrity test for all hardware components.
+System integrity test for hardware and service components.
 
-Runs a quick check-in sequence for every configured hardware component.
-This test verifies that all hardware is connected and responsive.
-
-This test uses the same helper functions as the unit tests, but provides
-a single summary view of all components.
+Runs a quick check-in sequence for every hardware component and core service
+to verify that everything is connected and responsive, using the existing
+unit-op helpers without duplicating their logic.
 """
+
+from __future__ import annotations
+
+import asyncio
+from functools import partial
+from typing import Any, Callable, Dict, List, Tuple
+
 import pytest
 
-from autoammonia.config.config import CONFIG_SETUP
-from .hardware_test_helpers import (
-    test_peristaltic_pump_basic,
-    test_syringe_pump_basic,
-    test_valve_basic,
-    test_uv_vis_basic,
-)
+from . import unit_op_hardware as hw
+from . import unit_op_services as svc
+
+
+HardwareFn = Callable[..., Tuple[str, str, Any]]
+ServiceFn = Callable[[], Tuple[str, str, Any]]
+
+
+HARDWARE_CHECKS: List[Tuple[str, HardwareFn, List[str]]] = [
+    ("peristaltic_pump", hw.peristaltic_pump_unit_op, ["longerCE01", "longerWE01"]),
+    ("syringe_pump", partial(hw.syringe_pump_unit_op, volume=0.05), ["tecanRX01"]),
+    ("valve", partial(hw.valve_unit_op, port="waste"), ["valveRX01"]),
+    ("lamp", hw.lamp_unit_op, ["lamp01"]),
+    ("potentiostat", hw.potentiostat_unit_op, ["potentiostat01"]),
+    ("uv_vis", lambda name: hw.uv_vis_unit_op(spec=name), ["UVVIS01"]),
+]
+
+SERVICE_CHECKS: List[Tuple[str, ServiceFn]] = [
+    ("redis", svc.redis_unit_op),
+    ("db", svc.db_unit_op),
+    ("queue", svc.queue_unit_op),
+]
 
 
 @pytest.mark.hardware
-def test_all_hardware_components(hardware_test_mode, mock_redis):
+def test_system_integrity(hardware_summary: List[Dict[str, str]]) -> None:
     """
-    Test all configured hardware components in sequence.
-    
-    This test runs a minimal operation on each component type to verify
-    they are all connected and responsive. It uses the same helper functions
-    as the unit tests, ensuring consistency.
+    Run a single, aggregated integrity check for hardware and services.
     """
-    results = {
-        "peristaltic_pumps": [],
-        "syringe_pumps": [],
-        "valves": [],
-        "uv_vis": None,
-    }
-    
-    # Test peristaltic pumps
-    for pump_name in ["longerWE01", "longerCE01"]:
-        if pump_name in CONFIG_SETUP:
-            result = test_peristaltic_pump_basic(pump_name)
-            results["peristaltic_pumps"].append(result)
-    
-    # Test syringe pumps
-    for pump_name in ["tecanRX01", "tecanAZ01"]:
-        if pump_name in CONFIG_SETUP:
-            result = test_syringe_pump_basic(pump_name)
-            results["syringe_pumps"].append(result)
-    
-    # Test valves
-    for valve_name in ["valveRX01", "valveAZ01"]:
-        if valve_name in CONFIG_SETUP:
-            result = test_valve_basic(valve_name)
-            results["valves"].append(result)
-    
-    # Test UV-Vis
-    if "lamp01" in CONFIG_SETUP and "UVVIS01" in CONFIG_SETUP:
-        result = test_uv_vis_basic()
-        results["uv_vis"] = result
-    
-    # Print results summary
-    print("\n=== Hardware Test Results ===")
-    print(f"Peristaltic Pumps: {results['peristaltic_pumps']}")
-    print(f"Syringe Pumps: {results['syringe_pumps']}")
-    print(f"Valves: {results['valves']}")
-    print(f"UV-Vis: {results['uv_vis']}")
-    
-    # Collect failures
-    failures = []
-    for pump_name, status, *rest in results["peristaltic_pumps"]:
-        if status == "FAILED":
-            error_msg = rest[0] if rest else "Unknown error"
-            failures.append(f"{pump_name}: {error_msg}")
-    
-    for pump_name, status, *rest in results["syringe_pumps"]:
-        if status == "FAILED":
-            error_msg = rest[0] if rest else "Unknown error"
-            failures.append(f"{pump_name}: {error_msg}")
-    
-    for valve_name, status, *rest in results["valves"]:
-        if status == "FAILED":
-            error_msg = rest[0] if rest else "Unknown error"
-            failures.append(f"{valve_name}: {error_msg}")
-    
-    if results["uv_vis"] and results["uv_vis"][0] == "FAILED":
-        error_msg = results["uv_vis"][2] if len(results["uv_vis"]) > 2 else "Unknown error"
-        failures.append(f"UV-Vis: {error_msg}")
-    
-    # Assert that all tests passed
+    results: List[Dict[str, str]] = []
+
+    # Hardware checks: iterate over a small configuration table
+    for kind, func, names in HARDWARE_CHECKS:
+        for name in names:
+            comp_name, status, info = func(name)
+            results.append(
+                {
+                    "kind": kind,
+                    "name": comp_name,
+                    "status": status,
+                    "error": str(info),
+                }
+            )
+
+    # Service checks
+    for kind, tester in SERVICE_CHECKS:
+        name, status, info = tester()
+        results.append(
+            {
+                "kind": kind,
+                "name": name,
+                "status": status,
+                "error": str(info),
+            }
+        )
+
+    # Prefect (async) – kept separate because it is awaitable
+    name, status, info = asyncio.run(svc.prefect_unit_op())
+    results.append(
+        {
+            "kind": "prefect",
+            "name": name,
+            "status": status,
+            "error": str(info),
+        }
+    )
+
+    hardware_summary.extend(results)
+
+    failures = [r for r in results if r.get("status") != "OK"]
     if failures:
-        pytest.fail(f"Hardware test failures:\n" + "\n".join(failures))
-    
-    assert True, "All hardware components tested successfully"
+        lines = [
+            f"{r['kind']} '{r['name']}': {r['status']} ({r['error']})"
+            for r in failures
+        ]
+        pytest.fail("System integrity check failed:\n" + "\n".join(lines))
 

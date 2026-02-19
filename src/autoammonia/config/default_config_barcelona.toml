@@ -1,6 +1,7 @@
 data_path = "~/data"
 parallel_cells = 1
 delete_previous_queue = true
+overwrite_prefect_variables = true
 
 emergency_stop_retries = 10
 emergency_stop_retries_delay = 5
@@ -67,21 +68,21 @@ wash_flow_cell_wash_comp_speed_last_empty = 0.1
 
 wash_vial_repeats = 8
 wash_vial_volume = 0.8
-wash_vial_speed = 0.4
+wash_vial_speed = 0.6
 wash_vial_last_empty = 0.1
 
 wash_compartment_repeats = 4
 wash_compartment_volume = 10
-wash_compartment_speed = 0.4
+wash_compartment_speed = 0.6
 wash_compartment_speed_last_empty = 0.1
 
 syringe_wash_repeats = 5
-syringe_wash_speed = 0.6
+syringe_wash_speed = 0.8
 syringe_wash_volume_RX = 1.5
 syringe_wash_volume_AZ = 0.8
 air_compensation_volume = 0.025
 air_flush_factor = 2
 air_flush_speed = 10
 
-syringe_initialization_speed = 0.4
+syringe_initialization_speed = 0.6
 
