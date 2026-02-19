@@ -1,7 +1,7 @@
-from .hardware.syringe_pumps import syringe_draw_and_dispense, syringe_draw, syringe_dispense
-from .hardware.selection_valves import switch_port_valve
-from .config.config import CONNECTIONS_INFO
-from .config.components_config import CONFIG_COMPONENTS
+from ..hardware.syringe_pumps import syringe_draw_and_dispense, syringe_draw, syringe_dispense
+from ..hardware.selection_valves import switch_port_valve
+from ..config.config import CONNECTIONS_INFO
+from ..config.components_config import CONFIG_COMPONENTS
 
 exclude_ports = ["waste", "air","uv_vis"]
 def main():
