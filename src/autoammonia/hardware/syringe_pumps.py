@@ -137,10 +137,15 @@ def syringe_draw_and_dispense(
         - It only draws and dispenses a specific amount from one port to the other. But should not be used for
           specific volume transfer between vessels.
     """
-    syringe_draw(syringe_pump=syringe_pump, volume=volume, valve_port=draw_valve_port, speed=speed, **kwargs)
-    time.sleep(wait)
-    syringe_dispense(syringe_pump=syringe_pump, volume=volume, valve_port=dispense_valve_port, speed=speed, **kwargs)
-    time.sleep(wait)
+
+    if volume > 0:
+        syringe_draw(syringe_pump=syringe_pump, volume=volume, valve_port=draw_valve_port, speed=speed, **kwargs)
+        time.sleep(wait)
+        syringe_dispense(syringe_pump=syringe_pump, volume=volume, valve_port=dispense_valve_port, speed=speed, **kwargs)
+        time.sleep(wait)
+    else:
+        logger = get_run_logger()
+        logger.warning(f"[{syringe_pump}] Attempt to draw and dispense {volume} mL from {draw_valve_port} to {dispense_valve_port}. Skipping operation as volume is 0.")
 
 
 @flow

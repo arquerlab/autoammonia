@@ -51,23 +51,25 @@ def initialize_pump(
 
     # Filling of all the stock solution tubes leading to the pump valve directly
     for port_name, port_info in CONNECTIONS_INFO[syringe_pump].items():
-        if port_info['usage'].lower() == 'stock':
-            input_tube_volume = port_info['volume']
-            syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=input_tube_volume, draw_valve_port=port_name,
-                                             dispense_valve_port="waste", speed=speed, **kwargs)
+        if port_info['usage'] is not None:
+            if port_info['usage'].lower() == 'stock':
+                input_tube_volume = port_info['con_vol']
+                syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=input_tube_volume, draw_valve_port=port_name,
+                                                dispense_valve_port="waste", speed=speed, **kwargs)
 
     # Filling of al stock solution tubes leading to the valve assigned to the pump
     wash_valve = False
     for port_name, port_info in CONNECTIONS_INFO[syringe_valve].items():
-        if port_info['usage'].lower() == 'stock':
-            input_tube_volume = port_info['volume']
-            switch_port_valve(valve=syringe_valve, port=port_name, **kwargs)
-            syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=input_tube_volume, draw_valve_port="valve",
-                                             dispense_valve_port="waste", speed=speed, **kwargs)
-            wash_valve = True
-
+        if port_info['usage'] is not None:
+            if port_info['usage'].lower() == 'stock':
+                input_tube_volume = port_info['con_vol']
+                switch_port_valve(valve=syringe_valve, port=port_name, **kwargs)
+                syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=input_tube_volume, draw_valve_port="valve",
+                                                dispense_valve_port="waste", speed=speed, **kwargs)
+                wash_valve = True
+    wash_valves_list = [port_name for port_name in CONNECTIONS_INFO[syringe_valve] if 'valve' in port_name]
     syringe_wash_unlocked(syringe_pump, repeats=config['syringe_wash_repeats'], wash_vol=wash_vol,
-                          speed=config['syringe_wash_speed'], wash_valve=wash_valve, **kwargs)
+                          speed=config['syringe_wash_speed'], wash_valves=wash_valves_list, **kwargs)
 
 @flow
 @with_lock()
