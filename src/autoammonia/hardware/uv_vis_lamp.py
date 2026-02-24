@@ -14,14 +14,25 @@ class Arduino:
         self.ser.flush()
         time.sleep(0.2)
 
-    def send_pulse(self):
-        """Send a pulse command to the Arduino (implement as needed)."""
-        self.ser.write(b'P')  # Assuming 'P' triggers a pulse in your firmware
+    def start_pulses(self, pulse_interval: float):
+        """
+        Send command to start pulsing with given interval to the Arduino
+        Args:
+            pulse_interval (float): The interval between pulses in seconds
+        """
+        self.ser.write(f"START:{pulse_interval}".encode())
         self.ser.flush()
         time.sleep(0.2)
-        
+
+    def stop_pulses(self):
+        """Send command to stop pulsing to the Arduino"""
+        self.ser.write(b"STOP")
+        self.ser.flush()
+        time.sleep(0.2)
+
     def close(self):
         self.ser.close()
+
 
 class Lamp(ABC):
     @abstractmethod
@@ -47,24 +58,13 @@ class MotorSwitchLamp(Lamp):
         self.start()
 
 class PulsedLamp(Lamp):
-    def __init__(self, arduino: Arduino, pulse_interval: float = 0.5):
+    def __init__(self, arduino: Arduino):
         self.arduino = arduino
-        self.pulse_interval = pulse_interval
-        self._running = False
-        self._thread = None
 
-    def _pulse_loop(self):
-        while self._running:
-            self.arduino.send_pulse()
-            time.sleep(self.pulse_interval)
-
-    def start(self):
-        self._running = True
-        self._thread = threading.Thread(target=self._pulse_loop)
-        self._thread.start()
-
+    def start(self, pulse_interval: float):
+        self.arduino.start_pulses(pulse_interval)
+        
     def stop(self):
-        self._running = False
-        if self._thread:
-            self._thread.join()
+        self.arduino.stop_pulses()
+
             
