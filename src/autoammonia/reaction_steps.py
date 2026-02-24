@@ -64,7 +64,7 @@ def initialize_pump(
             if port_info['usage'].lower() == 'stock':
                 input_tube_volume = port_info['con_vol']
                 switch_port_valve(valve=syringe_valve, port=port_name, **kwargs)
-                syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=input_tube_volume, draw_valve_port="valve",
+                syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=input_tube_volume, draw_valve_port=syringe_valve,
                                                 dispense_valve_port="waste", speed=speed, **kwargs)
                 wash_valve = True
     wash_valves_list = [port_name for port_name in CONNECTIONS_INFO[syringe_valve] if 'valve' in port_name]

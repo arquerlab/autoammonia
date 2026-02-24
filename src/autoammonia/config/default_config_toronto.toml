@@ -1,4 +1,5 @@
 data_path = "~/data"
+calibration_path = "~/data/calibration"
 parallel_cells = 1
 delete_previous_queue = true
 overwrite_prefect_variables = true

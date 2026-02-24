@@ -179,6 +179,48 @@ def main():
                     except Exception as e:  # noqa: BLE001
                         print(f"Error: {type(e).__name__}: {e}")
 
+        az_pump = 'tecanAZ01'
+        port = 'uv_vis'
+        print(f"Testing {az_pump} port {port}")
+        while True:
+            vol = input(f'Indicate volume to fill up on "{port}", or "stop" to move forward '
+                        f'(acum_vol = {total_vol}): ')
+            if vol in ("stop", "s", "skip"):
+                print(f'Port "{port}" initialized. Total volume: {total_vol}')
+                syringe_draw_and_dispense(az_pump, CONFIG_COMPONENTS[az_pump]["syringe_volume"] * 1000, "air", port, speed=1000)
+                break
+            elif "speed" in vol:
+                try:
+                    speed_val = float(vol.split()[1])
+                    if 0.001 < speed_val < 1000:
+                        speed = speed_val
+                        print("Speed set to:", speed)
+                    else:
+                        print(
+                            "Speed not valid. Valid entries:\n"
+                            '- "speed <float>": for setting the speed (0.001-1000)\n'
+                        )
+                except (ValueError, IndexError):
+                    print(
+                            "Speed not valid. Valid entries:\n"
+                            '- "speed <float>": for setting the speed (0.001-1000)\n'
+                        )
+            else:
+                try:
+                    vol_val = float(vol)
+                    if abs(vol_val) > max_vol:
+                        print(f"Value {vol_val} exceeds syringe limit ({max_vol}), try again.")
+                        continue
+                    if vol_val > 0:
+                        syringe_draw(az_pump, vol_val, "water", speed=1)
+                        syringe_dispense(az_pump, vol_val, port, speed=speed)
+                        total_vol += vol_val
+                    elif vol_val < 0:
+                        syringe_draw_and_dispense(az_pump, abs(vol_val), "air", port, speed=1000)
+                        total_vol = 0
+                except Exception as e:  # noqa: BLE001
+                    print(f"Error: {type(e).__name__}: {e}")
+
         print("\nAll valve ports tested successfully. Moving to next component.")
 
 

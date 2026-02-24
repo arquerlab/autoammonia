@@ -4,7 +4,7 @@ valveAZ01  = { port = 9, con_vol = 0.14, volume = 0, max_vol = 1.5 }
 air        = { port = 5, con_vol = 0, volume = 1e9, max_vol = 1e9 }
 WEvial02   = { port = 7, con_vol = 0.18, volume = 0, max_vol = 22 }
 WEvial01   = { port = 6, con_vol = 0.295, volume = 0, max_vol = 22 }
-uv_vis     = { port = 8, con_vol = 8, volume = 0, max_vol = 100 }
+uv_vis     = { port = 8, con_vol = 0.86, volume = 0, max_vol = 100 }
 d3         = { port = 4, con_vol = 0.245, usage = "stock", volume = 40, max_vol = 40 }
 d2         = { port = 3, con_vol = 0.245, usage = "stock", volume = 40, max_vol = 40 }
 d1         = { port = 2, con_vol = 0.26, usage = "stock", volume = 40, max_vol = 40 }

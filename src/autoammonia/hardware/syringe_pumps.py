@@ -184,14 +184,15 @@ def syringe_draw_and_dispense_volume(
     logger = get_run_logger()
 
     dispense_iterations = ceil(volume / (1e3 * CONFIG_COMPONENTS[syringe_pump]["syringe_volume"]))
-    volume_per_iteration = volume / dispense_iterations
-
-    for i in range(0, dispense_iterations):
-        syringe_draw_and_dispense.with_options(
-            retries=retries,
-        )(syringe_pump=syringe_pump, volume=volume_per_iteration, draw_valve_port=draw_valve_port,
-          dispense_valve_port=dispense_valve_port, speed=speed, wait=wait, **kwargs)
-    logger.info(f'[{syringe_pump}] Draw and dispensed {volume} mL successfully from {draw_valve_port} to {dispense_valve_port}')
+    volume_per_iteration = volume / dispense_iterations if dispense_iterations > 0 else 0
+    if volume_per_iteration > 0:
+        for i in range(0, dispense_iterations):
+            syringe_draw_and_dispense.with_options(
+                retries=retries,
+            )(syringe_pump=syringe_pump, volume=volume_per_iteration, draw_valve_port=draw_valve_port,
+              dispense_valve_port=dispense_valve_port, speed=speed, wait=wait, **kwargs)
+    else:
+        logger.warning(f"[{syringe_pump}] Attempt to draw and dispense {volume} mL from {draw_valve_port} to {dispense_valve_port}. Skipping operation as volume is 0.")
 
 
 def get_connected_port(
@@ -387,7 +388,8 @@ def syringe_transfer_unlocked(
         logger.info(f"[syringe_transfer_unlocked] Updated info on {draw_valve_port}: {draw_valve_port_info}")
         Variable.set(str(dispense_valve_port).lower(), dispense_valve_port_info, overwrite=True)
         logger.info(f"[syringe_transfer_unlocked] Updated info on {dispense_valve_port}: {dispense_valve_port_info}")
-    
+
+
 @flow
 def syringe_wash_unlocked(
         syringe_pump: str,
@@ -499,6 +501,65 @@ def syringe_transfer_and_wash(
     logger.info(f"[Syringe_transfer_and_wash] Valves washed: {wash_valves}")
 
 
+@flow
+@with_lock()
+def syringe_transfer_uvvis_and_wash(
+        syringe_pump: str,
+        aliquot_volume: float,
+        draw_valve_port: Union[int, str],
+        speed: float | int | None,
+        wash_repeats: Optional[int] = None,
+        wash_vol: Optional[float] = None,
+        wash_speed: Optional[float] = None,
+        **kwargs: Any,
+) -> None:
+    """
+    Transfers an aliquot volume from a draw valve port to the UV-VIS compartment.
+    It dispenses air in the tubo leading to the UV-VIS, to ensure aliquot reached
+    the UV-VIS cuvette.
+    It washes the valves used in the transfer.
+    Args:
+        syringe_pump (str): The syringe pump to use.
+        aliquot_volume (float): The volume of the aliquot to transfer (in mL).
+        draw_valve_port (Union[int, str]): The valve port for drawing the aliquot.
+        speed (float | int | None): The speed to draw the aliquot (in mL/s). Defaults to config['aliquot_filling_speed'].
+        wash_repeats (Optional[int]): Number of washing cycles. Defaults to config['syringe_wash_repeats'].
+        wash_vol (Optional[float]): Volume (in mL) to wash with. Defaults to config['syringe_wash_volume_RX'] or
+                                    config['syringe_wash_volume_AZ'] depending on specified syringe pump.
+        wash_speed (Optional[float]): Speed of the syringe during washing (in mL/s). Defaults to config['syringe_wash_speed'].
+        **kwargs (Any): Additional keyword arguments to override the default configuration.
+    """
+    config = {**DEFAULT_CONFIG, **kwargs}
+    speed = speed if speed is not None else config['aliquot_filling_speed']
+    # Use provided arguments or fall back to default config
+    wash_repeats = wash_repeats if wash_repeats is not None else config['syringe_wash_repeats']
+    wash_speed = wash_speed if wash_speed is not None else config['syringe_wash_speed']
+    if wash_vol is not None:
+        wash_vol = wash_vol
+    else:
+        wash_vol = config['syringe_wash_volume_RX'] if 'RX' in syringe_pump else config['syringe_wash_volume_AZ']
+    logger = get_run_logger()
+
+    syringe_transfer_unlocked(syringe_pump=syringe_pump, volume=aliquot_volume, draw_valve_port=draw_valve_port,
+                              dispense_valve_port='uv_vis', air_flush_factor=0, speed=speed, **kwargs)
+    logger.info(f"[Syringe_transfer_uvvis] Transferred {aliquot_volume} mL from {draw_valve_port} to UV-VIS.")
+    tube_volume = CONNECTIONS_INFO[syringe_pump]['uv_vis']['con_vol']
+    if aliquot_volume < tube_volume:
+        extra_air_volume = tube_volume - aliquot_volume
+        syringe_transfer_unlocked(syringe_pump=syringe_pump, volume=extra_air_volume, draw_valve_port='air',
+                                  dispense_valve_port='uv_vis', speed=speed, **kwargs)
+        logger.info(f"[Syringe_transfer_uvvis] Transferred {extra_air_volume} mL of air to UV-VIS.")
+    
+    #Check if valves were used in draw or dispense
+    wash_valves = []
+    syringe_port_input, valve_port_input = get_connected_port(syringe_pump, draw_valve_port, CONNECTIONS_INFO)
+    syringe_port_output, valve_port_output = get_connected_port(syringe_pump, 'uv_vis', CONNECTIONS_INFO)
+    wash_valves = wash_valves + [syringe_port_input,] if valve_port_input else wash_valves
+    wash_valves = wash_valves + [syringe_port_output,] if valve_port_output else wash_valves
+
+    syringe_wash_unlocked(syringe_pump=syringe_pump, repeats=wash_repeats, wash_vol=wash_vol, speed=wash_speed,
+                          wash_valves=wash_valves, **kwargs)
+    logger.info(f"[Syringe_transfer_uvvis_and_wash] Valves washed: {wash_valves}")
 
 @flow
 @with_lock()
