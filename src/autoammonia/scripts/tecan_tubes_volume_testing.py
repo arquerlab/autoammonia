@@ -10,7 +10,7 @@ def main():
 
     # Iterate only over tecan pumps (e.g. tecanAZ01, tecanRX01)
     for pump in CONNECTIONS_INFO:
-        if "tecan" not in pump:
+        if "tecan" not in pump and 'runze' not in pump and 'syringe' not in pump:
             continue
 
         skip_component = False
@@ -18,7 +18,7 @@ def main():
         print(f"\n=== Component to use: {pump} (max syringe volume: {max_vol} µL) ===")
 
         # Try to find matching valve (e.g. tecanAZ01 -> valveAZ01)
-        valve_name = pump.replace("tecan", "valve").replace("runze", "valve")
+        valve_name = pump.replace("tecan", "valve").replace("runze", "valve").replace("syringe", "valve")
         has_valve = valve_name in CONNECTIONS_INFO
 
         # 1) Test pump ports (connected directly to containers)
