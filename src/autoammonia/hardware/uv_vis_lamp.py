@@ -1,7 +1,6 @@
 import serial
 import time
 from abc import ABC, abstractmethod
-import threading
 
 class Arduino:
     def __init__(self, port: str, baudrate: int = 9600, timeout: float = 2.0):
@@ -58,11 +57,12 @@ class MotorSwitchLamp(Lamp):
         self.start()
 
 class PulsedLamp(Lamp):
-    def __init__(self, arduino: Arduino):
+    def __init__(self, arduino: Arduino, pulse_interval: float):
         self.arduino = arduino
+        self.pulse_interval = pulse_interval
 
-    def start(self, pulse_interval: float):
-        self.arduino.start_pulses(pulse_interval)
+    def start(self):
+        self.arduino.start_pulses(self.pulse_interval)
         
     def stop(self):
         self.arduino.stop_pulses()

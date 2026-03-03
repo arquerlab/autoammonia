@@ -43,9 +43,12 @@ device_kwargs = { port = "COM15", address = 1 }
 
 [UVVIS01]
 class = "matterlab_spectrometers.HamamatsuMiniSpectrometer"
+product_id = "J4251028"
+calibration_coefficient = [1.598749839E+002, 3.004208898E-001, 1.943984946E-005, 1.156674313E-009, -1.539714024E-012, 2.014714535E-016]
 
 [lamp01]
-class = "autoammonia.hardware.uv_vis_lamp.MotorSwitchLamp"
+class = "autoammonia.hardware.uv_vis_lamp.PulsedLamp"
 device_class = "autoammonia.hardware.uv_vis_lamp.Arduino"
-device_kwargs = { port = "COM16"}
+device_kwargs = { port = "COM16" }
+pulse_interval = 0.1
 

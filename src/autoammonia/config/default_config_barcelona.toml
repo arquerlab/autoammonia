@@ -72,11 +72,6 @@ wash_vial_volume = 0.8
 wash_vial_speed = 0.6
 wash_vial_last_empty = 0.1
 
-wash_compartment_repeats = 4
-wash_compartment_volume = 10
-wash_compartment_speed = 0.6
-wash_compartment_speed_last_empty = 0.1
-
 syringe_wash_repeats = 5
 syringe_wash_speed = 0.8
 syringe_wash_volume_RX = 1.5

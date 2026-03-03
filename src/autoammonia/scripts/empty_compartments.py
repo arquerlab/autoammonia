@@ -32,9 +32,11 @@ def empty_compartments(
         for port in CONNECTIONS_INFO[component]:
             if 'AZvial' in exclude_vials and 'AZ' in component:
                 continue
+            if 'AZ' in component and ('WE' in port or 'CE' in port):
+                continue
             for port in CONNECTIONS_INFO[component]:
                 if 'vial' in port:
-                    if ('WEvial' in port and 'WEvial' in exclude_vials) or ('CEvial' in port and 'CEvial' in exclude_vials):
+                    if ('WEvial' in port and 'WEvial' in exclude_vials) or ('CEvial' in port and 'CEvial' in exclude_vials) or ('AZvial' in port and 'AZvial' in exclude_vials):
                         continue
                     compartment_info = Variable.get(str(port).lower())
                     if compartment_info['volume'] > 0:
@@ -42,7 +44,7 @@ def empty_compartments(
                         logger.info(f"Vial {port} will be emptied from compartment {component}")
         if has_valve:
             if 'AZvial' in exclude_vials and 'AZ' in component:
-                    continue
+                continue
             for port in CONNECTIONS_INFO[valve_name]:
                 if 'vial' in port:
                     if ('WEvial' in port and 'WEvial' in exclude_vials) or ('CEvial' in port and 'CEvial' in exclude_vials):
@@ -53,12 +55,24 @@ def empty_compartments(
                         logger.info(f"Vial {port} will be emptied from compartment {component}")
 
     for vial in vials_to_empty:
-        compartment_wash(syringe_pump=vial[1], compartment=vial[0], **kwargs)
+        if 'AZ' in vial[1]:
+            repeats = config['wash_vial_repeats']
+            wash_vol = config['wash_vial_volume']
+            speed = config['wash_vial_speed']
+            speed_last_empty = config['wash_vial_last_empty']
+        else:
+            repeats = config['wash_flow_cell_wash_comp_repeats']
+            wash_vol = config['wash_flow_cell_wash_comp_volume']
+            speed = config['wash_flow_cell_wash_comp_speed']
+            speed_last_empty = config['wash_flow_cell_wash_comp_speed_last_empty']
+
+        compartment_wash(syringe_pump=vial[1], compartment=vial[0], repeats=repeats, 
+                wash_vol=wash_vol, speed=speed, speed_last_empty=speed_last_empty, **kwargs)
         logger.info(f"Vial {vial[0]} connected to {vial[1]} has been emptied")
 
 
 @flow
 def main():
-    empty_compartments(exclude_vials=['AZvial'])
+    empty_compartments(exclude_vials=['WEvial', 'CEvial'])
 
 
