@@ -6,6 +6,7 @@ import time
 from typing import Optional, Any
 from prefect import flow, get_run_logger
 import numpy as np
+import pandas as pd
 
 from .config.config import DEFAULT_CONFIG, HOSTNAME
 from .db.db_functions import add_results_to_db
@@ -13,7 +14,7 @@ from .hardware.uv_vis_module import acquire_spectrum
 from .utils.decorators import with_lock
 from .utils.redis_client import client
 from .hardware.syringe_pumps import (syringe_transfer_and_wash, syringe_transfer_unlocked, compartment_wash, 
-                                     compartment_fill, syringe_wash_unlocked)
+                                     compartment_fill, syringe_wash_unlocked, syringe_transfer_uvvis_and_wash, compartment_wash_uvvis)
 from .utils.files import get_default_folder, transfer_file_scp
 
 
@@ -123,16 +124,43 @@ def measure_vial(
     filling_speed = config['aliquot_filling_speed']
     uv_vis_integration_time = config['uv_vis_integration_time']
     uv_vis_wash_volume = config['uv_vis_wash_volume']
+    uv_vis_aliquot_volume = config['uv_vis_aliquot_volume']
+    wash_uvvis_repeats = config['uv_vis_wash_repeats']
+    wash_uvvis_volume = config['uv_vis_wash_volume']
+    wash_uvvis_speed = config['uv_vis_wash_speed']
 
     logger = get_run_logger()
-
-    compartment_fill(
-        syringe_pump='tecanAZ01', source=vial, destination='uv_vis',volume=0.5,
-        speed=filling_speed, **kwargs
+    syringe_transfer_uvvis_and_wash(
+        syringe_pump='tecanAZ01', aliquot_volume=uv_vis_aliquot_volume, draw_valve_port='water', speed=filling_speed,
+        wash_repeats=0, wash_vol=0, wash_speed=wash_vial_speed, **kwargs
     )
-    logger.info(f'Sample {vial} sent to UV-VIS for measurement')
-    df = acquire_spectrum(spectrometer='UVVIS01', lamp='lamp01', integration_time= uv_vis_integration_time)
-    logger.info(f'Sample {vial} measured at UV-VIS')
+    logger.info(f'[measure_vial] UV-VIS flow cell filled with water (reference)')
+    df_ref_dark = acquire_spectrum(spectrometer='UVVIS01', lamp='lamp01', integration_time= uv_vis_integration_time, dark=True)
+    logger.info(f'[measure_vial] Dark reference spectrum acquired')
+    df_ref = acquire_spectrum(spectrometer='UVVIS01', lamp='lamp01', integration_time= uv_vis_integration_time, dark=False)
+    logger.info(f'[measure_vial] Reference spectrum acquired')
+    compartment_wash_uvvis(syringe_pump='tecanAZ01', 
+                repeats=wash_uvvis_repeats, wash_vol=wash_uvvis_volume, speed=wash_uvvis_speed, **kwargs)
+    syringe_transfer_uvvis_and_wash(
+        syringe_pump='tecanAZ01', aliquot_volume=uv_vis_aliquot_volume, draw_valve_port=vial, speed=filling_speed,
+        wash_repeats=wash_vial_repeats, wash_vol=wash_vial_volume, wash_speed=wash_vial_speed, **kwargs
+    )
+    logger.info(f'[measure_vial] Sample {vial} sent to UV-VIS for measurement')
+    df_sample_dark = acquire_spectrum(spectrometer='UVVIS01', lamp='lamp01', integration_time= uv_vis_integration_time, dark=True)
+    logger.info(f'[measure_vial] Sample {vial} dark spectrum acquired')
+    df_sample = acquire_spectrum(spectrometer='UVVIS01', lamp='lamp01', integration_time= uv_vis_integration_time, dark=False)
+    logger.info(f'[measure_vial] Sample {vial} spectrum acquired')
+    df = pd.DataFrame({
+        "Wavelength (nm)": df_ref["Wavelength (nm)"],
+        "Reference_dark": df_ref_dark["Intensity"],
+        "Reference": df_ref["Intensity"],
+        "Sample_dark": df_sample_dark["Intensity"],
+        "Sample": df_sample["Intensity"],
+    })
+    df["Reference_dark_corrected"] = df["Reference"] - df["Reference_dark"]
+    df["Sample_dark_corrected"] = df["Sample"] - df["Sample_dark"]
+    df["Transmittance"] = df["Sample_dark_corrected"] / df["Reference_dark_corrected"]
+    df["Absorption"] = -np.log10(df["Transmittance"])
     folder = get_default_folder('UVVIS')
     filepath = folder / f'ID{exp_id}_RXT{time_rxn}_VIAL{vial}.csv'
     df.to_csv(filepath, index=False)

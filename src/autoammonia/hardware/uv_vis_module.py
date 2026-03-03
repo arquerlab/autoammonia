@@ -67,9 +67,12 @@ def acquire_spectrum(
         spectrometer: str,
         lamp: str,
         integration_time: float | int,
+        dark: bool = False,
 ) -> pd.DataFrame:
-    lamp_switch(lamp=lamp, on=True)
+    if not dark:
+        lamp_switch(lamp=lamp, on=True)
     df = spec_acquire(spectrometer=spectrometer, integration_time=integration_time)
-    lamp_switch(lamp=lamp, on=False)
+    if not dark:
+        lamp_switch(lamp=lamp, on=False)
     return df
         

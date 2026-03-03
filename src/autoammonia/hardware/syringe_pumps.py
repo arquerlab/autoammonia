@@ -223,6 +223,7 @@ def get_connected_port(
         logger.error("No valve found in syringe pump connections.")
     raise ValueError('Port not found in syringe pump connections. Please check the configuration.')
 
+
 def get_air_volume(
         syringe_pump: str,
         syringe_port: Union[str, int, None],
@@ -561,6 +562,7 @@ def syringe_transfer_uvvis_and_wash(
                           wash_valves=wash_valves, **kwargs)
     logger.info(f"[Syringe_transfer_uvvis_and_wash] Valves washed: {wash_valves}")
 
+
 @flow
 @with_lock()
 def compartment_wash(
@@ -609,6 +611,44 @@ def compartment_wash(
     syringe_transfer_unlocked(syringe_pump=syringe_pump, volume=wash_vol, draw_valve_port=compartment,
                               dispense_valve_port='waste', speed=speed_last_empty, safety_empty=True, **kwargs)
     logger.info(f"[{syringe_pump}] Compartment '{compartment}' washed {repeats} times with {wash_vol} mL at {speed} mL/s. ")
+
+
+@flow
+@with_lock()
+def compartment_wash_uvvis(
+        syringe_pump: str,
+        repeats: Optional[int] = None,
+        wash_vol: Optional[float] = None,
+        speed: Optional[float] = None,
+        **kwargs: Any,
+) -> None:
+    """
+    Washes the specified compartment. Designed for washing 'WE/CE_vial' or 'vials'
+
+    Args:
+        syringe_pump (str): Syringe pump to use.
+        repeats (Optional[int]): Number of wash cycles. Defaults to config['wash_compartment_repeats'].
+        wash_vol (Optional[float]): Volume of water for each wash step (in mL). Defaults to config['wash_compartment_volume'].
+        speed (Optional[float]): Draw/dispense speed (in mL/s). Defaults to config['wash_compartment_speed'].
+        speed_last_empty (Optional[float]): Speed for the final emptying step (in mL/s). Defaults to config['wash_compartment_speed_last_empty'].
+        **kwargs (Any): Additional keyword arguments to override the default configuration.
+    """
+    config = {**DEFAULT_CONFIG, **kwargs}
+    repeats = repeats if repeats is not None else config['wash_uvvis_repeats']
+    wash_vol = wash_vol if wash_vol is not None else config['uv_vis_wash_volume']
+    speed = speed if speed is not None else config['uv_vis_wash_speed']
+    
+    logger = get_run_logger()
+
+    for _ in range(repeats):
+        syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=wash_vol, draw_valve_port='water',
+                                dispense_valve_port='UV_VIS', speed=speed, **kwargs)
+        logger.info(f"[Compartment_wash_uvvis] UV-VIS flow cell washed with water. Repeat: {_}")
+    air_flush_volume = CONFIG_COMPONENTS[syringe_pump]['syringe_volume'] * 1000
+    for _ in range(2):
+        syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=air_flush_volume, draw_valve_port='air',
+                                dispense_valve_port='UV_VIS', speed=speed, **kwargs)
+        logger.info(f"[Compartment_wash_uvvis] Air flushed to UV-VIS flow cell. Repeat: {_}")
 
 
 @flow
