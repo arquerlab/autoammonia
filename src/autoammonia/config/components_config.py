@@ -5,7 +5,9 @@ from .config import CONNECTIONS_INFO, ACTIVE_SETUP, DEFAULT_CONFIG, IS_SIMULATIO
 MOCK_OVERRIDES = {
     "matterlab_pumps.LongerPeristalticPump": "autoammonia.hardware.mock.longer_mock.LongerPeristalticPumpMock",
     "matterlab_pumps.TecanXCPump": "autoammonia.hardware.mock.tecan_mock.TecanXCPumpMock",
+    "matterlab_pumps.RunzePump": "autoammonia.hardware.mock.tecan_mock.TecanXCPumpMock",
     "matterlab_valves.ValcoSelectionValve": "autoammonia.hardware.mock.valco_mock.ValcoSelectionValveMock",
+    "matterlab_valves.RunzeSelectionValve": "autoammonia.hardware.mock.runze_valve_mock.RunzeSelectionValveMock",
     "pyBEEP.PotentiostatController": "autoammonia.hardware.mock.pyBEEP_mock.PotentiostatControllerMock",
     "pyBEEP.PotentiostatDevice": "autoammonia.hardware.mock.pyBEEP_mock.PotentiostatDeviceMock",
     "matterlab_spectrometers.HamamatsuMiniSpectrometer": "autoammonia.hardware.mock.hamamatsu_mock.HamamatsuMiniSpectrometerMock",
