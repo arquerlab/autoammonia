@@ -11,7 +11,6 @@ from .analysis_module import fill_vial_detection_mix
 from .hardware.syringe_pumps import syringe_transfer_unlocked, syringe_transfer_uvvis_and_wash, compartment_wash_uvvis, syringe_wash_unlocked
 from .config.config import DEFAULT_CONFIG
 from .hardware.uv_vis_module import acquire_spectrum
-from .reaction_steps import initialize_pump
 
 @flow
 def calibration(
@@ -30,10 +29,6 @@ def calibration(
     concentrations = [0.5, 0.25, 0.1, 0.05, 0.025, 0.01, 0.005, 0.0025, 0.001]
     calibration_concentrations = calibration_concentrations if calibration_concentrations is not None else concentrations
 
-    d1_volume = config['detection_reagent_1_volume']
-    d2_volume = config['detection_reagent_2_volume']
-    d3_volume = config['detection_reagent_3_volume']
-    aliquot_filling_speed = config['aliquot_filling_speed']
     wash_uvvis_repeats = config['uv_vis_wash_repeats_calibration']
     wash_uvvis_volume = config['uv_vis_wash_volume']
     wash_uvvis_speed = config['uv_vis_wash_speed']
@@ -44,48 +39,16 @@ def calibration(
     wash_vial_volume = config['wash_vial_volume']
     wash_vial_speed = config['wash_vial_speed']
     
-    
     logger = get_run_logger()
-    
-    initialize_pump(syringe_pump='tecanAZ01', speed=0.1)
-    Variable.set('wevial01', {'volume': 22, 'max_vol':22}, overwrite=True)
+
     aliquot_volumes = []
     for i, concentration in enumerate(calibration_concentrations[-3::-3]):
-        inp = input(f"Place a {concentration}mg/L N solution in WEvial01 and press Enter to continue")
         for j, ratio in enumerate([4,2,1]):
-            vial = f'vial{i*3+j+1}'
-            Variable.set(vial, {'volume': 0, 'max_vol':1.5}, overwrite=True)
             aliquot_volume = 0.2 / ratio
             aliquot_volumes.append(aliquot_volume)
-            syringe_transfer_unlocked(syringe_pump='tecanAZ01', volume=aliquot_volume, draw_valve_port='WEvial01',
-                                      dispense_valve_port=vial, speed=0.1)
-            logger.info(f"Transferred {aliquot_volume} mL of {concentration}mg/L N solution from WEvial01 to {vial}")
-    start_time = time.time()
-    for i, aliquot_volume in enumerate(aliquot_volumes):
-        vial = f'vial{i+1}'
-        syringe_transfer_unlocked(
-            syringe_pump='tecanAZ01', volume=0.2 - aliquot_volume, draw_valve_port='water',
-            dispense_valve_port=vial, speed=aliquot_filling_speed, **kwargs)
-        logger.info(f"Transferred {0.2 - aliquot_volume} mL of water to {vial}")
-
-    for d_sol, d_volume in zip(['d1', 'd2', 'd3'], [d1_volume, d2_volume, d3_volume]):
-        for i, aliquot_volume in enumerate(aliquot_volumes):
-            vial = f'vial{i+1}'
-            syringe_transfer_unlocked(syringe_pump='tecanAZ01', volume=d_volume, draw_valve_port=d_sol, 
-                                dispense_valve_port=vial, speed=aliquot_filling_speed, **kwargs)
-            logger.info(f"Transferred {d_volume} mL of {d_sol} from {d_sol} to {vial}")
-    
-    syringe_wash_unlocked(syringe_pump='tecanAZ01', repeats=config['syringe_wash_repeats'], 
-                          wash_vol=config['syringe_wash_volume_AZ'], speed=config['syringe_wash_speed'], 
-                          wash_valves=['valveAZ01',], **kwargs)
-    logger.info(f"Washed syringe with water")
-    if (time.time() - start_time) < config['detection_dark_time']:
-        logger.info(f"Waiting for {config['detection_dark_time'] - (time.time() - start_time)} seconds to reach detection dark time")
-        time.sleep(config['detection_dark_time'] - (time.time() - start_time))
-    logger.info(f"Detection dark time reached")
-
-    for i, aliquot_volume in enumerate(aliquot_volumes):
-        vial = f'vial{i+1}'
+    for i in range(9):
+        vial = 'vial1'
+        Variable.set(vial, {'volume': 1.5, 'max_vol':1.5}, overwrite=True)
         syringe_transfer_uvvis_and_wash(
             syringe_pump='tecanAZ01', aliquot_volume=uv_vis_aliquot_volume, draw_valve_port='water', speed=filling_speed,
             wash_repeats=0, wash_vol=0, wash_speed=wash_vial_speed, **kwargs
@@ -95,6 +58,7 @@ def calibration(
         logger.info(f'[calibration] Dark reference spectrum acquired')
         df_ref = acquire_spectrum(spectrometer='UVVIS01', lamp='lamp01', integration_time= uv_vis_integration_time, dark=False)
         logger.info(f'[calibration] Reference spectrum acquired')
+        inp = input(f'Place vial {i+1} in vial1 location and press Enter to continue')
         syringe_transfer_uvvis_and_wash(
             syringe_pump='tecanAZ01', aliquot_volume=uv_vis_aliquot_volume, draw_valve_port=vial, speed=filling_speed,
             wash_repeats=wash_vial_repeats, wash_vol=wash_vial_volume, wash_speed=wash_vial_speed, **kwargs
@@ -116,13 +80,13 @@ def calibration(
         df["Sample_dark_corrected"] = df["Sample"] - df["Sample_dark"]
         df["Transmittance"] = df["Sample_dark_corrected"] / df["Reference_dark_corrected"]
         df["Absorption"] = -np.log10(df["Transmittance"])
-        df.to_csv(os.path.join(calibration_path, f'calibration_{i+1}.csv'), index=False)
+        date_stamp = datetime.now().strftime('%y%m%d_%H%M')
+        df.to_csv(os.path.join(calibration_path, f'calibration_{i+1}_{date_stamp}.csv'), index=False)
         logger.info(f'[calibration] Calibration {i+1} saved into {os.path.join(calibration_path, f'calibration_{i+1}.csv')}')
         
         compartment_wash_uvvis(syringe_pump='tecanAZ01', 
                     repeats=wash_uvvis_repeats, wash_vol=wash_uvvis_volume, speed=wash_uvvis_speed, **kwargs)
         logger.info(f'[calibration] UV-VIS flow cell washed with water')
-    
         
     logger.info(f'[calibration] All calibrations saved into {calibration_path}')
 def main():

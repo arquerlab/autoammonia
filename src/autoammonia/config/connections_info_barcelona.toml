@@ -4,7 +4,7 @@ valveAZ01  = { port = 9, con_vol = 0.14, volume = 0, max_vol = 1.5 }
 air        = { port = 5, con_vol = 0, volume = 1e9, max_vol = 1e9 }
 WEvial02   = { port = 7, con_vol = 0.18, volume = 0, max_vol = 22 }
 WEvial01   = { port = 6, con_vol = 0.295, volume = 0, max_vol = 22 }
-uv_vis     = { port = 8, con_vol = 0.86, volume = 0, max_vol = 100 }
+uv_vis     = { port = 8, con_vol = 0.9, volume = 0, max_vol = 100 }
 d3         = { port = 4, con_vol = 0.245, usage = "stock", volume = 40, max_vol = 40 }
 d2         = { port = 3, con_vol = 0.245, usage = "stock", volume = 40, max_vol = 40 }
 d1         = { port = 2, con_vol = 0.26, usage = "stock", volume = 40, max_vol = 40 }
@@ -26,19 +26,19 @@ vial1  = { port = 1, con_vol = 0.24, volume = 0, max_vol = 1.5 }
 waste      = { port = 12, con_vol = 2.5, volume = 0, max_vol = 5000 }
 WEvial02   = { port = 11, con_vol = 0.35, volume = 0, max_vol = 22 }
 CEvial02   = { port = 10, con_vol = 0.35, volume = 0, max_vol = 22 }
-WEvial01   = { port = 9, con_vol = 0.33, volume = 0, max_vol = 22 }
+WEvial01   = { port = 9, con_vol = 0.33, volume = 10, max_vol = 22 }
 CEvial01   = { port = 8, con_vol = 0.33, volume = 0, max_vol = 22 }
 valveRX01  = { port = 7, con_vol = 0.17, volume = 0, max_vol = 1.5 }
-acid       = { port = 6, con_vol = 0.42, usage = "stock", volume = 500, max_vol = 500 }
+anolyte       = { port = 6, con_vol = 0.42, usage = "stock", volume = 500, max_vol = 500 }
 air        = { port = 5, con_vol = 0, usage = "stock", volume = 1e9, max_vol = 1e9 }
-Cu         = { port = 4, con_vol = 0.46, usage = "stock", composition = "Cu", concentration = 0.1, volume = 0, max_vol = 1000 }
-Ni         = { port = 3, con_vol = 0.46, usage = "stock", composition = "Ni", concentration = 0.1, volume = 100, max_vol = 1000 }
+Cu         = { port = 4, con_vol = 0.46, usage = "stock", composition = "Cu", concentration = 0.1, volume = 40, max_vol = 1000 }
+Ni         = { port = 3, con_vol = 0.46, usage = "stock", composition = "Ni", concentration = 0.1, volume = 0, max_vol = 1000 }
 Co         = { port = 2, con_vol = 0.46, usage = "stock", composition = "Co", concentration = 0.1, volume = 0, max_vol = 1000 }
 water      = { port = 1, con_vol = 0.68, usage = "stock", volume = 5000, max_vol = 5000 }
 
 [valveRX01]
 waste    = { port = 11, con_vol = 2.5, volume = 0, max_vol = 5000 }
-anolyte  = { port = 10, con_vol = 0.58, usage = "stock", volume = 1500, max_vol = 1500 }
+acid  = { port = 10, con_vol = 0.58, usage = "stock", volume = 1500, max_vol = 1500 }
 elyte9   = { port = 9, con_vol = 0.35, usage = "stock", composition = "Na2SO4", concentration = 0.1, volume = 0, max_vol = 100 }
 elyte8   = { port = 8, con_vol = 0.34, usage = "stock", composition = "NaNO3", concentration = 0.1, volume = 0, max_vol = 100 }
 elyte7   = { port = 7, con_vol = 0.34, usage = "stock", composition = "NaI", concentration = 0.1, volume = 0, max_vol = 100 }

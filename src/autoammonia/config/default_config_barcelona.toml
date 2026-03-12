@@ -1,5 +1,5 @@
-data_path = "~/data"
-calibration_path = "~/data/calibration"
+data_path = "~/autoammonia_data"
+calibration_path = "~/autoammonia_data/calibration"
 parallel_cells = 1
 delete_previous_queue = true
 overwrite_prefect_variables = true
@@ -29,27 +29,31 @@ electrodeposition_current = 2.82743339
 electrodeposition_time = 360  # 6*60
 electrodeposition_deposition_volume = 10
 electrodeposition_anolyte_volume = 10
-electrodeposition_pump_speed = 10
+electrodeposition_pump_speed = 1
 electrodeposition_filling_speed = 0.2
 
 reaction_current = 28.2743339
-reaction_time = 960  # 16*60
+reaction_time = 1200  # 16*60
 reaction_catholyte_volume = 20
 reaction_anolyte_volume = 20
-reaction_pump_speed = 10
+reaction_pump_speed = 1
 reaction_filling_speed = 0.2
 
 electrodisolution_time = 600
 electrodisolution_catholyte_volume = 10
 electrodisolution_anolyte_volume = 10
-electrodisolution_pump_speed = 10
+electrodisolution_pump_speed = 1
 electrodisolution_filling_speed = 0.2
 
-uv_vis_integration_time = 10
+uv_vis_integration_time = 0.10
 uv_vis_retries = 5
-uv_vis_wash_volume = 3
 aliquot_number = 3
 aliquot_volume = 0.02
+uv_vis_wash_volume = 1.25
+uv_vis_wash_repeats = 12
+uv_vis_wash_speed = 0.4
+uv_vis_wash_repeats_calibration = 3
+uv_vis_aliquot_volume = 0.5
 detection_reagent_1_volume = 0.2
 detection_reagent_2_volume = 0.1
 detection_reagent_3_volume = 0.1
@@ -59,26 +63,25 @@ vial_full_volume = 0.8
 
 wash_flow_cell_volume = 10
 wash_flow_cell_time = 120
-wash_flow_cell_speed = 16
+wash_flow_cell_speed = 2.5
 wash_flow_cell_repeats = 2
-wash_flow_cell_filling_speed = 0.5
+wash_flow_cell_filling_speed = 0.4
 wash_flow_cell_wash_comp_repeats = 1
 wash_flow_cell_wash_comp_volume = 10
-wash_flow_cell_wash_comp_speed = 0.5
+wash_flow_cell_wash_comp_speed = 0.4
 wash_flow_cell_wash_comp_speed_last_empty = 0.1
 
-wash_vial_repeats = 8
+wash_vial_repeats = 6
 wash_vial_volume = 0.8
-wash_vial_speed = 0.6
+wash_vial_speed = 0.4
 wash_vial_last_empty = 0.1
 
 syringe_wash_repeats = 5
-syringe_wash_speed = 0.8
+syringe_wash_speed = 0.4
 syringe_wash_volume_RX = 1.5
 syringe_wash_volume_AZ = 0.8
-air_compensation_volume = 0.025
+air_compensation_volume = 0.075
 air_flush_factor = 2
 air_flush_speed = 10
 
-syringe_initialization_speed = 0.6
-
+syringe_initialization_speed = 0.2

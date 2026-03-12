@@ -12,27 +12,27 @@ baudrate = 1200
 
 [tecanRX01]
 class = "matterlab_pumps.RunzePump"
-com_port = "COM5"
+com_port = "COM3"
 address = 3
-syringe_volume = 0.005
+syringe_volume = 0.0045
 num_valve_port = 12
 
 [tecanAZ01]
 class = "matterlab_pumps.RunzePump"
-com_port = "COM5"
+com_port = "COM20"
 address = 1
 syringe_volume = 0.00125
 num_valve_port = 12
 
 [valveRX01]
 class = "matterlab_valves.RunzeSelectionValve"
-com_port = "COM14"
+com_port = "COM19"
 address = 2
 num_port = 12
 
 [valveAZ01]
 class = "matterlab_valves.RunzeSelectionValve"
-com_port = "COM14"
+com_port = "COM18"
 address = 1
 num_port = 12
 
@@ -50,5 +50,5 @@ calibration_coefficient = [1.598749839E+002, 3.004208898E-001, 1.943984946E-005,
 class = "autoammonia.hardware.uv_vis_lamp.PulsedLamp"
 device_class = "autoammonia.hardware.uv_vis_lamp.Arduino"
 device_kwargs = { port = "COM16" }
-pulse_interval = 0.1
+pulse_interval = 0.05
 
