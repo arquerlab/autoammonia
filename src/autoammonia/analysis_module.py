@@ -15,6 +15,8 @@ from .utils.decorators import with_lock
 from .utils.redis_client import client
 from .hardware.syringe_pumps import (syringe_transfer_and_wash, syringe_transfer_unlocked, compartment_wash, 
                                      compartment_fill, syringe_wash_unlocked, syringe_transfer_uvvis_and_wash, compartment_wash_uvvis)
+from .reaction_steps import initialize_pump
+from .config.config import CONNECTIONS_INFO
 from .utils.files import get_default_folder, transfer_file_scp
 
 
@@ -64,6 +66,7 @@ async def take_aliquots(
 async def track_reaction(
         num_aliquots: Optional[int] = None,
         volume: Optional[float] = None,
+        initialize_pumps: Optional[bool] = False,
         **kwargs: Any,
 ) -> None:
     """
@@ -87,6 +90,11 @@ async def track_reaction(
     num_aliquots = num_aliquots if num_aliquots is not None else config['aliquot_number']
     volume = volume if volume is not None else config['aliquot_volume']
     logger = get_run_logger()
+
+    if initialize_pumps:
+        for pump in CONNECTIONS_INFO:
+            if ('AZ' in pump) and ('tecan' in pump or 'runze' in pump or 'syringe' in pump):
+                initialize_pump(syringe_pump=pump, **kwargs)
 
     while True:
         reaction_status = client.get('reaction_status')

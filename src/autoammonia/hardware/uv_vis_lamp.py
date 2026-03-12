@@ -11,23 +11,23 @@ class Arduino:
         """Rotate the motor by the specified degrees (0-180)."""
         self.ser.write(f"{angle}\n".encode())
         self.ser.flush()
-        time.sleep(0.2)
+        time.sleep(0.5)
 
-    def start_pulses(self, pulse_interval: float):
+    def start_pulses(self, pulse_interval: float, max_pulses: int):
         """
         Send command to start pulsing with given interval to the Arduino
         Args:
             pulse_interval (float): The interval between pulses in seconds
         """
-        self.ser.write(f"START:{pulse_interval}".encode())
+        self.ser.write(f"START:{pulse_interval}:{max_pulses}".encode())
         self.ser.flush()
-        time.sleep(0.2)
+        time.sleep(0.5)
 
     def stop_pulses(self):
         """Send command to stop pulsing to the Arduino"""
         self.ser.write(b"STOP")
         self.ser.flush()
-        time.sleep(0.2)
+        time.sleep(0.5)
 
     def close(self):
         self.ser.close()
@@ -62,7 +62,7 @@ class PulsedLamp(Lamp):
         self.pulse_interval = pulse_interval
 
     def start(self):
-        self.arduino.start_pulses(self.pulse_interval)
+        self.arduino.start_pulses(self.pulse_interval, max_pulses = 100)
         
     def stop(self):
         self.arduino.stop_pulses()

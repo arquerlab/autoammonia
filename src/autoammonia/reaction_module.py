@@ -80,12 +80,13 @@ def process_experiment_queue(delete_previous_queue: Optional[bool] = None,
     
     syringe_pumps = []
     for pump in CONNECTIONS_INFO:
-        if 'tecan' in pump:
+        if 'tecan' in pump or 'runze' in pump or 'syringe' in pump:
             syringe_pumps.append(pump)
     
     if initialize_pumps:
         for pump in syringe_pumps:
-            initialize_pump(syringe_pump=pump, **kwargs)
+            if 'RX' in pump:
+                initialize_pump(syringe_pump=pump, **kwargs)
 
     logger = get_run_logger()
     client.set("stop_signal",0)

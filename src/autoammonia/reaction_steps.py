@@ -97,16 +97,18 @@ def restore_pump(
     # Empty of all the stock solution tubes leading to the pump valve directly
     air_flush_volume = air_flush_factor * CONFIG_COMPONENTS[syringe_pump]['syringe_volume'] * 1000
     for port_name, port_info in CONNECTIONS_INFO[syringe_pump].items():
-        if port_info['usage'].lower() == 'stock':
-            syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=air_flush_volume, draw_valve_port='air',
+        if port_info['usage'] is not None:
+            if port_info['usage'].lower() == 'stock':
+                syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=air_flush_volume, draw_valve_port='air',
                                              dispense_valve_port=port_name, speed=air_flush_speed, **kwargs)
 
     # Emptying of al stock solution tubes leading to the valve assigned to the pump
     for port_name, port_info in CONNECTIONS_INFO[syringe_valve].items():
-        if port_info['usage'].lower() == 'stock':
-            switch_port_valve(valve=syringe_valve, port=port_name, **kwargs)
-            syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=air_flush_volume, draw_valve_port="air",
-                                             dispense_valve_port="valve", speed=air_flush_speed, **kwargs)
+        if port_info['usage'] is not None:
+            if port_info['usage'].lower() == 'stock':
+                switch_port_valve(valve=syringe_valve, port=port_name, **kwargs)
+                syringe_draw_and_dispense_volume(syringe_pump=syringe_pump, volume=air_flush_volume, draw_valve_port="air",
+                                                dispense_valve_port="valve", speed=air_flush_speed, **kwargs)
 
 
 @flow
@@ -125,8 +127,8 @@ def empty_and_stop_pumps(
     config = {**DEFAULT_CONFIG, **kwargs}
     parallel_cells = config['parallel_cells']
     
-    run_pump(pump='longerWE01', speed=pump_speed, direction=False, **kwargs)
-    run_pump(pump='longerCE01', speed=pump_speed, direction=False, **kwargs)
+    run_pump(pump='longerWE01', speed=pump_speed, direction=True, **kwargs)
+    run_pump(pump='longerCE01', speed=pump_speed, direction=True, **kwargs)
     time.sleep(wash_time)
     for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
         client.set(name=f'flow_cell{cell_str}_content',value='empty_contaminated')
@@ -178,29 +180,29 @@ def wash_flow_cell(
     #Empty and wash WE and CE vials
     for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
         compartment_wash(syringe_pump='tecanRX01', compartment=f'WEvial{cell_str}', repeats=wash_comp_repeats,
-                         wash_vol=wash_comp_volume, pump_speed=wash_comp_speed,
-                         pump_speed_last_empty=wash_comp_speed_last_empty, **kwargs)
+                         wash_vol=wash_comp_volume, speed=wash_comp_speed,
+                         speed_last_empty=wash_comp_speed_last_empty, **kwargs)
         compartment_wash(syringe_pump='tecanRX01', compartment=f'CEvial{cell_str}', repeats=wash_comp_repeats,
-                         wash_vol=wash_comp_volume, pump_speed=wash_comp_speed,
-                         pump_speed_last_empty=wash_comp_speed_last_empty, **kwargs)
+                         wash_vol=wash_comp_volume, speed=wash_comp_speed,
+                         speed_last_empty=wash_comp_speed_last_empty, **kwargs)
     
     #Clean flow cell
     for _ in range(repeats):
         for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
             compartment_fill(syringe_pump='tecanRX01', source='water', destination=f'WEvial{cell_str}', volume=wash_comp_volume, speed=filling_speed, **kwargs)
             compartment_fill(syringe_pump='tecanRX01', source='water', destination=f'CEvial{cell_str}', volume=wash_comp_volume, speed=filling_speed, **kwargs)
-        run_pump(pump='longerWE01', speed=pump_speed, **kwargs)
-        run_pump(pump='longerCE01', speed=pump_speed, **kwargs)
+        run_pump(pump='longerWE01', speed=pump_speed, direction=False, **kwargs)
+        run_pump(pump='longerCE01', speed=pump_speed, direction=False, **kwargs)
         for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
             client.set(name=f'flow_cell{cell_str}_content',value='water_contaminated')
         time.sleep(wash_time)
         for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
             compartment_wash(syringe_pump='tecanRX01', compartment=f'WEvial{cell_str}', repeats=wash_comp_repeats,
-                             wash_vol=wash_comp_volume, pump_speed=wash_comp_speed,
-                             pump_speed_last_empty=wash_comp_speed_last_empty, **kwargs)
+                             wash_vol=wash_comp_volume, speed=wash_comp_speed,
+                             speed_last_empty=wash_comp_speed_last_empty, **kwargs)
             compartment_wash(syringe_pump='tecanRX01', compartment=f'CEvial{cell_str}', repeats=wash_comp_repeats,
-                             wash_vol=wash_comp_volume, pump_speed=wash_comp_speed,
-                             pump_speed_last_empty=wash_comp_speed_last_empty, **kwargs)
+                             wash_vol=wash_comp_volume, speed=wash_comp_speed,
+                             speed_last_empty=wash_comp_speed_last_empty, **kwargs)
 
         empty_and_stop_pumps(wash_time=wash_time, pump_speed=pump_speed,**kwargs)
         
@@ -305,8 +307,8 @@ def electrodeposition(
         compartment_fill(syringe_pump='tecanRX01', source='anolyte', destination=f'CEvial{cell_str}', volume=anolyte_volume,
                          speed=filling_speed, **kwargs)
 
-    run_pump(pump='longerWE01', speed=pump_speed, **kwargs)
-    run_pump(pump='longerCE01', speed=pump_speed, **kwargs)
+    run_pump(pump='longerWE01', speed=pump_speed, direction=False, **kwargs)
+    run_pump(pump='longerCE01', speed=pump_speed, direction=False, **kwargs)
 
     asyncio.run(run_method_parallel(parallel_cells=parallel_cells, folder=str(data_path),
                             experiment_ids=experiment_ids, mode="CP", params= {'current':current, 'duration':time_rx}, 
@@ -371,8 +373,8 @@ def electrosynthesis(
                          speed=filling_speed, **kwargs)
         client.set(name=f'ID{exp_id}_content', value=json.dumps(dict(elyte_ratios)))
 
-    run_pump(pump='longerWE01', speed=pump_speed, **kwargs)
-    run_pump(pump='longerCE01', speed=pump_speed, **kwargs)
+    run_pump(pump='longerWE01', speed=pump_speed, direction=False, **kwargs)
+    run_pump(pump='longerCE01', speed=pump_speed, direction=False, **kwargs)
 
     client.set(name='reaction_status', value=time_rx)
 
@@ -429,8 +431,8 @@ def electrodisolution(
                          speed=filling_speed, **kwargs)
         client.set(name=f'flow_cell{cell_str}_content', value='acid')
 
-    run_pump(pump='longerCE01', speed=pump_speed, **kwargs)
-    run_pump(pump='longerWE01', speed=pump_speed, **kwargs)
+    run_pump(pump='longerCE01', speed=pump_speed, direction=False, **kwargs)
+    run_pump(pump='longerWE01', speed=pump_speed, direction=False, **kwargs)
 
     asyncio.run(run_method_parallel(parallel_cells=parallel_cells, folder=str(data_path),
                                     experiment_ids=experiment_ids, mode="CP",
