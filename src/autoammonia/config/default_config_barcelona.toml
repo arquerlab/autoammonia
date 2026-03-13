@@ -63,13 +63,13 @@ vial_full_volume = 0.8
 
 wash_flow_cell_volume = 10
 wash_flow_cell_time = 120
-wash_flow_cell_speed = 2.5
-wash_flow_cell_repeats = 2
-wash_flow_cell_filling_speed = 0.4
+wash_flow_cell_speed = 1.6
+wash_flow_cell_repeats = 1
+wash_flow_cell_filling_speed = 0.6
 wash_flow_cell_wash_comp_repeats = 1
-wash_flow_cell_wash_comp_volume = 10
+wash_flow_cell_wash_comp_volume = 8
 wash_flow_cell_wash_comp_speed = 0.4
-wash_flow_cell_wash_comp_speed_last_empty = 0.1
+wash_flow_cell_wash_comp_speed_last_empty = 0.2
 
 wash_vial_repeats = 6
 wash_vial_volume = 0.8

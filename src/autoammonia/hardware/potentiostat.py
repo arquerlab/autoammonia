@@ -1,6 +1,6 @@
 import asyncio
 from typing import Optional, Any, Dict, List
-from prefect import task, flow
+from prefect import task, flow, get_run_logger
 
 from ..utils.decorators import run_on_component_with_lock
 from ..config.config import DEFAULT_CONFIG
@@ -74,6 +74,7 @@ async def run_method_parallel(parallel_cells: int,
         sampling_interval (int | float): Sampling interval in seconds.
         **kwargs: Additional configuration options.
     """
+    logger = get_run_logger()
     potentiostats = ["potentiostat" + str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]
     filenames = [f'{exp_id}_cell{str(cell).zfill(2)}_method_{mode}.csv' for cell, exp_id in
                  zip(range(1, parallel_cells + 1), experiment_ids)]
@@ -88,4 +89,4 @@ async def run_method_parallel(parallel_cells: int,
     # Get the result from the completed task(s)
     for completed_task in done:
         result = await completed_task
-        print(f"Completed: {result}")
+        logger.info(f"Completed: {result}")
