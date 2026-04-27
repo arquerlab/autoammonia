@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 
 from .config.config import DEFAULT_CONFIG, HOSTNAME
+from .config.components_config import CONFIG_COMPONENTS
 from .db.db_functions import add_results_to_db
 from .hardware.uv_vis_module import acquire_spectrum
 from .utils.decorators import with_lock
@@ -97,7 +98,7 @@ async def track_reaction(
                 initialize_pump(syringe_pump=pump, **kwargs)
 
     while True:
-        reaction_status = client.get('reaction_status')
+        reaction_status = client.get('reaction_status') 
         if reaction_status == "waiting":
             await asyncio.sleep(20)
         elif reaction_status == "0":
@@ -132,23 +133,26 @@ def measure_vial(
     filling_speed = config['aliquot_filling_speed']
     uv_vis_integration_time = config['uv_vis_integration_time']
     uv_vis_wash_volume = config['uv_vis_wash_volume']
+    uv_vis_wash_repeats = config['uv_vis_wash_repeats']
+    uv_vis_wash_speed = config['uv_vis_wash_speed']
     uv_vis_aliquot_volume = config['uv_vis_aliquot_volume']
-    wash_uvvis_repeats = config['uv_vis_wash_repeats']
-    wash_uvvis_volume = config['uv_vis_wash_volume']
-    wash_uvvis_speed = config['uv_vis_wash_speed']
 
     logger = get_run_logger()
-    syringe_transfer_uvvis_and_wash(
-        syringe_pump='tecanAZ01', aliquot_volume=uv_vis_aliquot_volume, draw_valve_port='water', speed=filling_speed,
-        wash_repeats=0, wash_vol=0, wash_speed=wash_vial_speed, **kwargs
+    syringe_transfer_unlocked(
+        syringe_pump='tecanAZ01', volume=uv_vis_wash_volume, draw_valve_port='water', dispense_valve_port='uv_vis',
+        speed=filling_speed, air_flush_factor=0, **kwargs
     )
     logger.info(f'[measure_vial] UV-VIS flow cell filled with water (reference)')
     df_ref_dark = acquire_spectrum(spectrometer='UVVIS01', lamp='lamp01', integration_time= uv_vis_integration_time, dark=True)
     logger.info(f'[measure_vial] Dark reference spectrum acquired')
     df_ref = acquire_spectrum(spectrometer='UVVIS01', lamp='lamp01', integration_time= uv_vis_integration_time, dark=False)
     logger.info(f'[measure_vial] Reference spectrum acquired')
-    compartment_wash_uvvis(syringe_pump='tecanAZ01', 
-                repeats=wash_uvvis_repeats, wash_vol=wash_uvvis_volume, speed=wash_uvvis_speed, **kwargs)
+    syringe_volume = CONFIG_COMPONENTS['tecanAZ01']['syringe_volume'] * 1000
+    syringe_transfer_unlocked(
+        syringe_pump='tecanAZ01', volume=syringe_volume, draw_valve_port='air', dispense_valve_port='uv_vis',
+        speed=filling_speed, air_flush_factor=1, **kwargs
+    )
+    logger.info(f'[measure_vial] Air flushed from UV-VIS flow cell')
     syringe_transfer_uvvis_and_wash(
         syringe_pump='tecanAZ01', aliquot_volume=uv_vis_aliquot_volume, draw_valve_port=vial, speed=filling_speed,
         wash_repeats=wash_vial_repeats, wash_vol=wash_vial_volume, wash_speed=wash_vial_speed, **kwargs
@@ -173,8 +177,10 @@ def measure_vial(
     filepath = folder / f'ID{exp_id}_RXT{time_rxn}_VIAL{vial}.csv'
     df.to_csv(filepath, index=False)
     if HOSTNAME != client.get('main_hostname'):
-        filepath_db = transfer_file_scp(local_file=filepath, remote_folder=client.get('data_path_uvvis'),
-                          remote_user='poten', remote_host=client.get('main_hostname'), remote_password="potato12")
+        filepath_db = filepath
+        logger.critical(f'hostname: {HOSTNAME}, main_hostname: {client.get('main_hostname')}')
+        """filepath_db = transfer_file_scp(local_file=filepath, remote_folder=client.get('data_path_uvvis'),
+                          remote_user='poten', remote_host=client.get('main_hostname'), remote_password="potato12")"""
     else:
         filepath_db = filepath
     
@@ -185,11 +191,12 @@ def measure_vial(
     )
     
     # UV-VIS washing of flow cell
-    compartment_fill(
-        syringe_pump='tecanAZ01', volume=uv_vis_wash_volume, source=vial, destination='uv_vis',
-        speed=filling_speed, **kwargs
+    wash_volume = uv_vis_wash_volume * uv_vis_wash_repeats
+    syringe_transfer_unlocked(
+        syringe_pump='tecanAZ01', volume=wash_volume, draw_valve_port='water', dispense_valve_port='uv_vis',
+        speed=uv_vis_wash_speed, **kwargs
     )
-    logger.info(f'UV-VIS flow cell washed with {uv_vis_wash_volume} mL of water')
+    logger.info(f'UV-VIS flow cell washed with {wash_volume} mL of water')
 
     compartment_wash(syringe_pump='tecanAZ01', compartment=vial, repeats=wash_vial_repeats,
                      wash_vol=wash_vial_volume, speed=wash_vial_speed, speed_last_empty=wash_vial_last_empty,
@@ -251,11 +258,37 @@ def fill_vial_detection_mix(
 
 
 
-def analysis_module_deploy():
+def analysis_module_deploy(
+    deployment_name: str = "analysis_module_flow",
+    work_pool_name: str = "analysis_module_pool",
+    entrypoint: str = "analysis_module.py:track_reaction",
+    environment: Optional[dict[str, str]] = None,
+) -> None:
+    """
+    Create a Prefect deployment for the analysis module flow.
+
+    Args:
+        deployment_name (str): Name of the deployment to register in Prefect.
+            Defaults to "analysis_module_flow".
+        work_pool_name (str): Work pool that will execute this deployment.
+            Defaults to "analysis_module_pool".
+        entrypoint (str): Module entrypoint for the deployed flow.
+            Defaults to "analysis_module.py:track_reaction".
+        environment (Optional[dict[str, str]]): Environment variables to inject
+            at run time in the worker process. Defaults to None.
+
+    Returns:
+        None: This function registers the deployment in Prefect.
+    """
+    deploy_kwargs: dict[str, Any] = {
+        "name": deployment_name,
+        "work_pool_name": work_pool_name,
+        "parameters": {"kwargs": {}},
+    }
+    if environment is not None:
+        deploy_kwargs["job_variables"] = {"env": environment}
+
     track_reaction.from_source(
         source=Path(__file__).parent,
-        entrypoint="analysis_module.py:track_reaction",
-    ).deploy(
-        name="analysis_module_flow",
-        work_pool_name="analysis_module_pool",
-    )
+        entrypoint=entrypoint,
+    ).deploy(**deploy_kwargs)

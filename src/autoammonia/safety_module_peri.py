@@ -83,11 +83,37 @@ def track_safety(
         time.sleep(30)
         
         
-def safety_module_deploy():
+def safety_module_deploy(
+    deployment_name: str = "safety_module_flow",
+    work_pool_name: str = "reaction_module_pool",
+    entrypoint: str = "safety_module_peri.py:track_safety",
+    environment: Optional[dict[str, str]] = None,
+) -> None:
+    """
+    Create a Prefect deployment for the safety module flow.
+
+    Args:
+        deployment_name (str): Name of the deployment to register in Prefect.
+            Defaults to "safety_module_flow".
+        work_pool_name (str): Work pool that will execute this deployment.
+            Defaults to "reaction_module_pool".
+        entrypoint (str): Module entrypoint for the deployed flow.
+            Defaults to "safety_module_peri.py:track_safety".
+        environment (Optional[dict[str, str]]): Environment variables to inject
+            at run time in the worker process. Defaults to None.
+
+    Returns:
+        None: This function registers the deployment in Prefect.
+    """
+    deploy_kwargs: dict[str, Any] = {
+        "name": deployment_name,
+        "work_pool_name": work_pool_name,
+        "parameters": {"kwargs": {}},
+    }
+    if environment is not None:
+        deploy_kwargs["job_variables"] = {"env": environment}
+
     track_safety.from_source(
         source=Path(__file__).parent,
-        entrypoint=f"safety_module_peri.py:track_safety",
-    ).deploy(
-        name="safety_module_flow",
-        work_pool_name="reaction_module_pool",
-    )
+        entrypoint=entrypoint,
+    ).deploy(**deploy_kwargs)

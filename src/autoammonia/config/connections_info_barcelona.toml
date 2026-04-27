@@ -4,7 +4,7 @@ valveAZ01  = { port = 9, con_vol = 0.14, volume = 0, max_vol = 1.5 }
 air        = { port = 5, con_vol = 0, volume = 1e9, max_vol = 1e9 }
 WEvial02   = { port = 7, con_vol = 0.18, volume = 0, max_vol = 22 }
 WEvial01   = { port = 6, con_vol = 0.295, volume = 0, max_vol = 22 }
-uv_vis     = { port = 8, con_vol = 0.9, volume = 0, max_vol = 100 }
+uv_vis     = { port = 8, con_vol = 1.05, volume = 0, max_vol = 1e9 }
 d3         = { port = 4, con_vol = 0.245, usage = "stock", volume = 40, max_vol = 40 }
 d2         = { port = 3, con_vol = 0.245, usage = "stock", volume = 40, max_vol = 40 }
 d1         = { port = 2, con_vol = 0.26, usage = "stock", volume = 40, max_vol = 40 }
@@ -31,8 +31,8 @@ CEvial01   = { port = 8, con_vol = 0.33, volume = 0, max_vol = 22 }
 valveRX01  = { port = 7, con_vol = 0.17, volume = 0, max_vol = 1.5 }
 anolyte       = { port = 6, con_vol = 0.42, usage = "stock", volume = 500, max_vol = 500 }
 air        = { port = 5, con_vol = 0, usage = "stock", volume = 1e9, max_vol = 1e9 }
-Cu         = { port = 4, con_vol = 0.46, usage = "stock", composition = "Cu", concentration = 0.1, volume = 40, max_vol = 1000 }
-Ni         = { port = 3, con_vol = 0.46, usage = "stock", composition = "Ni", concentration = 0.1, volume = 0, max_vol = 1000 }
+Cu         = { port = 4, con_vol = 0.46, usage = "stock", composition = "Cu", concentration = 0.1, volume = 250, max_vol = 1000 }
+Ni         = { port = 3, con_vol = 0.46, usage = "stock", composition = "Ni", concentration = 0.1, volume = 250, max_vol = 1000 }
 Co         = { port = 2, con_vol = 0.46, usage = "stock", composition = "Co", concentration = 0.1, volume = 0, max_vol = 1000 }
 water      = { port = 1, con_vol = 0.68, usage = "stock", volume = 5000, max_vol = 5000 }
 
@@ -47,7 +47,7 @@ elyte5   = { port = 5, con_vol = 0.34, usage = "stock", composition = "Ca(NO3)2"
 elyte4   = { port = 4, con_vol = 0.34, usage = "stock", composition = "Mg(NO3)2", concentration = 0.1, volume = 0, max_vol = 100 }
 elyte3   = { port = 3, con_vol = 0.34, usage = "stock", composition = "NaCl", concentration = 0.1, volume = 0, max_vol = 100 }
 elyte2   = { port = 2, con_vol = 0.34, usage = "stock", composition = "NaBr", concentration = 0.1, volume = 0, max_vol = 100 }
-elyte1   = { port = 1, con_vol = 0.34, usage = "stock", composition = "KNO3", concentration = 0.1, volume = 100, max_vol = 100 }
+elyte1   = { port = 1, con_vol = 0.34, usage = "stock", composition = "KNO3", concentration = 0.1, volume = 250, max_vol = 100 }
 
 [setup]
 components = ["potentiostat01", "valveRX01", "valveAZ01", "tecanAZ01", "tecanRX01", "longerCE01", "longerWE01"]

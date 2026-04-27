@@ -10,6 +10,7 @@ import platform
 
 from autoammonia.db.db_functions import add_experiment_to_db
 from autoammonia.utils.files import get_default_folder
+from autoammonia.utils.echem import get_ocp_potential
 from .config.config import DEFAULT_CONFIG, CONNECTIONS_INFO
 from .config.components_config import CONFIG_COMPONENTS
 
@@ -179,10 +180,10 @@ def wash_flow_cell(
     
     #Empty and wash WE and CE vials
     for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
-        compartment_wash(syringe_pump='tecanRX01', compartment=f'WEvial{cell_str}', repeats=wash_comp_repeats,
+        compartment_wash(syringe_pump='tecanRX01', compartment=f'WEvial{cell_str}', repeats=0,
                          wash_vol=wash_comp_volume, speed=wash_comp_speed,
                          speed_last_empty=wash_comp_speed_last_empty, **kwargs)
-        compartment_wash(syringe_pump='tecanRX01', compartment=f'CEvial{cell_str}', repeats=wash_comp_repeats,
+        compartment_wash(syringe_pump='tecanRX01', compartment=f'CEvial{cell_str}', repeats=0,
                          wash_vol=wash_comp_volume, speed=wash_comp_speed,
                          speed_last_empty=wash_comp_speed_last_empty, **kwargs)
     
@@ -196,6 +197,7 @@ def wash_flow_cell(
         for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
             client.set(name=f'flow_cell{cell_str}_content',value='water_contaminated')
         time.sleep(wash_time)
+        empty_and_stop_pumps(wash_time=wash_time, pump_speed=pump_speed,**kwargs)
         for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
             compartment_wash(syringe_pump='tecanRX01', compartment=f'WEvial{cell_str}', repeats=wash_comp_repeats,
                              wash_vol=wash_comp_volume, speed=wash_comp_speed,
@@ -203,8 +205,6 @@ def wash_flow_cell(
             compartment_wash(syringe_pump='tecanRX01', compartment=f'CEvial{cell_str}', repeats=wash_comp_repeats,
                              wash_vol=wash_comp_volume, speed=wash_comp_speed,
                              speed_last_empty=wash_comp_speed_last_empty, **kwargs)
-
-        empty_and_stop_pumps(wash_time=wash_time, pump_speed=pump_speed,**kwargs)
         
     for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
         client.set(name=f'flow_cell{cell_str}_content',value='clean')
@@ -246,14 +246,16 @@ def prepare_elyte_mix(
     compositions = [ratio / sum(elyte_ratios) for ratio in elyte_ratios]
     elyte_volumes = [comp * volume for comp in compositions]
     
+    transfers = 0
     for vol, port in zip(elyte_volumes,elyte_ports):
         if vol > 0:
+            transfers += 1
             syringe_transfer_and_wash(syringe_pump=syringe_pump, volume=vol, draw_valve_port=port,
                                       dispense_valve_port=compartment, speed=filling_speed, **kwargs)
-
-    syringe_transfer_and_wash(syringe_pump=syringe_pump, volume=volume * 0.5,
-                              draw_valve_port=compartment, dispense_valve_port=compartment,
-                              speed=mixing_speed, **kwargs)  # Mix the solution slightly
+    if transfers > 0:
+        syringe_transfer_and_wash(syringe_pump=syringe_pump, volume=volume * 0.5,
+                                draw_valve_port=compartment, dispense_valve_port=compartment,
+                                speed=mixing_speed, **kwargs)  # Mix the solution slightly
     client.set(name=f'{compartment}_volume', value=volume)
 
 
@@ -318,18 +320,52 @@ def electrodeposition(
 
     wash_flow_cell(**kwargs)
 
+@flow
+def characterization(
+        data_path: Path,
+        experiment_ids: List[int],
+        suffix: str,
+        **kwargs: Any,
+) -> None:
+    """
+    Conducts characterization of the electrodeposition process.
+    """
+    config = {**DEFAULT_CONFIG, **kwargs}
+    parallel_cells = config['parallel_cells']
 
+    asyncio.run(run_method_parallel(parallel_cells=parallel_cells, folder=str(data_path),
+                                    experiment_ids=experiment_ids, mode="OCP",
+                                    params={'duration': 10},
+                                    tia_gain=0, filename_suffix=suffix, **kwargs))
+    ocp_pots = get_ocp_potential(folder=str(data_path), parallel_cells=parallel_cells, 
+                                    experiment_ids=experiment_ids, filename_suffix='prerx')
+    cvs_start = [ocp_pots[i]+0.1 for i in range(len(ocp_pots))]
+    cvs_end = [ocp_pots[i]-0.1 for i in range(len(ocp_pots))]
+    cv_params = [{'start': ocp_pots[0], 'vertex1': cvs_start[0], 'vertex2': cvs_end[0], 
+    'end': ocp_pots[0], 'scan_rate': scan_rate, 'cycles': 3} for scan_rate in [10, 25, 50, 100, 200]]
+    for i in range(len(cv_params)):
+        cv_params_i = cv_params[i]
+        rate = cv_params_i['scan_rate']
+        asyncio.run(run_method_parallel(parallel_cells=parallel_cells, folder=str(data_path),
+                                        experiment_ids=experiment_ids, mode="CV",
+                                        params=cv_params_i,
+                                        tia_gain=0, filename_suffix=f'{suffix}_ECSA_rate_{rate:.3f}', **kwargs))
+    asyncio.run(run_method_parallel(parallel_cells=parallel_cells, folder=str(data_path),
+                                    experiment_ids=experiment_ids, mode="LSV",
+                                    params={'start': 0, 'end': +1.8, 'scan_rate': 10},
+                                    tia_gain=0, filename_suffix=suffix, **kwargs))
 @flow
 def electrosynthesis(
         data_path: Path,
         experiment_ids: List[int],
         elyte_ratios_list: List[List[Tuple[str,float]]],
-        current: Optional[float] = None,
-        time_rx: Optional[float] = None,
-        catholyte_volume: Optional[float] = None,
-        anolyte_volume: Optional[float] = None,
-        pump_speed: Optional[float] = None,
-        filling_speed: Optional[float] = None,
+        ignore_steps: List[str] | None = None,
+        current: float |  None = None,
+        time_rx: float | None = None,
+        catholyte_volume: float | None = None,
+        anolyte_volume: float | None = None,
+        pump_speed: float | None = None,
+        filling_speed: float | None = None,
         **kwargs: Any,
 ) -> None:
     """
@@ -378,10 +414,12 @@ def electrosynthesis(
 
     client.set(name='reaction_status', value=time_rx)
 
+    characterization(data_path=data_path, experiment_ids=experiment_ids, suffix='prerx', **kwargs)
     asyncio.run(run_method_parallel(parallel_cells=parallel_cells, folder=str(data_path),
                                     experiment_ids=experiment_ids, mode="CP",
                                     params={'current': current, 'duration': time_rx},
                                     tia_gain=0, **kwargs))
+    characterization(data_path=data_path, experiment_ids=experiment_ids, suffix='postrx', **kwargs)
 
     client.set(name='reaction_status', value="waiting")
 
@@ -435,8 +473,8 @@ def electrodisolution(
     run_pump(pump='longerWE01', speed=pump_speed, direction=False, **kwargs)
 
     asyncio.run(run_method_parallel(parallel_cells=parallel_cells, folder=str(data_path),
-                                    experiment_ids=experiment_ids, mode="CP",
-                                    params={'current': 0, 'duration': time_rx},
+                                    experiment_ids=experiment_ids, mode="OCP",
+                                    params={'duration': time_rx},
                                     tia_gain=2, **kwargs))
 
     wash_flow_cell(**kwargs)
@@ -445,6 +483,7 @@ def electrodisolution(
 def execute_experiment(
         metal_ratios_list: List[List[Tuple[str, float]]],
         elyte_ratios_list: List[List[Tuple[str, float]]],
+        ignore_steps: List[str] = [],
         **kwargs: Any,
 )->None:
     """
@@ -482,10 +521,12 @@ def execute_experiment(
         client.set(f'WEvial{cell_str}_EXP_ID', str(exp_id))
         experiment_ids += [exp_id]
 
-    electrodeposition(data_path=paths[0], experiment_ids=experiment_ids, metal_ratios_list=metal_ratios_list, **kwargs)
-    electrosynthesis(data_path=paths[1], experiment_ids=experiment_ids, elyte_ratios_list=elyte_ratios_list, **kwargs)
-    electrodisolution(data_path=paths[2], experiment_ids=experiment_ids, **kwargs)
-
+    if 'electrodeposition' not in ignore_steps:
+        electrodeposition(data_path=paths[0], experiment_ids=experiment_ids, metal_ratios_list=metal_ratios_list, **kwargs)
+    if 'electrosynthesis' not in ignore_steps:
+        electrosynthesis(data_path=paths[1], experiment_ids=experiment_ids, elyte_ratios_list=elyte_ratios_list, ignore_steps=ignore_steps, **kwargs)
+    if 'electrodisolution' not in ignore_steps:
+        electrodisolution(data_path=paths[2], experiment_ids=experiment_ids, **kwargs)
 
 
 if __name__ == "__main__":

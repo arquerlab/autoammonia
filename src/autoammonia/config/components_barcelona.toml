@@ -14,14 +14,14 @@ baudrate = 1200
 class = "matterlab_pumps.RunzePump"
 com_port = "COM3"
 address = 3
-syringe_volume = 0.0045
+syringe_volume = 0.0048
 num_valve_port = 12
 
 [tecanAZ01]
 class = "matterlab_pumps.RunzePump"
 com_port = "COM20"
 address = 1
-syringe_volume = 0.00125
+syringe_volume = 0.0011
 num_valve_port = 12
 
 [valveRX01]

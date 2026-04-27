@@ -49,6 +49,7 @@ class PotentiostatControllerMock:
             "LSV": {"pid": False, "waveform_func": linear_sweep, "param_class": LinearSweepParams},
             "CV": {"pid": False, "waveform_func": cyclic_voltammetry, "param_class": CyclicVoltammetryParams},
             "PSTEP": {"pid": False, "waveform_func": potential_steps, "param_class": PotentialStepsParams},
+            "OCP": {"pid": False, "waveform_func": single_point, "param_class": OCPParams},
 
             "CP": {"pid": True, "waveform_func": single_point, "param_class": SinglePointParams},
             "GS": {"pid": True, "waveform_func": linear_galvanostatic_sweep,
@@ -63,6 +64,7 @@ class PotentiostatControllerMock:
         params: dict,
         *,
         tia_gain: int = 0,
+        sampling_interval: float | None = None,
         reducing_factor: int | None = None,
         filename: str | None = None,
         folder: str | None = None
@@ -71,7 +73,10 @@ class PotentiostatControllerMock:
         Mock implementation of apply_measurement.
         Validates params against the real pyBEEP parameter classes.
         """
-        print(f"[MOCK] apply_measurement called with mode={mode}")
+        print(
+            f"[MOCK] apply_measurement called with mode={mode}, "
+            f"tia_gain={tia_gain}, sampling_interval={sampling_interval}"
+        )
         
         mode_upper = mode.upper()
         if mode_upper not in self._measurement_modes:

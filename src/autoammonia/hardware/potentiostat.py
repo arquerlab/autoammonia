@@ -56,6 +56,7 @@ async def run_method_parallel(parallel_cells: int,
                       params: Dict[str, Any],
                       tia_gain: int,
                       sampling_interval: int | float | None = None,
+                      filename_suffix: str | None = None,
                       **kwargs,
 )->None:
     """
@@ -72,11 +73,12 @@ async def run_method_parallel(parallel_cells: int,
         params (Dict[str, Any]): Dictionary of measurement parameters to use for each cell.
         tia_gain (int): Gain setting for the transimpedance amplifier.
         sampling_interval (int | float): Sampling interval in seconds.
+        filename_suffix (str | None): Suffix for the filename.
         **kwargs: Additional configuration options.
     """
     logger = get_run_logger()
     potentiostats = ["potentiostat" + str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]
-    filenames = [f'{exp_id}_cell{str(cell).zfill(2)}_method_{mode}.csv' for cell, exp_id in
+    filenames = [f'{exp_id}_cell{str(cell).zfill(2)}_method_{mode}{f"_{filename_suffix}" if filename_suffix is not None else ""}.csv' for cell, exp_id in
                  zip(range(1, parallel_cells + 1), experiment_ids)]
     tasks = [asyncio.create_task(run_echem_method(potentiostat=potentiostats[i],mode=mode, method_params=params,
                                         tia_gain=tia_gain, sampling_interval=sampling_interval, 

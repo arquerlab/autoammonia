@@ -1,7 +1,7 @@
 from prefect import flow, task, get_run_logger
 import json
 import time
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, List
 from pathlib import Path
 
 from .db.db_functions import add_valid_electrolytes_and_metals_to_db
@@ -47,6 +47,7 @@ def process_experiment_queue(delete_previous_queue: Optional[bool] = None,
                              parallel_cells: Optional[int] = None,
                              initialize_pumps: Optional[bool] = False,
                              restore_pumps: Optional[bool] = False,
+                             ignore_steps: Optional[List[str]] = [],
                              **kwargs: Any
 ) -> None:
     """
@@ -114,7 +115,7 @@ def process_experiment_queue(delete_previous_queue: Optional[bool] = None,
                 precursors += [exp['composition']]
                 electrolytes += [exp['electrolyte']]
             add_valid_electrolytes_and_metals_to_db()
-            execute_experiment(precursors, electrolytes, **kwargs)
+            execute_experiment(precursors, electrolytes, ignore_steps=ignore_steps, **kwargs)
     finally:
         if restore_pumps:
             for pump in syringe_pumps:
@@ -123,11 +124,44 @@ def process_experiment_queue(delete_previous_queue: Optional[bool] = None,
         else:
             logger.info("Flow stopped.")
 
-def reaction_module_deploy():
-    process_experiment_queue.from_source(
-        source=Path(__file__).parent,
-        entrypoint=f"reaction_module.py:process_experiment_queue",
-    ).deploy(
-        name="reaction_module_flow",
-        work_pool_name="reaction_module_pool",
-    )
+def reaction_module_deploy(
+    deployment_names: List[str] | str = ["reaction_module_flow", "execute_experiment_flow"],
+    work_pool_name: str = "reaction_module_pool",
+    entrypoints: List[str] | str = ["reaction_module.py:process_experiment_queue", "reaction_module.py:execute_experiment"],
+    environment: Optional[dict[str, str]] = None,
+) -> None:
+    """
+    Create a Prefect deployment for the reaction module flow.
+
+    Args:
+        deployment_name (str): Name of the deployment to register in Prefect.
+            Defaults to "reaction_module_flow".
+        work_pool_name (str): Work pool that will execute this deployment.
+            Defaults to "reaction_module_pool".
+        entrypoint (str): Module entrypoint for the deployed flow.
+            Defaults to "reaction_module.py:process_experiment_queue".
+        environment (Optional[dict[str, str]]): Environment variables to inject
+            at run time in the worker process. Defaults to None.
+
+    Returns:
+        None: This function registers the deployment in Prefect.
+    """
+    if isinstance(deployment_names, str):
+        deployment_names = [deployment_names]
+    if isinstance(entrypoints, str):
+        entrypoints = [entrypoints]
+    deploy_kwargs: List[dict[str, Any]] = [{
+        "name": deployment_name,
+        "work_pool_name": work_pool_name,
+        "parameters": {"kwargs": {}},
+    } for deployment_name in deployment_names]
+    if environment is not None:
+        for deploy_kwargs_item in deploy_kwargs:
+            deploy_kwargs_item["job_variables"] = {"env": environment}
+
+    for entrypoint, deploy_kwargs_item in zip(entrypoints, deploy_kwargs):
+        eval(entrypoint.split(':')[1]).from_source(
+            source=Path(__file__).parent,
+            entrypoint=entrypoint,
+        ).deploy(**deploy_kwargs_item)
+
