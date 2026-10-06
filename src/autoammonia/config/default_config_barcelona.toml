@@ -1,5 +1,5 @@
-data_path = "~/autoammonia_data"
-calibration_path = "~/autoammonia_data/calibration"
+data_path = "~/ammonia_data"
+calibration_path = "~/ammonia_data/calibration"
 parallel_cells = 1
 delete_previous_queue = true
 overwrite_prefect_variables = true
@@ -25,25 +25,25 @@ syringe_fail_retrials = 5
 elyte_mix_filling_speed = 0.2
 elyte_mix_mixing_speed = 0.4
 
-electrodeposition_current = 2.82743339
+electrodeposition_current = 0.2
 electrodeposition_time = 360  # 8*60
 electrodeposition_deposition_volume = 10
 electrodeposition_anolyte_volume = 10
-electrodeposition_pump_speed = 1
+electrodeposition_pump_speed = 1.2
 electrodeposition_filling_speed = 0.2
 
-reaction_current = 28.2743339
+reaction_current = 2
 reaction_time = 1200  # 20*60
 reaction_catholyte_volume = 20
 reaction_anolyte_volume = 20
-reaction_pump_speed = 1
+reaction_pump_speed = 1.2
 reaction_filling_speed = 0.2
 
-electrodisolution_time = 600
-electrodisolution_catholyte_volume = 10
-electrodisolution_anolyte_volume = 10
-electrodisolution_pump_speed = 1
-electrodisolution_filling_speed = 0.2
+electrodissolution_time = 900
+electrodissolution_catholyte_volume = 10
+electrodissolution_anolyte_volume = 10
+electrodissolution_pump_speed = 1.2
+electrodissolution_filling_speed = 0.2
 
 uv_vis_integration_time = 0.10
 uv_vis_retries = 5
@@ -63,7 +63,7 @@ vial_full_volume = 0.8
 
 wash_flow_cell_volume = 8
 wash_flow_cell_time = 120
-wash_flow_cell_speed = 1.4
+wash_flow_cell_speed = 1.8
 wash_flow_cell_repeats = 1
 wash_flow_cell_filling_speed = 0.8
 wash_flow_cell_wash_comp_repeats = 1

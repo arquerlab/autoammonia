@@ -1,0 +1,17 @@
+electrode_area_cm2 = 0.2
+current_correction_factor = 10.0
+target_current_density_ma_cm2 = 10.0
+calibration_factor = 3.7631
+absorbance_metric = "peak_corrected"
+absorbance_peak_min_nm = 635.0
+absorbance_peak_max_nm = 695.0
+uvvis_plot_min_nm = 500.0
+uvvis_plot_max_nm = 850.0
+absorbance_rolling_window = 10
+koh_start_experiment_id = 139
+default_ph = 6.5
+koh_ph = 14.0
+ref_offset_v_agagcl_3m = 0.210
+mols_electrons_per_nh3 = 8.0
+faraday_constant_c_mol = 96485.0
+molar_mass_n_g_mol = 14.0067

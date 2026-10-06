@@ -5,6 +5,7 @@ from pathlib import Path
 import time
 from typing import Optional, Any
 from prefect import flow, get_run_logger
+from prefect.variables import Variable
 import numpy as np
 import pandas as pd
 
@@ -190,13 +191,22 @@ def measure_vial(
                   'vial': vial, 'time_rxn': time_rxn, 'integration_time': uv_vis_integration_time}
     )
     
-    # UV-VIS washing of flow cell
-    wash_volume = uv_vis_wash_volume * uv_vis_wash_repeats
+    # Trick uv_vis to be full
+    Variable.set('uv_vis', {'volume': 5, 'max_vol': 10000}, overwrite=True)
     syringe_transfer_unlocked(
-        syringe_pump='tecanAZ01', volume=wash_volume, draw_valve_port='water', dispense_valve_port='uv_vis',
-        speed=uv_vis_wash_speed, **kwargs
+        syringe_pump='tecanAZ01', volume=uv_vis_wash_volume, draw_valve_port='uv_vis', dispense_valve_port='waste',
+        speed=uv_vis_wash_speed, air_flush_factor=0, **kwargs
     )
-    logger.info(f'UV-VIS flow cell washed with {wash_volume} mL of water')
+    for _ in range(uv_vis_wash_repeats):
+        syringe_transfer_unlocked(
+            syringe_pump='tecanAZ01', volume=uv_vis_wash_volume, draw_valve_port='water', dispense_valve_port='uv_vis',
+            speed=uv_vis_wash_speed, air_flush_factor=0, **kwargs
+        )
+        syringe_transfer_unlocked(
+            syringe_pump='tecanAZ01', volume=uv_vis_wash_volume, draw_valve_port='uv_vis', dispense_valve_port='waste',
+            speed=uv_vis_wash_speed, air_flush_factor=0, **kwargs
+        )
+    logger.info(f'UV-VIS flow cell washed with {uv_vis_wash_volume} mL of water {uv_vis_wash_repeats} times')
 
     compartment_wash(syringe_pump='tecanAZ01', compartment=vial, repeats=wash_vial_repeats,
                      wash_vol=wash_vial_volume, speed=wash_vial_speed, speed_last_empty=wash_vial_last_empty,
@@ -242,7 +252,7 @@ def fill_vial_detection_mix(
         'aliquot_filling_speed']
 
     syringe_transfer_unlocked(
-        syringe_pump=syringe_pump, volume=0.2 - aliquot_volume, draw_valve_port='water',
+        syringe_pump=syringe_pump, volume=0.25 - aliquot_volume, draw_valve_port='water',
         dispense_valve_port=vial, speed=aliquot_filling_speed, **kwargs)
     syringe_transfer_unlocked(syringe_pump=syringe_pump, volume=d1_volume, draw_valve_port='d1', 
                               dispense_valve_port=vial, speed=aliquot_filling_speed, **kwargs)

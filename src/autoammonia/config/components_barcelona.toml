@@ -39,7 +39,7 @@ num_port = 12
 [potentiostat01]
 class = "pyBEEP.PotentiostatController"
 device_class = "pyBEEP.PotentiostatDevice"
-device_kwargs = { port = "COM15", address = 1 }
+device_kwargs = { port = "COM24", address = 1 }
 
 [UVVIS01]
 class = "matterlab_spectrometers.HamamatsuMiniSpectrometer"

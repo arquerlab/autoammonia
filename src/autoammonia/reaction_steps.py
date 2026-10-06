@@ -11,7 +11,7 @@ import platform
 from autoammonia.db.db_functions import add_experiment_to_db
 from autoammonia.utils.files import get_default_folder
 from autoammonia.utils.echem import get_ocp_potential
-from .config.config import DEFAULT_CONFIG, CONNECTIONS_INFO
+from .config.config import DEFAULT_CONFIG, CONNECTIONS_INFO, ACTIVE_SETUP
 from .config.components_config import CONFIG_COMPONENTS
 
 from .utils.redis_client import client
@@ -313,7 +313,7 @@ def electrodeposition(
     run_pump(pump='longerCE01', speed=pump_speed, direction=False, **kwargs)
 
     asyncio.run(run_method_parallel(parallel_cells=parallel_cells, folder=str(data_path),
-                            experiment_ids=experiment_ids, mode="CP", params= {'current':current, 'duration':time_rx}, 
+                            experiment_ids=experiment_ids, mode="CP", params= {'current':current/1000, 'duration':time_rx}, 
                             tia_gain=0, **kwargs))
     for cell_str in [str(cell).zfill(2) for cell in range(1, parallel_cells + 1)]:
         client.set(name=f'flow_cell{cell_str}_content',value='metal_salts')
@@ -336,11 +336,11 @@ def characterization(
     asyncio.run(run_method_parallel(parallel_cells=parallel_cells, folder=str(data_path),
                                     experiment_ids=experiment_ids, mode="OCP",
                                     params={'duration': 10},
-                                    tia_gain=0, filename_suffix=suffix, **kwargs))
+                                    tia_gain=3, filename_suffix=suffix, **kwargs))
     ocp_pots = get_ocp_potential(folder=str(data_path), parallel_cells=parallel_cells, 
                                     experiment_ids=experiment_ids, filename_suffix='prerx')
-    cvs_start = [ocp_pots[i]+0.1 for i in range(len(ocp_pots))]
-    cvs_end = [ocp_pots[i]-0.1 for i in range(len(ocp_pots))]
+    cvs_start = [0.1 for i in range(len(ocp_pots))]
+    cvs_end = [-0.1 for i in range(len(ocp_pots))]
     cv_params = [{'start': ocp_pots[0], 'vertex1': cvs_start[0], 'vertex2': cvs_end[0], 
     'end': ocp_pots[0], 'scan_rate': scan_rate, 'cycles': 3} for scan_rate in [10, 25, 50, 100, 200]]
     for i in range(len(cv_params)):
@@ -352,7 +352,7 @@ def characterization(
                                         tia_gain=0, filename_suffix=f'{suffix}_ECSA_rate_{rate:.3f}', **kwargs))
     asyncio.run(run_method_parallel(parallel_cells=parallel_cells, folder=str(data_path),
                                     experiment_ids=experiment_ids, mode="LSV",
-                                    params={'start': 0, 'end': +1.8, 'scan_rate': 10},
+                                    params={'start': 1.12, 'end': 2.028, 'scan_rate': 10},
                                     tia_gain=0, filename_suffix=suffix, **kwargs))
 @flow
 def electrosynthesis(
@@ -398,36 +398,40 @@ def electrosynthesis(
     client.set('reaction_status', "0")
     _valid_catholytes_ports = get_valid_electrolytes()
 
-    for cell_str, elyte_ratios, exp_id in zip([str(cell).zfill(2) for cell in range(1, parallel_cells + 1)],
-                                            elyte_ratios_list, experiment_ids):
-        ports_dict = dict(_valid_catholytes_ports)
-        catholyte_info = [(elyte, ratio, ports_dict[elyte]) for elyte, ratio in elyte_ratios]
-        
-        prepare_elyte_mix(syringe_pump='tecanRX01',elyte_info=catholyte_info,
-                          compartment=f'WEvial{cell_str}',volume=catholyte_volume, **kwargs)
-        compartment_fill(syringe_pump='tecanRX01', source='anolyte', destination=f'CEvial{cell_str}', volume=anolyte_volume,
-                         speed=filling_speed, **kwargs)
-        client.set(name=f'ID{exp_id}_content', value=json.dumps(dict(elyte_ratios)))
+    if 'electrosynthesis_preparation' not in ignore_steps:
+        for cell_str, elyte_ratios, exp_id in zip([str(cell).zfill(2) for cell in range(1, parallel_cells + 1)],
+                                                elyte_ratios_list, experiment_ids):
+            ports_dict = dict(_valid_catholytes_ports)
+            catholyte_info = [(elyte, ratio, ports_dict[elyte]) for elyte, ratio in elyte_ratios]
+            
+            prepare_elyte_mix(syringe_pump='tecanRX01',elyte_info=catholyte_info,
+                                compartment=f'WEvial{cell_str}',volume=catholyte_volume, **kwargs)
+            compartment_fill(syringe_pump='tecanRX01', source='anolyte', destination=f'CEvial{cell_str}', volume=anolyte_volume,
+                                speed=filling_speed, **kwargs)
+            client.set(name=f'ID{exp_id}_content', value=json.dumps(dict(elyte_ratios)))
 
     run_pump(pump='longerWE01', speed=pump_speed, direction=False, **kwargs)
     run_pump(pump='longerCE01', speed=pump_speed, direction=False, **kwargs)
 
-    client.set(name='reaction_status', value=time_rx)
-
-    characterization(data_path=data_path, experiment_ids=experiment_ids, suffix='prerx', **kwargs)
-    asyncio.run(run_method_parallel(parallel_cells=parallel_cells, folder=str(data_path),
-                                    experiment_ids=experiment_ids, mode="CP",
-                                    params={'current': current, 'duration': time_rx},
-                                    tia_gain=0, **kwargs))
-    characterization(data_path=data_path, experiment_ids=experiment_ids, suffix='postrx', **kwargs)
+    if 'electrosynthesis_characterization_prerx' not in ignore_steps:
+        characterization(data_path=data_path, experiment_ids=experiment_ids, suffix='prerx', **kwargs)
+    if 'electrosynthesis_reaction' not in ignore_steps:
+        client.set(name='reaction_status', value=time_rx)
+        asyncio.run(run_method_parallel(parallel_cells=parallel_cells, folder=str(data_path),
+                                        experiment_ids=experiment_ids, mode="CP",
+                                        params={'current': current/1000, 'duration': time_rx},
+                                        tia_gain=0, **kwargs))
+    if 'electrosynthesis_characterization_postrx' not in ignore_steps:
+        characterization(data_path=data_path, experiment_ids=experiment_ids, suffix='postrx', **kwargs)
 
     client.set(name='reaction_status', value="waiting")
 
-    wash_flow_cell(**kwargs)
+    if 'electrosynthesis_wash' not in ignore_steps:
+        wash_flow_cell(**kwargs)
 
 
 @flow
-def electrodisolution(
+def electrodissolution(
         data_path: Path,
         experiment_ids: List[int],
         time_rx: Optional[float] = None,
@@ -454,18 +458,18 @@ def electrodisolution(
     config = {**DEFAULT_CONFIG, **kwargs}
 
     # Using conditional assignments with provided parameters or defaults
-    time_rx = time_rx if time_rx is not None else config['electrodisolution_time']
-    catholyte_volume = catholyte_volume if catholyte_volume is not None else config['electrodisolution_catholyte_volume']
-    anolyte_volume = anolyte_volume if anolyte_volume is not None else config['electrodisolution_anolyte_volume']
-    pump_speed = pump_speed if pump_speed is not None else config['electrodisolution_pump_speed']
-    filling_speed = filling_speed if filling_speed is not None else config['electrodisolution_filling_speed']
+    time_rx = time_rx if time_rx is not None else config['electrodissolution_time']
+    catholyte_volume = catholyte_volume if catholyte_volume is not None else config['electrodissolution_catholyte_volume']
+    anolyte_volume = anolyte_volume if anolyte_volume is not None else config['electrodissolution_anolyte_volume']
+    pump_speed = pump_speed if pump_speed is not None else config['electrodissolution_pump_speed']
+    filling_speed = filling_speed if filling_speed is not None else config['electrodissolution_filling_speed']
     parallel_cells = config['parallel_cells']
 
     for cell_str, exp_id in zip([str(cell).zfill(2) for cell in range(1, parallel_cells + 1)],
                                experiment_ids):
         compartment_fill(syringe_pump='tecanRX01', source='acid', destination=f'WEvial{cell_str}', volume=catholyte_volume,
                          speed=filling_speed, **kwargs)
-        compartment_fill(syringe_pump='tecanRX01', source='anolyte', destination=f'CEvial{cell_str}', volume=anolyte_volume,
+        compartment_fill(syringe_pump='tecanRX01', source='acid', destination=f'CEvial{cell_str}', volume=anolyte_volume,
                          speed=filling_speed, **kwargs)
         client.set(name=f'flow_cell{cell_str}_content', value='acid')
 
@@ -475,7 +479,7 @@ def electrodisolution(
     asyncio.run(run_method_parallel(parallel_cells=parallel_cells, folder=str(data_path),
                                     experiment_ids=experiment_ids, mode="OCP",
                                     params={'duration': time_rx},
-                                    tia_gain=2, **kwargs))
+                                    tia_gain=3, **kwargs))
 
     wash_flow_cell(**kwargs)
 
@@ -525,8 +529,8 @@ def execute_experiment(
         electrodeposition(data_path=paths[0], experiment_ids=experiment_ids, metal_ratios_list=metal_ratios_list, **kwargs)
     if 'electrosynthesis' not in ignore_steps:
         electrosynthesis(data_path=paths[1], experiment_ids=experiment_ids, elyte_ratios_list=elyte_ratios_list, ignore_steps=ignore_steps, **kwargs)
-    if 'electrodisolution' not in ignore_steps:
-        electrodisolution(data_path=paths[2], experiment_ids=experiment_ids, **kwargs)
+    if 'electrodissolution' not in ignore_steps:
+        electrodissolution(data_path=paths[2], experiment_ids=experiment_ids, **kwargs)
 
 
 if __name__ == "__main__":
@@ -539,7 +543,7 @@ if __name__ == "__main__":
     #                    'anolyte_volume':10, 'kwargs':{}},
     #        )
     #electrosynthesis(catholyte_ratios=[[1,0,0,0,0,0,0,0,0]],current=+0.004,catholyte_volume=10, anolyte_volume=10)
-    #electrodisolution(time_rx=10,catholyte_volume=10, anolyte_volume=10)
+    #electrodissolution(time_rx=10,catholyte_volume=10, anolyte_volume=10)
     #run_cp('potentiostat01',-0.004,5)
 
 

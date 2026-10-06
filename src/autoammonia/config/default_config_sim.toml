@@ -1,4 +1,4 @@
-data_path = "~/autoammonia_data"
+data_path = "~/ammonia_data"
 calibration_path = "~/autoammonia_data/calibration"
 parallel_cells = 1
 delete_previous_queue = false
@@ -39,11 +39,11 @@ reaction_anolyte_volume = 2
 reaction_pump_speed = 10
 reaction_filling_speed = 0.5
 
-electrodisolution_time = 0.1
-electrodisolution_catholyte_volume = 2
-electrodisolution_anolyte_volume = 2
-electrodisolution_pump_speed = 2
-electrodisolution_filling_speed = 0.5
+electrodissolution_time = 0.1
+electrodissolution_catholyte_volume = 2
+electrodissolution_anolyte_volume = 2
+electrodissolution_pump_speed = 2
+electrodissolution_filling_speed = 0.5
 
 uv_vis_integration_time = 0.1
 uv_vis_retries = 5

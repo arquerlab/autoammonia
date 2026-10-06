@@ -39,11 +39,11 @@ reaction_anolyte_volume = 20
 reaction_pump_speed = 10
 reaction_filling_speed = 0.2
 
-electrodisolution_time = 600
-electrodisolution_catholyte_volume = 10
-electrodisolution_anolyte_volume = 10
-electrodisolution_pump_speed = 10
-electrodisolution_filling_speed = 0.2
+electrodissolution_time = 600
+electrodissolution_catholyte_volume = 10
+electrodissolution_anolyte_volume = 10
+electrodissolution_pump_speed = 10
+electrodissolution_filling_speed = 0.2
 
 uv_vis_integration_time = 10
 uv_vis_retries = 5

@@ -5,7 +5,16 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import SQLAlchemyError
 
 from .db import Session
-from .models import Precursor, Electrolyte, Experiment, CatalystComposition, ElectrolyteComposition, Result
+from .models import (
+    Precursor,
+    Electrolyte,
+    Experiment,
+    CatalystComposition,
+    ElectrolyteComposition,
+    Result,
+    Config,
+    ExperimentConfig,
+)
 from ..utils.elytes_precursors import get_valid_electrolytes, get_valid_precursors
 
 @task
@@ -42,6 +51,7 @@ def add_experiment_to_db(
     electrolyte_ratios: List[Tuple[str, float]],
     notes: Optional[str] = None,
     metadata: Optional[dict] = None,
+    config_snapshot: Optional[dict] = None,
 ) -> int:
     """
     Adds a new experiment to the database, including its catalyst and electrolyte compositions.
@@ -51,9 +61,11 @@ def add_experiment_to_db(
         electrolyte_ratios (List[Tuple[str, float]]): List of (electrolyte name, proportion) tuples.
         notes (Optional[str], optional): Notes about the experiment.
         metadata (Optional[dict], optional): Metadata for the experiment.
+        config_snapshot (Optional[dict], optional): Full merged run configuration snapshot stored
+            in the configs table and linked via experiment_config.
 
     Returns:
-        None
+        int: Created experiment ID.
 
     Raises:
         ValueError: If any precursor or electrolyte is not found in the database.
@@ -89,6 +101,21 @@ def add_experiment_to_db(
                 proportion=Decimal(str(proportion))
             )
             session.add(electrolyte_comp)
+
+        if config_snapshot is not None:
+            config_row = Config(
+                version=str(config_snapshot.get("setup", "unknown")),
+                config_json=config_snapshot,
+                notes=f"Snapshot for experiment {experiment.id}",
+            )
+            session.add(config_row)
+            session.flush()
+            session.add(
+                ExperimentConfig(
+                    experiment_id=experiment.id,
+                    config_id=config_row.id,
+                )
+            )
 
         session.commit()
         return experiment.id

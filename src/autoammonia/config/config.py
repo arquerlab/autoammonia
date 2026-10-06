@@ -66,6 +66,9 @@ else:
 
 DEFAULT_CONFIG = toml.load(DEFAULT_CONFIG_PATH)
 
+PROCESSING_CONFIG_PATH = Path(__file__).parent / "processing_config.toml"
+PROCESSING_CONFIG = toml.load(PROCESSING_CONFIG_PATH)
+
 # Load connections info and setups - use setup-specific file
 CONNECTIONS_INFO_PATH = Path(__file__).parent / f"connections_info_{ACTIVE_SETUP}.toml"
 _connections_data = toml.load(CONNECTIONS_INFO_PATH)
